@@ -1,0 +1,57 @@
+{extends '../layout.latte'}
+{block title}{$title}{/block}
+{block content}
+<script>
+  var bannerCsrfToken = {$csrf_token};
+</script>
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
+    <a class="btn btn-primary mb-3" href="/admin/banner/edit"><i class="fas fa-plus"></i> 新增 Banner</a>
+    <table class="table table-bordered table-hover">
+        <thead>
+        <tr>
+            <th>ID</th><th>标题</th><th>图片</th><th>链接</th><th>排序</th><th>启用</th><th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        {foreach $banners as $b}
+        <tr>
+            <td>{$b['id']}</td>
+            <td>{$b['title']}</td>
+            <td><img src="{$b['image_path']}" style="height:40px"></td>
+            <td>{$b['url']}</td>
+            <td>{$b['sort']}</td>
+            <td>{if $b['status']}✔{/if}</td>
+            <td>
+                <a class="btn btn-sm btn-info" href="/admin/banner/edit?id={$b['id']}">编辑</a>
+                <button class="btn btn-sm btn-danger" onclick="delBanner({$b['id']})">删除</button>
+            </td>
+        </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+<script>
+function delBanner(id){
+  if(!confirm('确定删除?'))return;
+  
+  const f = new FormData();
+  f.append('id', id);
+  
+  // 使用页面中定义的 CSRF Token
+  const csrfToken = bannerCsrfToken;
+  f.append('csrf_token', csrfToken);
+  
+  fetch('/admin/banner/delete', { method: 'POST', body: f })
+    .then(r => r.json())
+    .then(d => {
+      alert(d.message);
+      if(d.code === 0) location.reload();
+    })
+    .catch(err => {
+      console.error('删除错误:', err);
+      alert('删除失败，请重试');
+    });
+}
+</script>
+{/block}

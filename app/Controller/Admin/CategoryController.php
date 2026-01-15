@@ -1,0 +1,384 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controller\Admin;
+
+use App\Core\Security;
+use App\Model\Category;
+use App\Service\LogService;
+
+/**
+ * 栏目管理控制器
+ */
+class CategoryController extends AdminBaseController
+{
+    /**
+     * 栏目列表
+     *
+     * @return void
+     */
+    public function index(): void
+    {
+        try {
+            // 获取栏目树
+            $categories = Category::getTree();
+
+            $this->render('admin/category/index', [
+                'title' => '栏目管理',
+                'categories' => $categories,
+            ]);
+        } catch (\Exception $e) {
+            $this->errorJson('加载栏目列表失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 添加栏目
+     *
+     * @return void
+     */
+    public function add(): void
+    {
+        try {
+            // 生成 CSRF Token
+            $csrfToken = Security::generateCsrfToken();
+
+            // 获取栏目树（用于父级下拉）
+            $categories = Category::getTree();
+
+            $parentId = (int)($this->get('parent_id', 0));
+
+            $this->render('admin/category/edit', [
+                'title' => '添加栏目',
+                'csrf_token' => $csrfToken,
+                'categories' => $categories,
+                'category' => null,
+                'parent_id' => $parentId,
+            ]);
+        } catch (\Exception $e) {
+            $this->errorJson('加载添加页面失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 编辑栏目
+     *
+     * @return void
+     */
+    public function edit(): void
+    {
+        try {
+            $id = (int)($this->get('id') ?? 0);
+
+            if ($id <= 0) {
+                $this->errorJson('栏目ID无效');
+            }
+
+            // 获取栏目信息
+            $category = Category::getById($id);
+
+            if (!$category) {
+                $this->errorJson('栏目不存在');
+            }
+
+            // 生成 CSRF Token
+            $csrfToken = Security::generateCsrfToken();
+
+            // 获取栏目树（用于父级下拉）
+            $categories = Category::getTree();
+
+            $this->render('admin/category/edit', [
+                'title' => '编辑栏目',
+                'csrf_token' => $csrfToken,
+                'categories' => $categories,
+                'category' => $category,
+                'parent_id' => $category['parent_id'],
+            ]);
+        } catch (\Exception $e) {
+            $this->errorJson('加载编辑页面失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 保存栏目
+     *
+     * @return void
+     */
+    public function save(): void
+    {
+        $this->requirePerm('admin:category:save');
+
+        // 只接受 POST 请求
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+        }
+
+        try {
+            // 验证 CSRF Token
+            $csrfToken = $this->post('csrf_token', '');
+            if (!Security::checkCsrfToken($csrfToken)) {
+                $this->errorJson('CSRF Token 验证失败');
+            }
+
+            // 获取表单数据
+            $id = (int)($this->post('id', 0));
+            $name = trim($this->post('name', ''));
+            $slug = trim($this->post('slug', ''));
+            $type = $this->post('type', 'article');
+            $parentId = (int)($this->post('parent_id', 0));
+            $sort = (int)($this->post('sort', 0));
+            $isHidden = (int)($this->post('is_hidden', 0));
+
+            $template = trim((string)$this->post('template', ''));
+            $detailTemplate = trim((string)$this->post('detail_template', ''));
+
+            // 验证必填字段
+            if (empty($name)) {
+                $this->errorJson('栏目名称不能为空');
+            }
+
+            // 验证类型
+            if (!in_array($type, ['article', 'page', 'pic', 'doctor'])) {
+                $this->errorJson('栏目类型无效');
+            }
+
+            // 如果设置了别名，检查是否重复
+            if (!empty($slug)) {
+                if (Category::slugExists($slug, $id > 0 ? $id : null)) {
+                    $this->errorJson('别名已存在');
+                }
+            }
+
+            // 按栏目模型类型处理模板
+            $typeTemplateMap = [
+                'article' => ['template' => 'list.latte', 'detail_template' => 'article.latte'],
+                'page' => ['template' => '', 'detail_template' => 'pages.latte'],
+                'pic' => ['template' => 'piclist.latte', 'detail_template' => 'pic.latte'],
+                'doctor' => ['template' => 'doctorlist.latte', 'detail_template' => 'doctor.latte'],
+            ];
+
+            $template = $template === '' ? ($typeTemplateMap[$type]['template'] ?? '') : $template;
+            $detailTemplate = $detailTemplate === '' ? ($typeTemplateMap[$type]['detail_template'] ?? '') : $detailTemplate;
+
+            // 单页内容模型：不允许列表模板
+            if ($type === 'page') {
+                $template = '';
+            }
+
+            // 基础白名单校验（防止提交非预期模板）
+            $allowedTemplates = ['list.latte', 'piclist.latte', 'doctorlist.latte', ''];
+            $allowedDetailTemplates = ['article.latte', 'pages.latte', 'pic.latte', 'doctor.latte'];
+
+            if (!in_array($template, $allowedTemplates, true)) {
+                $this->errorJson('列表模板无效');
+            }
+            if (!in_array($detailTemplate, $allowedDetailTemplates, true)) {
+                $this->errorJson('详情模板无效');
+            }
+
+            // 保存数据
+            $categoryId = Category::save([
+                'id' => $id > 0 ? $id : null,
+                'parent_id' => $parentId,
+                'name' => $name,
+                'slug' => $slug,
+                'type' => $type,
+                'template' => $template,
+                'detail_template' => $detailTemplate,
+                'sort' => $sort,
+                'is_hidden' => $isHidden,
+            ]);
+
+            // 记录日志
+            $action = $id > 0 ? 'update' : 'create';
+            $message = $id > 0 ? "修改栏目: {$name}" : "添加栏目: {$name}";
+            LogService::record($this->getAdminId(), $this->getAdminUsername(), $action, $message);
+
+            $this->successJson('保存成功', $categoryId, '/admin/category');
+        } catch (\Exception $e) {
+            $this->errorJson('保存失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 删除栏目
+     *
+     * @return void
+     */
+    public function delete(): void
+    {
+        $this->requirePerm('admin:category:delete');
+
+        // 只接受 POST 请求
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+        }
+
+        try {
+            // 验证 CSRF Token
+            $csrfToken = $this->post('csrf_token', '');
+            if (!Security::checkCsrfToken($csrfToken)) {
+                $this->errorJson('CSRF Token 验证失败');
+            }
+
+            $id = (int)($this->post('id', 0));
+
+            if ($id <= 0) {
+                $this->errorJson('栏目ID无效');
+            }
+
+            // 获取栏目信息
+            $category = Category::getById($id);
+
+            if (!$category) {
+                $this->errorJson('栏目不存在');
+            }
+
+            // 删除栏目
+            Category::delete($id);
+
+            // 记录日志
+            LogService::record($this->getAdminId(), $this->getAdminUsername(), 'delete', "删除栏目: {$category['name']}");
+
+            $this->successJson('删除成功', null, '/admin/category');
+        } catch (\Exception $e) {
+            $this->errorJson('删除失败：' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取栏目树（AJAX）
+     *
+     * @return void
+     */
+    public function tree(): void
+    {
+        try {
+            $categories = Category::getTree();
+
+            $this->json([
+                'code' => 0,
+                'data' => $categories,
+            ]);
+        } catch (\Exception $e) {
+            $this->json([
+                'code' => 1,
+                'message' => '获取栏目树失败：' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * 获取模型字段配置（AJAX）
+     *
+     * @return void
+     */
+    public function getModelFields(): void
+    {
+        try {
+            $type = $this->get('type', '');
+            
+            if (empty($type)) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+            
+            // 读取模型配置文件
+            $modelsFile = dirname(__DIR__, 2) . '/Config/models.php';
+            
+            if (!file_exists($modelsFile)) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+            
+            $models = require $modelsFile;
+            
+            // 检查类型是否存在
+            if (!isset($models[$type]) || !isset($models[$type]['fields'])) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+            
+            // 返回字段配置
+            $this->json([
+                'code' => 0,
+                'data' => $models[$type]['fields'],
+            ]);
+        } catch (\Exception $e) {
+            error_log('获取模型字段失败: ' . $e->getMessage());
+            $this->json([
+                'code' => 1,
+                'message' => '获取模型字段失败：' . $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+    }
+
+    /**
+     * 获取栏目选项列表（用于下拉选择，包含指定栏目及其所有子栏目）
+     *
+     * @return void
+     */
+    public function getCategoryOptions(): void
+    {
+        try {
+            $parentId = (int)$this->get('parent_id', 0);
+            
+            if ($parentId <= 0) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+            
+            // 获取所有栏目数据
+            $allCategories = Category::getAll();
+            
+            // 构建选项数组：id => name
+            $options = [];
+            
+            // 递归函数：获取栏目及其子栏目的选项
+            $buildOptions = function($currentParentId, $level = 0) use (&$buildOptions, &$options, $allCategories) {
+                foreach ($allCategories as $category) {
+                    if ((int)$category['parent_id'] === $currentParentId) {
+                        $indent = str_repeat('  ', $level);
+                        $options[(string)$category['id']] = $indent . $category['name'];
+                        // 递归处理子栏目
+                        $buildOptions((int)$category['id'], $level + 1);
+                    }
+                }
+            };
+            
+            // 先添加父栏目本身
+            $parentCategory = Category::getById($parentId);
+            if ($parentCategory) {
+                $options[(string)$parentId] = $parentCategory['name'];
+            }
+            
+            // 构建子栏目选项
+            $buildOptions($parentId, 1);
+            
+            $this->json([
+                'code' => 0,
+                'data' => $options,
+            ]);
+        } catch (\Exception $e) {
+            error_log('获取栏目选项失败: ' . $e->getMessage());
+            $this->json([
+                'code' => 1,
+                'message' => '获取栏目选项失败：' . $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+    }
+}

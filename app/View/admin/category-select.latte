@@ -1,0 +1,11 @@
+{foreach $categories as $category}
+    <option value="{$category['id']}"
+            {if $category['id'] == $selected_id}selected{/if}
+            {if $category['id'] == $exclude_id}disabled{/if}>
+        {for $i = 0; $i < $level; $i++}└─{/for} {$category['name']}
+    </option>
+    
+    {if count($category['children']) > 0}
+        {include 'category-select.latte', categories => $category['children'], level => $level + 1, selected_id => $selected_id, exclude_id => $exclude_id}
+    {/if}
+{/foreach}

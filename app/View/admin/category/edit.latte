@@ -1,0 +1,248 @@
+{extends "../layout.latte"}
+
+{block content}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title mb-4">{if $category}编辑栏目{else}添加栏目{/if}</h5>
+            
+            <form id="categoryForm" action="/admin/category/save" method="POST">
+                <input type="hidden" name="csrf_token" value="{$csrf_token}">
+                <input type="hidden" name="id" value="{$category['id'] ?? 0}">
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <!-- 上级栏目 -->
+                        <div class="mb-3">
+                            <label for="parent_id" class="form-label">上级栏目</label>
+                            <select class="form-select" id="parent_id" name="parent_id">
+                                <option value="0">顶级栏目</option>
+                                {if isset($categories) && is_array($categories)}
+                                    {include '../category-select.latte', categories => $categories, level => 0, selected_id => $parent_id, exclude_id => $category['id'] ?? 0}
+                                {/if}
+                            </select>
+                            <div class="form-text">不选择则为顶级栏目</div>
+                        </div>
+                        
+                        <!-- 栏目名称 -->
+                        <div class="mb-3">
+                            <label for="name" class="form-label">栏目名称 <span class="text-danger">*</span></label>
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="name" 
+                                   name="name" 
+                                   value="{$category['name'] ?? ''}"
+                                   placeholder="请输入栏目名称"
+                                   required
+                                   maxlength="100">
+                            <div class="form-text">栏目的显示名称</div>
+                        </div>
+                        
+                        <!-- 栏目别名 -->
+                        <div class="mb-3">
+                            <label for="slug" class="form-label">栏目别名</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="slug"
+                                   name="slug"
+                                   value="{$category['slug'] ?? ''}"
+                                   placeholder="请输入栏目别名（可选）"
+                                   maxlength="100"
+                                   pattern="[a-z0-9-]+"
+                                   title="只能包含小写字母、数字和横杠">
+                            <div class="form-text">URL 中的标识符，如：news。只能包含小写字母、数字和横杠</div>
+                        </div>
+
+                        <!-- 栏目类型 -->
+                        <div class="mb-3">
+                            <label class="form-label">栏目类型</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="type_article" name="type" value="article"
+                                           {if !isset($category) || $category['type'] == 'article'}checked{/if}>
+                                    <label class="form-check-label" for="type_article">
+                                        <span class="badge bg-primary">文章</span> 文章列表
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="type_page" name="type" value="page"
+                                           {if isset($category) && $category['type'] == 'page'}checked{/if}>
+                                    <label class="form-check-label" for="type_page">
+                                        <span class="badge bg-info">单页</span> 单页内容
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="type_pic" name="type" value="pic"
+                                           {if isset($category) && $category['type'] == 'pic'}checked{/if}>
+                                    <label class="form-check-label" for="type_pic">
+                                        <span class="badge bg-warning">图文</span> 图文列表
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="type_doctor" name="type" value="doctor"
+                                           {if isset($category) && $category['type'] == 'doctor'}checked{/if}>
+                                    <label class="form-check-label" for="type_doctor">
+                                        <span class="badge bg-success">专家</span> 专家列表
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 列表模板 -->
+                        <div class="mb-3">
+                            <label for="template" class="form-label">列表模板</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="template"
+                                   name="template"
+                                   value="{$category['template'] ?? ''}"
+                                   placeholder=""
+                                   maxlength="100">
+                            <div class="form-text">前台列表页使用的模板文件</div>
+                        </div>
+
+                        <!-- 详情模板 -->
+                        <div class="mb-3">
+                            <label for="detail_template" class="form-label">详情模板</label>
+                            <input type="text"
+                                   class="form-control"
+                                   id="detail_template"
+                                   name="detail_template"
+                                   value="{$category['detail_template'] ?? ''}"
+                                   placeholder=""
+                                   maxlength="100">
+                            <div class="form-text">前台详情页使用的模板文件</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <!-- 排序 -->
+                        <div class="mb-3">
+                            <label for="sort" class="form-label">排序</label>
+                            <input type="number" 
+                                   class="form-control" 
+                                   id="sort" 
+                                   name="sort" 
+                                   value="{$category['sort'] ?? 0}"
+                                   min="0"
+                                   max="9999">
+                            <div class="form-text">数字越小越靠前</div>
+                        </div>
+                        
+                        <!-- 是否隐藏 -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="is_hidden" name="is_hidden" value="1"
+                                       {if isset($category) && $category['is_hidden']}checked{/if}>
+                                <label class="form-check-label" for="is_hidden">
+                                    隐藏该栏目
+                                </label>
+                                <div class="form-text">隐藏后前台将不显示该栏目</div>
+                            </div>
+                        </div>
+                        
+                        <!-- 操作按钮 -->
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> 保存
+                            </button>
+                            <a href="/admin/category" class="btn btn-secondary">
+                                <i class="bi bi-x-lg"></i> 返回
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge {
+    margin-right: 0.25rem;
+}
+
+/* 加载动画 */
+.spinner {
+    display: inline-block;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>
+
+<script>
+// 自动生成别名
+document.getElementById('name')?.addEventListener('input', function(e) {
+    const slugInput = document.getElementById('slug');
+    if (slugInput && !slugInput.value) {
+        const pinyin = e.target.value
+            .toLowerCase()
+            .replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '')
+            .replace(/\s+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        slugInput.value = pinyin;
+    }
+});
+
+// 验证别名格式
+document.getElementById('slug')?.addEventListener('blur', function(e) {
+    const value = e.target.value;
+    if (value && !/^[a-z0-9-]+$/.test(value)) {
+        alert('别名只能包含小写字母、数字和横杠');
+        e.target.value = value.replace(/[^a-z0-9-]/g, '');
+    }
+});
+
+// 表单提交处理
+document.getElementById('categoryForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const button = form.querySelector('button[type="submit"]');
+    const originalText = button.innerHTML;
+    
+    // 禁用提交按钮，防止重复提交
+    button.disabled = true;
+    button.innerHTML = '<i class="bi bi-arrow-clockwise spinner"></i> 保存中...';
+    
+    // 使用Fetch API提交表单
+    fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form),
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.code === 0) {
+            // 保存成功，跳转到栏目列表
+            window.location.href = data.url || '/admin/category';
+        } else {
+            // 保存失败，显示错误信息
+            alert(data.message || '保存失败');
+            // 恢复提交按钮
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    })
+    .catch(error => {
+        console.error('保存失败:', error);
+        alert('保存失败，请重试');
+        // 恢复提交按钮
+        button.disabled = false;
+        button.innerHTML = originalText;
+    });
+});
+</script>
+{/block}
