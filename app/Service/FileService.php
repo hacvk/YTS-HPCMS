@@ -25,6 +25,35 @@ class FileService
     ];
 
     /**
+     * MIME 类型到允许扩展名的映射
+     * 用于双重验证：即使 MIME 类型正确，扩展名也必须匹配
+     *
+     * @var array<string, array<int, string>>
+     */
+    private const MIME_TO_EXTENSIONS = [
+        'image/jpeg' => ['jpg', 'jpeg'],
+        'image/jpg' => ['jpg', 'jpeg'],
+        'image/png' => ['png'],
+        'image/gif' => ['gif'],
+        'image/webp' => ['webp'],
+    ];
+
+    /**
+     * 禁止的扩展名（无论 MIME 类型如何，这些扩展名都必须拒绝）
+     * 包括可执行文件、脚本文件等危险扩展名
+     *
+     * @var array<int, string>
+     */
+    private const FORBIDDEN_EXTENSIONS = [
+        'php', 'php3', 'php4', 'php5', 'phtml', 'phps',
+        'exe', 'bat', 'cmd', 'com', 'scr', 'vbs', 'js',
+        'jsp', 'asp', 'aspx', 'cgi', 'pl', 'sh', 'py',
+        'rb', 'jar', 'war', 'class', 'dll', 'so',
+        'svg', // 明确禁止 SVG（可能包含 XSS 向量）
+        'html', 'htm', 'xml', 'xhtml',
+    ];
+
+    /**
      * 默认最大文件大小（5MB）
      */
     private const DEFAULT_MAX_SIZE = 5 * 1024 * 1024;
@@ -36,6 +65,12 @@ class FileService
 
     /**
      * 处理文件上传
+     * 
+     * 安全特性：
+     * - 双重验证：MIME 类型 + 扩展名白名单
+     * - 禁止危险扩展名（包括 SVG、脚本文件等）
+     * - 文件名清理和路径验证
+     * - 只返回相对路径，绝不暴露服务器绝对路径
      *
      * @param array<string, mixed> $uploadedFile $_FILES['file'] 数组
      * @param array<string, mixed> $options 上传选项
@@ -48,6 +83,7 @@ class FileService
      *   - allowed_types: array<int, string> 允许的文件类型（可选）
      *   - max_size: int 最大文件大小（可选）
      * @return array{success: bool, file_id?: int, path?: string, url?: string, message?: string, existing_file?: array<string, mixed>}
+     *   注意：path 和 url 都是相对路径，不会暴露服务器绝对路径
      * @throws \RuntimeException 当文件处理失败时抛出异常
      */
     public static function handleUpload(array $uploadedFile, array $options = []): array
@@ -161,7 +197,19 @@ class FileService
             ];
         }
 
-        // 验证文件类型
+        // 获取文件扩展名（小写）
+        $originalName = $uploadedFile['name'] ?? '';
+        $fileExtension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+
+        // 第一步：检查禁止的扩展名（最严格的检查）
+        if (in_array($fileExtension, self::FORBIDDEN_EXTENSIONS, true)) {
+            return [
+                'valid' => false,
+                'message' => '不允许的文件扩展名：' . $fileExtension
+            ];
+        }
+
+        // 第二步：验证 MIME 类型
         $allowedTypes = $options['allowed_types'] ?? self::DEFAULT_ALLOWED_TYPES;
         $mimeType = mime_content_type($uploadedFile['tmp_name']);
         if (!in_array($mimeType, $allowedTypes, true)) {
@@ -171,7 +219,24 @@ class FileService
             ];
         }
 
-        // 验证文件大小
+        // 第三步：验证扩展名是否与 MIME 类型匹配（双重验证）
+        $allowedExtensions = self::MIME_TO_EXTENSIONS[$mimeType] ?? [];
+        if (empty($allowedExtensions)) {
+            // 如果 MIME 类型不在映射中，拒绝（安全第一）
+            return [
+                'valid' => false,
+                'message' => '无法验证文件类型：' . $mimeType
+            ];
+        }
+
+        if (!in_array($fileExtension, $allowedExtensions, true)) {
+            return [
+                'valid' => false,
+                'message' => "文件扩展名 {$fileExtension} 与文件类型 {$mimeType} 不匹配"
+            ];
+        }
+
+        // 第四步：验证文件大小
         $maxSize = $options['max_size'] ?? self::DEFAULT_MAX_SIZE;
         if ($uploadedFile['size'] > $maxSize) {
             $maxSizeMB = round($maxSize / 1024 / 1024, 2);
@@ -196,7 +261,52 @@ class FileService
     }
 
     /**
+     * 清理文件名，移除危险字符
+     * 注意：此方法仅用于清理最终文件名部分，不处理路径分隔符
+     *
+     * @param string $fileName 原始文件名（不包含路径）
+     * @return string 清理后的文件名
+     */
+    private static function sanitizeFileName(string $fileName): string
+    {
+        // 移除路径分隔符（防止路径遍历攻击）
+        $fileName = basename($fileName);
+        // 移除所有非字母数字、点、下划线、连字符、斜杠的字符
+        // 保留斜杠用于日期路径结构（如 2024/01/15）
+        $fileName = preg_replace('/[^a-zA-Z0-9._\-\/]/', '', $fileName);
+        // 移除开头的点和下划线（防止隐藏文件）
+        $fileName = ltrim($fileName, '._');
+        // 限制文件名长度
+        if (strlen($fileName) > 255) {
+            $fileName = substr($fileName, 0, 255);
+        }
+        return $fileName;
+    }
+
+    /**
+     * 清理文件扩展名
+     *
+     * @param string $extension 原始扩展名
+     * @return string 清理后的扩展名
+     */
+    private static function sanitizeExtension(string $extension): string
+    {
+        // 移除所有非字母数字的字符
+        $extension = preg_replace('/[^a-zA-Z0-9]/', '', $extension);
+        // 限制扩展名长度（通常不超过 10 个字符）
+        if (strlen($extension) > 10) {
+            $extension = substr($extension, 0, 10);
+        }
+        return strtolower($extension);
+    }
+
+    /**
      * 计算文件路径
+     * 
+     * 安全说明：
+     * - full_path: 仅用于内部文件操作，不会返回给调用者
+     * - relative_path: 返回给调用者的相对路径（相对于 public 目录）
+     * - 所有返回给外部的方法只返回相对路径或 URL，绝不暴露绝对路径
      *
      * @param array<string, mixed> $uploadedFile 上传的文件信息
      * @param string $fileHash 文件哈希
@@ -207,32 +317,50 @@ class FileService
     {
         $baseDir = self::getUploadBaseDir();
         $module = $options['module'] ?? '';
-        $fileExtension = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
+        
+        // 获取并清理扩展名
+        $originalExtension = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
+        $fileExtension = self::sanitizeExtension($originalExtension);
+        
+        // 验证扩展名是否仍然有效（清理后可能为空）
+        if (empty($fileExtension)) {
+            throw new \RuntimeException('无效的文件扩展名');
+        }
+        
         $mimeType = mime_content_type($uploadedFile['tmp_name']);
 
         $relativePath = '';
         $fileName = '';
 
         if ($module === 'setting') {
-            // Setting 模块：保存为 logo.{ext}
+            // Setting 模块：保存为 logo.{ext}（使用清理后的扩展名）
             $fileName = 'images/logo.' . $fileExtension;
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         } elseif ($module === 'banner') {
-            // Banner 模块：保存为 banner{随机数}.{ext}
+            // Banner 模块：保存为 banner{随机数}.{ext}（使用清理后的扩展名）
             $randomNumber = mt_rand(100000, 999999);
             $fileName = 'images/banner' . $randomNumber . '.' . $fileExtension;
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         } else {
-            // 默认：使用原来的按日期+hash命名方式
-            $fileName = date('Y/m/d') . '/' . $fileHash . '.' . $fileExtension;
+            // 默认：使用原来的按日期+hash命名方式（使用清理后的扩展名）
+            // 使用哈希作为文件名，确保安全性
+            // 日期路径格式：YYYY/MM/DD/hash.ext
+            $datePath = date('Y/m/d');
+            $fileName = $datePath . '/' . $fileHash . '.' . $fileExtension;
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         }
 
+        // 验证路径安全性（防止路径遍历）
+        if (strpos($fileName, '..') !== false || strpos($fileName, "\0") !== false) {
+            throw new \RuntimeException('检测到不安全的路径字符');
+        }
+
+        // full_path 仅用于内部文件操作，不会返回给调用者
         $fullPath = $baseDir . '/' . $fileName;
 
         return [
-            'full_path' => $fullPath,
-            'relative_path' => $relativePath,
+            'full_path' => $fullPath,        // 内部使用，不暴露
+            'relative_path' => $relativePath, // 返回给调用者
             'mime_type' => $mimeType
         ];
     }
