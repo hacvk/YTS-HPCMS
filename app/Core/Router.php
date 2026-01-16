@@ -162,6 +162,7 @@ class Router
 
             // Admin - page
             'GET /admin/page' => ['Admin\\PageController', 'index'],
+            'GET /admin/page/add' => ['Admin\\PageController', 'add'],
             'GET /admin/page/edit' => ['Admin\\PageController', 'edit'],
             'POST /admin/page/save' => ['Admin\\PageController', 'save'],
             'POST /admin/page/delete' => ['Admin\\PageController', 'delete'],
@@ -222,6 +223,25 @@ class Router
 
         // Admin - article edit (GET /admin/article/edit/{id})
         if ($method === 'GET') {
+            // Admin - page edit (GET /admin/page/edit/{categoryId})
+            if (preg_match('#^/admin/page/edit/([0-9]+)$#', $uri, $matches)) {
+                $_GET['category_id'] = (int)$matches[1];
+                $_GET['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\PageController',
+                    'action' => 'edit',
+                ];
+            }
+
+            if (preg_match('#^/admin/page/edit/([0-9]+)/$#', $uri, $matches)) {
+                $_GET['category_id'] = (int)$matches[1];
+                $_GET['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\PageController',
+                    'action' => 'edit',
+                ];
+            }
+
             if (preg_match('#^/admin/article/edit/([0-9]+)$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
                 return [
@@ -273,6 +293,16 @@ class Router
                 $_POST['id'] = (int)$matches[1];
                 return [
                     'controller' => 'Admin\\ArticleController',
+                    'action' => 'delete',
+                ];
+            }
+
+            // Admin - page edit (GET /admin/page/edit/{categoryId}) is handled below in GET section
+            // Admin - page delete (POST /admin/page/delete/{id})
+            if (preg_match('#^/admin/page/delete/([0-9]+)$#', $uri, $matches)) {
+                $_POST['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\PageController',
                     'action' => 'delete',
                 ];
             }
