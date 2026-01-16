@@ -177,6 +177,35 @@ class View
                 return '';
             }
         });
+
+        // 栏目 Banner：支持向上继承父栏目 banner
+        $this->engine->addFunction('category_banner', function (mixed $categoryId, string $default = ''): string {
+            $cid = (int)$categoryId;
+            if ($cid <= 0) {
+                return $default;
+            }
+
+            try {
+                $db = \App\Core\Database::get();
+                $guard = 0;
+                while ($cid > 0 && $guard < 20) {
+                    $row = $db->get('sys_category', ['id', 'parent_id', 'banner'], ['id' => $cid]);
+                    if (!$row) {
+                        break;
+                    }
+                    $banner = trim((string)($row['banner'] ?? ''));
+                    if ($banner !== '') {
+                        return $banner;
+                    }
+                    $cid = (int)($row['parent_id'] ?? 0);
+                    $guard++;
+                }
+            } catch (\Throwable $e) {
+                return $default;
+            }
+
+            return $default;
+        });
     }
 
     /**

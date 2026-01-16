@@ -11,8 +11,9 @@
 {block content}
 <!-- Banner -->
 <div class="Banner_dy">
-    <span style="background-image:url({asset('static/picture/20210322110902915.jpg')})"></span>
-    <img src="{asset('static/picture/20210322110902915.jpg')}" alt="">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('static/picture/20210322110902915.jpg')) : asset('static/picture/20210322110902915.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
 </div>
 <!-- Banner End -->
 

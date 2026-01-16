@@ -232,6 +232,7 @@ class CategoryService
             'detail_template' => isset($data['detail_template']) ? trim($data['detail_template']) : 'article.latte',
             'sort' => (int)($data['sort'] ?? 0),
             'is_hidden' => isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0,
+            'banner' => isset($data['banner']) ? trim((string)$data['banner']) : null,
             'update_time' => date('Y-m-d H:i:s')
         ];
 

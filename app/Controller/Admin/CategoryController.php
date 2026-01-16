@@ -147,6 +147,7 @@ class CategoryController extends AdminBaseController
 
             $template = trim((string)$this->post('template', ''));
             $detailTemplate = trim((string)$this->post('detail_template', ''));
+            $banner = trim((string)$this->post('banner', ''));
 
             // 验证必填字段
             if (empty($name)) {
@@ -205,6 +206,7 @@ class CategoryController extends AdminBaseController
                 'type' => $type,
                 'template' => $template,
                 'detail_template' => $detailTemplate,
+                'banner' => $banner,
                 'sort' => $sort,
                 'is_hidden' => $isHidden,
             ]);

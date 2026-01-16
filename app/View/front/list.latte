@@ -1,6 +1,12 @@
 {extends 'layout.latte'}
 
 {block content}
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('static/picture/20210322110902915.jpg')) : asset('static/picture/20210322110902915.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+
 <div class="crumbs">
     <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > {$category['name']} </div>
 </div>

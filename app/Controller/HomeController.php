@@ -164,6 +164,7 @@ class HomeController extends BaseController
         $this->render($detailTemplate, [
             'title' => $article['title'],
             'article' => $article,
+            'category' => $this->categoryModel->getById((int)$article['category_id']),
             'prevArticle' => $prevArticle,
             'nextArticle' => $nextArticle,
             'channelItems' => $channelItems,

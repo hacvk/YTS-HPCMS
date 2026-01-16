@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 use App\Controller\Admin\AdminBaseController;
 use App\Model\File;
 use App\Service\FileService;
+use App\Core\Security;
 
 /**
  * 文件上传控制器
@@ -91,6 +92,73 @@ class UploadController extends AdminBaseController
             ], JSON_UNESCAPED_UNICODE);
             exit;
         }
+    }
+
+    /**
+     * 上传栏目 Banner
+     *
+     * - 固定上传目录：public/uploads/images
+     * - 固定命名：Categorybanner{N}.{ext}
+     *
+     * @return void
+     */
+    public function categoryBanner(): void
+    {
+        $this->requirePerm('admin:category:save');
+
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+        }
+
+        if (!Security::checkCsrfToken((string)$this->post('csrf_token', ''))) {
+            $this->errorJson('CSRF Token验证失败');
+        }
+
+        if (!isset($_FILES['file'])) {
+            $this->errorJson(FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE));
+        }
+
+        $uploadedFile = $_FILES['file'];
+
+        if (!is_array($uploadedFile) || ($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->errorJson(FileService::getUploadErrorMessage((int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE)));
+        }
+
+        $ext = strtolower(pathinfo((string)($uploadedFile['name'] ?? ''), PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if ($ext === '' || !in_array($ext, $allowed, true)) {
+            $this->errorJson('仅支持 jpg/jpeg/png/gif/webp');
+        }
+
+        $root = dirname(__DIR__, 3);
+        $dir = $root . '/public/uploads/images';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        // 计算下一个序号
+        $max = 0;
+        $files = glob($dir . '/Categorybanner*.*') ?: [];
+        foreach ($files as $f) {
+            $base = basename($f);
+            if (preg_match('/^Categorybanner(\d+)\./i', $base, $m)) {
+                $n = (int)$m[1];
+                if ($n > $max) {
+                    $max = $n;
+                }
+            }
+        }
+        $next = $max + 1;
+
+        $filename = 'Categorybanner' . $next . '.' . $ext;
+        $dest = $dir . '/' . $filename;
+
+        if (!move_uploaded_file((string)$uploadedFile['tmp_name'], $dest)) {
+            $this->errorJson('上传失败：保存文件失败');
+        }
+
+        $url = '/uploads/images/' . $filename;
+        $this->successJson('上传成功', ['url' => $url]);
     }
 
 
