@@ -13,6 +13,12 @@ use App\Service\LogService;
  */
 class SettingController extends AdminBaseController
 {
+    public function __construct(
+        private readonly Setting $setting
+    ) {
+        parent::__construct();
+    }
+
     /**
      * 设置页面
      *
@@ -22,7 +28,7 @@ class SettingController extends AdminBaseController
     {
         try {
             // 获取所有设置
-            $settings = Setting::getAll();
+            $settings = $this->setting->getAll();
             
             // 定义设置项分组
             $settingGroups = [
@@ -102,7 +108,7 @@ class SettingController extends AdminBaseController
             }
             
             // 批量保存设置
-            $result = Setting::setBatch($settings);
+            $result = $this->setting->setBatch($settings);
             
             if (!$result) {
                 LogService::record(

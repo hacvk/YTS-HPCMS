@@ -9,6 +9,12 @@ use App\Service\LogService;
 
 class AdminController extends AdminBaseController
 {
+    public function __construct(
+        private readonly \Medoo\Medoo $db
+    ) {
+        parent::__construct();
+    }
+
     public function index(): void
     {
         $this->requirePerm('admin:admin:view');

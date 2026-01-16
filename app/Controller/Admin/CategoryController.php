@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Database;
 use App\Core\Security;
 use App\Model\Category;
 use App\Service\CategoryService;
@@ -15,26 +14,11 @@ use App\Enum\CategoryType;
  */
 class CategoryController extends AdminBaseController
 {
-    /**
-     * 获取栏目服务实例
-     *
-     * @return CategoryService
-     */
-    private function getCategoryService(): CategoryService
-    {
-        $db = Database::get();
-        $categoryModel = new Category($db);
-        return new CategoryService($categoryModel);
-    }
-
-    /**
-     * 获取栏目模型实例
-     *
-     * @return Category
-     */
-    private function getCategoryModel(): Category
-    {
-        return new Category(Database::get());
+    public function __construct(
+        private readonly CategoryService $categoryService,
+        private readonly Category $categoryModel
+    ) {
+        parent::__construct();
     }
 
     /**
@@ -46,7 +30,7 @@ class CategoryController extends AdminBaseController
     {
         try {
             // 获取栏目树
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categories = $categoryService->getTree();
 
             $this->render('admin/category/index', [
@@ -70,7 +54,7 @@ class CategoryController extends AdminBaseController
             $csrfToken = Security::generateCsrfToken();
 
             // 获取栏目树（用于父级下拉）
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categories = $categoryService->getTree();
 
             $parentId = (int)($this->get('parent_id', 0));
@@ -102,7 +86,7 @@ class CategoryController extends AdminBaseController
             }
 
             // 获取栏目信息
-            $categoryModel = $this->getCategoryModel();
+            $categoryModel = $this->categoryModel;
             $category = $categoryModel->getById($id);
 
             if (!$category) {
@@ -113,7 +97,7 @@ class CategoryController extends AdminBaseController
             $csrfToken = Security::generateCsrfToken();
 
             // 获取栏目树（用于父级下拉）
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categories = $categoryService->getTree();
 
             $this->render('admin/category/edit', [
@@ -175,7 +159,7 @@ class CategoryController extends AdminBaseController
 
             // 如果设置了别名，检查是否重复
             if (!empty($slug)) {
-                $categoryModel = $this->getCategoryModel();
+                $categoryModel = $this->categoryModel;
                 if ($categoryModel->slugExists($slug, $id > 0 ? $id : null)) {
                     $this->errorJson('别名已存在');
                 }
@@ -209,7 +193,7 @@ class CategoryController extends AdminBaseController
             }
 
             // 保存数据
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categoryId = $categoryService->save([
                 'id' => $id > 0 ? $id : null,
                 'parent_id' => $parentId,
@@ -261,7 +245,7 @@ class CategoryController extends AdminBaseController
             }
 
             // 获取栏目信息
-            $categoryModel = $this->getCategoryModel();
+            $categoryModel = $this->categoryModel;
             $category = $categoryModel->getById($id);
 
             if (!$category) {
@@ -269,7 +253,7 @@ class CategoryController extends AdminBaseController
             }
 
             // 删除栏目
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categoryService->delete($id);
 
             // 记录日志
@@ -289,7 +273,7 @@ class CategoryController extends AdminBaseController
     public function tree(): void
     {
         try {
-            $categoryService = $this->getCategoryService();
+            $categoryService = $this->categoryService;
             $categories = $categoryService->getTree();
 
             $this->json([
@@ -389,7 +373,7 @@ class CategoryController extends AdminBaseController
             }
             
             // 获取所有栏目数据
-            $categoryModel = $this->getCategoryModel();
+            $categoryModel = $this->categoryModel;
             $allCategories = $categoryModel->getAll();
             
             // 构建选项数组：id => name

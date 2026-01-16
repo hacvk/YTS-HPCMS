@@ -12,6 +12,7 @@ class RoleController extends AdminBaseController
         private readonly \Medoo\Medoo $db,
         private readonly PermissionService $permissionService
     ) {
+        parent::__construct();
     }
 
     public function index(): void

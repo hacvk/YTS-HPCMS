@@ -5,7 +5,6 @@ namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
 use App\Core\Security;
-use App\Core\Database;
 use App\Model\File;
 use App\Service\LogService;
 use App\Service\FileService;
@@ -15,6 +14,13 @@ use App\Service\FileService;
  */
 class AttachmentController extends AdminBaseController
 {
+    public function __construct(
+        private readonly File $fileModel,
+        private readonly \Medoo\Medoo $db
+    ) {
+        parent::__construct();
+    }
+
     /**
      * 附件列表页
      *
@@ -43,7 +49,7 @@ class AttachmentController extends AdminBaseController
             }
             
             // 获取附件列表
-            $result = File::getList($page, $limit, $where);
+            $result = $this->fileModel->getList($page, $limit, $where);
             
             // 如果有关键词搜索，进行过滤
             if (!empty($keyword)) {
@@ -65,10 +71,10 @@ class AttachmentController extends AdminBaseController
             }
             
             // 获取统计信息
-            $statistics = File::getStatistics();
+            $statistics = $this->fileModel->getStatistics();
             
             // 获取所有文件类型用于筛选
-            $db = Database::get();
+            $db = $this->db;
             $mimeTypes = $db->select('sys_files', [
                 'mime_type',
                 'count' => $db->raw('COUNT(*)')
@@ -140,7 +146,7 @@ class AttachmentController extends AdminBaseController
             }
 
             // 获取附件信息
-            $file = File::getById((int)$id);
+            $file = $this->fileModel->getById((int)$id);
             if (!$file) {
                 $this->errorJson('附件不存在');
                 return;
@@ -154,7 +160,7 @@ class AttachmentController extends AdminBaseController
             }
 
             // 删除数据库记录
-            $result = File::delete((int)$id);
+            $result = $this->fileModel->delete((int)$id);
 
             if (!$result) {
                 // 记录删除失败日志
@@ -227,7 +233,7 @@ class AttachmentController extends AdminBaseController
             $failCount = 0;
 
             foreach ($idArray as $id) {
-                $file = File::getById($id);
+                $file = $this->fileModel->getById($id);
                 if (!$file) {
                     $failCount++;
                     continue;
@@ -237,7 +243,7 @@ class AttachmentController extends AdminBaseController
                 FileService::deletePhysicalFile($file['path']);
 
                 // 删除数据库记录
-                if (File::delete($id)) {
+                if ($this->fileModel->delete($id)) {
                     $successCount++;
                 } else {
                     $failCount++;
@@ -303,7 +309,7 @@ class AttachmentController extends AdminBaseController
             $description = $this->post('description', '');
 
             // 更新附件信息
-            $result = File::updateRelated($id, $relatedType, $relatedId, $fileUsage, $isPrimary > 0);
+            $result = $this->fileModel->updateRelated($id, $relatedType, $relatedId, $fileUsage, $isPrimary > 0);
             
             if (!$result) {
                 $this->errorJson('更新失败');

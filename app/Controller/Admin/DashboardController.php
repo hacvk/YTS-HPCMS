@@ -14,6 +14,7 @@ class DashboardController extends AdminBaseController
         private readonly \Medoo\Medoo $db,
         private readonly CacheService $cacheService
     ) {
+        parent::__construct();
     }
 
     /**
