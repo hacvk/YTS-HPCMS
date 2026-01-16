@@ -158,6 +158,7 @@ class Router
             'GET /admin/category/getModelFields' => ['Admin\\CategoryController', 'getModelFields'],
             'GET /admin/category/tree' => ['Admin\\CategoryController', 'tree'],
             'GET /admin/category/getCategoryOptions' => ['Admin\\CategoryController', 'getCategoryOptions'],
+            'GET /admin/category/getContentOptions' => ['Admin\\CategoryController', 'getContentOptions'],
 
             // Admin - page
             'GET /admin/page' => ['Admin\\PageController', 'index'],
@@ -187,6 +188,7 @@ class Router
             // Admin - upload
             'GET /admin/upload' => ['Admin\\UploadController', 'index'],
             'POST /admin/upload/do' => ['Admin\\UploadController', 'upload'],
+            'POST /admin/upload/upload' => ['Admin\\UploadController', 'upload'],
 
             // Admin - admin user
             'GET /admin/admin' => ['Admin\\AdminController', 'index'],

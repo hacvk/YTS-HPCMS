@@ -43,6 +43,10 @@ return [
                 'type' => 'text',
                 'label' => '职称',
             ],
+            'zhiwu' => [
+                'type' => 'text',
+                'label' => '任职职务',
+            ],
             'keshi' => [
                 'type' => 'select',
                 'label' => '所属科室',

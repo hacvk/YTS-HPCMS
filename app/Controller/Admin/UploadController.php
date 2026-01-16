@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
-use App\Core\Security;
 use App\Model\File;
 use App\Service\FileService;
 
@@ -13,6 +12,12 @@ use App\Service\FileService;
  */
 class UploadController extends AdminBaseController
 {
+    public function __construct(
+        private readonly File $fileModel
+    ) {
+        parent::__construct();
+    }
+
     /**
      * 上传文件（用于 wangeditor 等编辑器）
      * 
@@ -108,10 +113,10 @@ class UploadController extends AdminBaseController
             }
             
             // 获取文件列表
-            $result = File::getList($page, $limit, $where);
+            $result = $this->fileModel->getList($page, $limit, $where);
             
             // 获取统计信息
-            $statistics = File::getStatistics();
+            $statistics = $this->fileModel->getStatistics();
             
             $this->render('admin/upload/index', [
                 'title' => '附件管理',
@@ -160,7 +165,7 @@ class UploadController extends AdminBaseController
             }
 
             // 获取文件信息
-            $file = File::getById((int)$id);
+            $file = $this->fileModel->getById((int)$id);
             if (!$file) {
                 $this->errorJson('文件不存在');
                 return;
@@ -170,7 +175,7 @@ class UploadController extends AdminBaseController
             FileService::deletePhysicalFile($file['path']);
 
             // 删除数据库记录
-            $result = File::delete((int)$id);
+            $result = $this->fileModel->delete((int)$id);
 
             if (!$result) {
                 $this->errorJson('删除失败');

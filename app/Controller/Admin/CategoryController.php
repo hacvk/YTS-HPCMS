@@ -3,8 +3,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
+use App\Core\Database;
 use App\Core\Security;
 use App\Model\Category;
+use App\Model\Content;
 use App\Service\CategoryService;
 use App\Service\LogService;
 use App\Enum\CategoryType;
@@ -16,7 +18,8 @@ class CategoryController extends AdminBaseController
 {
     public function __construct(
         private readonly CategoryService $categoryService,
-        private readonly Category $categoryModel
+        private readonly Category $categoryModel,
+        private readonly Content $contentModel
     ) {
         parent::__construct();
     }
@@ -409,6 +412,73 @@ class CategoryController extends AdminBaseController
             $this->json([
                 'code' => 1,
                 'message' => '获取栏目选项失败：' . $e->getMessage(),
+                'data' => [],
+            ]);
+        }
+    }
+
+    /**
+     * 获取栏目下文章选项列表（用于下拉选择，包含指定栏目及其所有子栏目下的文章）
+     *
+     * @return void
+     */
+    public function getContentOptions(): void
+    {
+        try {
+            $categoryId = (int)$this->get('category_id', 0);
+
+            if ($categoryId <= 0) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+
+            $categoryIds = [$categoryId];
+            $children = $this->categoryService->getAllChildrenIds($categoryId);
+            foreach ($children as $cid) {
+                $categoryIds[] = (int)$cid;
+            }
+            $categoryIds = array_values(array_unique(array_filter($categoryIds, fn($v) => $v > 0)));
+
+            if (count($categoryIds) === 0) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+
+            $db = \App\Core\Database::get();
+
+            $list = $db->select('sys_content', [
+                'id',
+                'title'
+            ], [
+                'category_id' => $categoryIds,
+                'ORDER' => ['id' => 'DESC'],
+                'LIMIT' => 1000,
+            ]);
+
+            $options = [];
+            foreach ($list as $item) {
+                $id = (int)($item['id'] ?? 0);
+                $title = (string)($item['title'] ?? '');
+                if ($id > 0) {
+                    $options[(string)$id] = $title !== '' ? $title : ('ID: ' . $id);
+                }
+            }
+
+            $this->json([
+                'code' => 0,
+                'data' => $options,
+            ]);
+        } catch (\Exception $e) {
+            error_log('获取文章选项失败: ' . $e->getMessage());
+            $this->json([
+                'code' => 1,
+                'message' => '获取文章选项失败：' . $e->getMessage(),
                 'data' => [],
             ]);
         }

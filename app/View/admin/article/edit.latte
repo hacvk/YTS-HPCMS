@@ -456,7 +456,7 @@
         
         // 加载栏目选项
         function loadCategoryOptions(parentId) {
-            return fetch('/admin/category/getCategoryOptions?parent_id=' + encodeURIComponent(parentId))
+            return fetch('/admin/category/getContentOptions?category_id=' + encodeURIComponent(parentId))
                 .then(function(response) {
                     return response.json();
                 })
