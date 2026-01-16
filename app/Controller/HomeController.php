@@ -549,6 +549,32 @@ class HomeController extends BaseController
                     }
                 }
                 
+                // 获取临床科室栏目（id=10, 12）及其所有子栏目
+                $clinicalCategoryIds = [10, 12];
+                $clinicalAllCategoryIds = $clinicalCategoryIds;
+                foreach ($clinicalCategoryIds as $catId) {
+                    $children = $db->select('sys_category', ['id'], [
+                        'parent_id' => $catId,
+                        'is_hidden' => 0
+                    ]);
+                    if (!empty($children)) {
+                        $clinicalAllCategoryIds = array_merge($clinicalAllCategoryIds, array_column($children, 'id'));
+                    }
+                }
+                
+                // 获取医技科室栏目（id=13, 14）及其所有子栏目
+                $medicalTechCategoryIds = [13, 14];
+                $medicalTechAllCategoryIds = $medicalTechCategoryIds;
+                foreach ($medicalTechCategoryIds as $catId) {
+                    $children = $db->select('sys_category', ['id'], [
+                        'parent_id' => $catId,
+                        'is_hidden' => 0
+                    ]);
+                    if (!empty($children)) {
+                        $medicalTechAllCategoryIds = array_merge($medicalTechAllCategoryIds, array_column($children, 'id'));
+                    }
+                }
+                
                 // 批量查询科室标题（从 sys_content 表中）
                 $clinicalDepts = [];
                 $medicalTechDepts = [];
@@ -568,16 +594,14 @@ class HomeController extends BaseController
                             'category_id' => (int)($dept['category_id'] ?? 0)
                         ];
                         
-                        // 根据 category_id 分类：临床科室（10, 12）和医技科室（13）
+                        // 根据 category_id 分类：临床科室（10, 12及其子栏目）和医技科室（13, 14及其子栏目）
                         $catId = (int)($dept['category_id'] ?? 0);
-                        if (in_array($catId, [10, 12], true)) {
+                        if (in_array($catId, $clinicalAllCategoryIds, true)) {
                             $clinicalDepts[] = $deptItem;
-                        } elseif ($catId === 13) {
+                        } elseif (in_array($catId, $medicalTechAllCategoryIds, true)) {
                             $medicalTechDepts[] = $deptItem;
-                        } else {
-                            // 如果不在预定义分类中，默认归为临床科室
-                            $clinicalDepts[] = $deptItem;
                         }
+                        // 如果不在预定义分类中，则不显示（避免显示无关科室）
                     }
                 }
                 

@@ -6,6 +6,11 @@
 
     // 切换科室标签页
     function switchDeptTab(tab) {
+        if (!tab) {
+            console.warn('switchDeptTab: tab 参数为空');
+            return;
+        }
+        
         var tabs = document.querySelectorAll('.dept-tab');
         for (var i = 0; i < tabs.length; i++) {
             tabs[i].classList.remove('active');
@@ -14,6 +19,8 @@
         var activeTab = document.querySelector('.dept-tab[data-tab="' + tab + '"]');
         if (activeTab) {
             activeTab.classList.add('active');
+        } else {
+            console.warn('switchDeptTab: 未找到标签按钮 data-tab="' + tab + '"');
         }
         
         var clinicalDepts = document.getElementById('clinical-depts');
@@ -21,9 +28,14 @@
         
         if (clinicalDepts) {
             clinicalDepts.style.display = tab === 'clinical' ? 'grid' : 'none';
+        } else {
+            console.warn('switchDeptTab: 未找到 #clinical-depts 元素');
         }
+        
         if (medicalTechDepts) {
             medicalTechDepts.style.display = tab === 'medical_tech' ? 'grid' : 'none';
+        } else {
+            console.warn('switchDeptTab: 未找到 #medical_tech-depts 元素');
         }
     }
 
@@ -207,55 +219,86 @@
         window.applyFilters = applyFilters;
         window.clearFilters = clearFilters;
         
-        // 监听科室标签切换
-        var deptTabs = document.querySelectorAll('.dept-tab');
-        for (var i = 0; i < deptTabs.length; i++) {
-            deptTabs[i].addEventListener('click', function() {
-                var tab = this.getAttribute('data-tab');
-                if (tab) {
-                    switchDeptTab(tab);
-                }
-            });
-        }
-        
-        // 监听清空筛选按钮
-        var clearBtn = document.querySelector('.btn-clear-filter');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                clearFilters();
-                updateCheckboxClasses();
-            });
-        }
-        
-        // 监听所有复选框的变化，更新 checked 类并应用筛选
-        var allCheckboxes = document.querySelectorAll('input[name="dept"], input[name="title"]');
-        for (var j = 0; j < allCheckboxes.length; j++) {
-            allCheckboxes[j].addEventListener('change', function() {
-                updateCheckboxClasses();
-                applyFilters();
-            });
-        }
-        
-        // 监听搜索框回车事件
-        var searchInput = document.getElementById('doctor-search');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function(e) {
-                if (e.keyCode === 13) {
+        // 绑定所有事件监听器
+        function bindEvents() {
+            // 监听科室标签切换
+            var deptTabs = document.querySelectorAll('.dept-tab');
+            if (deptTabs.length === 0) {
+                // 如果元素还没加载，延迟重试
+                setTimeout(bindEvents, 100);
+                return;
+            }
+            
+            for (var i = 0; i < deptTabs.length; i++) {
+                (function(tabElement) {
+                    // 移除可能存在的旧事件监听器（通过克隆节点）
+                    var newTabElement = tabElement.cloneNode(true);
+                    if (tabElement.parentNode) {
+                        tabElement.parentNode.replaceChild(newTabElement, tabElement);
+                    }
+                    
+                    newTabElement.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        var tab = newTabElement.getAttribute('data-tab');
+                        console.log('科室标签点击:', tab);
+                        if (tab) {
+                            switchDeptTab(tab);
+                        } else {
+                            console.warn('科室标签 data-tab 属性为空');
+                        }
+                    });
+                    
+                    // 确保按钮可点击
+                    newTabElement.style.cursor = 'pointer';
+                    newTabElement.style.pointerEvents = 'auto';
+                })(deptTabs[i]);
+            }
+            
+            // 监听清空筛选按钮
+            var clearBtn = document.querySelector('.btn-clear-filter');
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    clearFilters();
+                    updateCheckboxClasses();
+                });
+            }
+            
+            // 监听所有复选框的变化，更新 checked 类并应用筛选
+            var allCheckboxes = document.querySelectorAll('input[name="dept"], input[name="title"]');
+            for (var j = 0; j < allCheckboxes.length; j++) {
+                allCheckboxes[j].addEventListener('change', function() {
+                    updateCheckboxClasses();
                     applyFilters();
-                }
-            });
+                });
+            }
+            
+            // 监听搜索框回车事件
+            var searchInput = document.getElementById('doctor-search');
+            if (searchInput) {
+                searchInput.addEventListener('keyup', function(e) {
+                    if (e.keyCode === 13) {
+                        applyFilters();
+                    }
+                });
+            }
+            
+            // 监听搜索按钮点击事件
+            var searchBtn = document.querySelector('.btn-search');
+            if (searchBtn) {
+                searchBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    applyFilters();
+                });
+            }
+            
+            // 初始化复选框状态
+            updateCheckboxClasses();
         }
         
-        // 监听搜索按钮点击事件
-        var searchBtn = document.querySelector('.btn-search');
-        if (searchBtn) {
-            searchBtn.addEventListener('click', function() {
-                applyFilters();
-            });
-        }
-        
-        // 初始化复选框状态
-        updateCheckboxClasses();
+        // 立即尝试绑定，如果失败则延迟重试
+        bindEvents();
     }
 
     // DOM 加载完成后初始化
