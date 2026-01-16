@@ -3,26 +3,38 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Model\Banner;
 use App\Model\Category;
+use App\Model\Content;
+use App\Service\CategoryService;
 
 class HomeController extends BaseController
 {
+    public function __construct(
+        private readonly Category $categoryModel,
+        private readonly CategoryService $categoryService,
+        private readonly Content $contentModel,
+        private readonly Banner $bannerModel
+    ) {
+        parent::__construct();
+    }
+
     public function index(): void
     {
         // 构建导航数据
         $navItems = $this->buildNav();
 
         // 获取院务公开文章（栏目ID 6）
-        $ywggItems = \App\Model\Content::getList(1, 9, ['cid' => 6]);
+        $ywggItems = $this->contentModel->getList(1, 9, ['cid' => 6]);
         $ywggList = $ywggItems['list'] ?? [];
         
         // 获取招标信息文章（栏目ID 2）
-        $zbggItems = \App\Model\Content::getList(1, 9, ['cid' => 2]);
+        $zbggItems = $this->contentModel->getList(1, 9, ['cid' => 2]);
         $zbggList = $zbggItems['list'] ?? [];
         
         $data = [
             'navItems' => $navItems,
-            'bannerItems'=> \App\Model\Banner::getEnabled(),
+            'bannerItems'=> $this->bannerModel->getEnabled(),
             'hospitalNewsItems' => $ywggList,
             'noticeItems' => $zbggList,
             'hospitalNewsMoreUrl' => '/c/yuanwu', // 院务公开栏目别名
@@ -35,8 +47,8 @@ class HomeController extends BaseController
 
     private function buildNav(): array
     {
-        $cats = Category::getAll(['is_hidden'=>0], 'sort ASC');
-        $tree = Category::getTree(0, $cats);
+        $cats = $this->categoryModel->getAll(['is_hidden' => 0], ['sort' => 'ASC']);
+        $tree = $this->categoryService->getTree(0, $cats);
         $convert = function(array $nodes) use (&$convert): array {
             $arr = [];
             foreach ($nodes as $n) {
@@ -61,7 +73,7 @@ class HomeController extends BaseController
             return;
         }
         
-        $article = \App\Model\Content::getOne($id);
+        $article = $this->contentModel->getById($id);
         
         if (!$article) {
             $this->redirect('/');
@@ -263,7 +275,7 @@ class HomeController extends BaseController
         $page = (int)$this->get('page', 1);
         $limit = 10; // 每页显示10篇文章
         
-        $articles = \App\Model\Content::getList($page, $limit, ['cid' => $category['id']]);
+        $articles = $this->contentModel->getList($page, $limit, ['cid' => $category['id']]);
         
         // 计算分页信息
         $total = $articles['total'] ?? 0;

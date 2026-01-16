@@ -102,8 +102,25 @@ class View
         // 注册 asset 路径函数
         $this->engine->addFunction('asset', function (string $path): string {
             // 读取系统设置中的 static_url，如果没有则使用默认前缀
-            $prefix = \App\Model\Setting::get('static_url', '/static/front');
+            try {
+                $db = \App\Core\Database::get();
+                $setting = new \App\Model\Setting($db);
+                $prefix = $setting->get('static_url', '/static/front');
+            } catch (\Throwable $e) {
+                $prefix = '/static/front';
+            }
             return rtrim($prefix, '/').'/'.ltrim($path, '/');
+        });
+
+        // 注册 setting 函数（读取系统设置）
+        $this->engine->addFunction('setting', function (string $key, mixed $default = null): mixed {
+            try {
+                $db = \App\Core\Database::get();
+                $setting = new \App\Model\Setting($db);
+                return $setting->get($key, $default);
+            } catch (\Throwable $e) {
+                return $default;
+            }
         });
         
         // 注册 repeat 过滤器
