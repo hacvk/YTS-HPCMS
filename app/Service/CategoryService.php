@@ -12,18 +12,13 @@ use App\Model\Category;
 class CategoryService
 {
     /**
-     * 栏目模型实例
-     */
-    private Category $categoryModel;
-
-    /**
-     * 构造函数
+     * 构造函数（使用 PHP 8.0 构造函数属性提升）
      *
      * @param Category $categoryModel 栏目模型实例
      */
-    public function __construct(Category $categoryModel)
-    {
-        $this->categoryModel = $categoryModel;
+    public function __construct(
+        private readonly Category $categoryModel
+    ) {
     }
 
     /**

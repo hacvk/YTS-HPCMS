@@ -17,18 +17,13 @@ class Banner
     private const TABLE = 'sys_banner';
 
     /**
-     * 数据库实例
-     */
-    private Medoo $db;
-
-    /**
-     * 构造函数
+     * 构造函数（使用 PHP 8.0 构造函数属性提升）
      *
      * @param Medoo $db 数据库实例
      */
-    public function __construct(Medoo $db)
-    {
-        $this->db = $db;
+    public function __construct(
+        private readonly Medoo $db
+    ) {
     }
 
     /**

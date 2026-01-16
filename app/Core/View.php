@@ -12,35 +12,26 @@ class View
 {
     /**
      * Latte 引擎实例
-     *
-     * @var Engine
      */
     private Engine $engine;
 
     /**
-     * 模板基础目录
-     *
-     * @var string
-     */
-    private string $templateDir;
-
-    /**
-     * 缓存目录
-     *
-     * @var string
-     */
-    private string $cacheDir;
-
-    /**
-     * 构造函数
+     * 构造函数（使用 PHP 8.0 构造函数属性提升）
      *
      * @param string|null $templateDir 模板目录
      * @param string|null $cacheDir 缓存目录
      */
-    public function __construct(?string $templateDir = null, ?string $cacheDir = null)
-    {
-        $this->templateDir = $templateDir ?? dirname(__DIR__, 2) . '/app/View';
-        $this->cacheDir = $cacheDir ?? dirname(__DIR__, 2) . '/data/cache/latte';
+    public function __construct(
+        private string $templateDir = '',
+        private string $cacheDir = ''
+    ) {
+        // 如果未提供参数，使用默认值
+        if ($this->templateDir === '') {
+            $this->templateDir = dirname(__DIR__, 2) . '/app/View';
+        }
+        if ($this->cacheDir === '') {
+            $this->cacheDir = dirname(__DIR__, 2) . '/data/cache/latte';
+        }
 
         $this->initEngine();
     }
@@ -66,9 +57,26 @@ class View
         // 设置模板目录
         $this->engine->setTempDirectory($this->cacheDir);
 
-        // 开发模式下禁用缓存
-        if (App::isDebug()) {
-            $this->engine->setAutoRefresh(true);
+        // 配置 Latte 引擎安全设置
+        $isDebug = App::isDebug();
+        
+        // 开发模式：启用自动刷新（检测模板文件变化）
+        // 生产模式：严格关闭自动刷新，避免文件系统 I/O 损耗
+        $this->engine->setAutoRefresh($isDebug);
+        
+        // 开启 Latte Strict 模式（如果版本支持）
+        // Strict 模式会启用更严格的类型检查和错误报告
+        if (method_exists($this->engine, 'setStrictTypes')) {
+            $this->engine->setStrictTypes(true);
+        }
+        
+        // 生产环境：禁用调试模式相关功能
+        if (!$isDebug) {
+            // 确保生产环境关闭所有调试相关功能
+            if (method_exists($this->engine, 'setStrictParsing')) {
+                // 如果支持，启用严格解析模式
+                $this->engine->setStrictParsing(true);
+            }
         }
 
         // 注册自定义函数和过滤器
@@ -102,11 +110,30 @@ class View
         $this->engine->addFilter('repeat', fn($string, $count) => str_repeat((string)$string, (int)$count));
         
         // 注册 escapejs 过滤器（用于JavaScript字符串转义）
-        $this->engine->addFilter('escapejs', fn($string) => str_replace(
-            ['\n', '\r', '\t', '"', "'", '\\', '<', '>'],
-            ['\\n', '\\r', '\\t', '\\"', "\\'", '\\\\', '\\x3C', '\\x3E'],
-            (string)$string
-        ));
+        // 使用 json_encode 标准方法，这是 PHP 输出数据到 JavaScript 上下文的行业标准做法
+        // JSON_HEX_TAG: 将 < 和 > 转换为 \u003C 和 \u003E
+        // JSON_HEX_AMP: 将 & 转换为 \u0026
+        // JSON_HEX_APOS: 将 ' 转换为 \u0027
+        // JSON_HEX_QUOT: 将 " 转换为 \u0022
+        // 
+        // 注意：此过滤器用于在 JavaScript 字符串字面量中使用（如：var str = "{$value|escapejs}";）
+        // json_encode 会返回带引号的 JSON 字符串，需要去掉首尾引号才能嵌入到 JavaScript 字符串中
+        $this->engine->addFilter('escapejs', function ($value): string {
+            // 将值转换为字符串
+            $stringValue = (string)$value;
+            
+            // 使用 json_encode 进行安全转义（行业标准做法）
+            $encoded = json_encode($stringValue, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+            
+            // json_encode 返回的格式是 "..."（带引号），需要去掉首尾引号
+            // 这样可以直接嵌入到 JavaScript 字符串字面量中
+            if (strlen($encoded) >= 2 && $encoded[0] === '"' && $encoded[-1] === '"') {
+                return substr($encoded, 1, -1);
+            }
+            
+            // 如果格式不符合预期（理论上不应该发生），返回原编码结果
+            return $encoded;
+        });
         
         // 注册 json_encode 过滤器（用于JavaScript变量）
         $this->engine->addFilter('json_encode', fn($value) => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT));

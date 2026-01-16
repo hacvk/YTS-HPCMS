@@ -9,22 +9,24 @@ namespace App\Core;
 class App
 {
     /**
-     * 应用配置
+     * 应用配置（静态属性，在初始化后不应直接修改）
+     * 注意：由于是静态属性，无法使用 readonly，但通过 private 访问控制保护
      *
      * @var array<string, mixed>
      */
     private static array $config = [];
 
     /**
-     * 构造函数
+     * 构造函数（使用 PHP 8.0 构造函数属性提升）
      *
      * @param array<string, mixed> $config 配置数组
      */
-    public function __construct(array $config = [])
-    {
-        // 如果传入配置，则保存
-        if (!empty($config)) {
-            self::$config = $config;
+    public function __construct(
+        private readonly array $config = []
+    ) {
+        // 如果传入配置，则保存到静态属性
+        if (!empty($this->config)) {
+            self::$config = $this->config;
         }
     }
 
