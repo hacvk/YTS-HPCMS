@@ -7,7 +7,6 @@ a:hover { color: #0068b7; }
 .Top_dyseo .today dd { float: right; }
 .Top_dyseo .today { border-bottom: 1px solid #ededed; line-height: 24px; padding: 7px 0; }
 .Top_dyseo .header-top { position: relative; padding-top: 15px; padding-bottom: 15px; }
-.header-top .logo img{height: 200px; }
 .Top_dyseo .header-right { position: absolute; right: 0; top: 50%; margin-top: -18px; }
 .Top_dyseo .header-right > * { float: left; }
 .Top_dyseo .header-right dt { width: 360px; position: relative; border: 1px solid #ededed; border-radius: 3px; overflow: hidden; }

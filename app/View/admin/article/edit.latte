@@ -206,7 +206,8 @@
         editor.config.uploadImgTimeout = 30000; // 30秒超时
         editor.config.uploadFileName = 'file';
         editor.config.uploadImgParams = {
-            csrf_token: csrfToken
+            csrf_token: csrfToken,
+            module: 'article'
         };
         
         // 如果编辑时已有内容，设置初始内容
@@ -326,6 +327,7 @@
                 // 获取 CSRF Token
                 const csrfToken = document.getElementById('csrf_token')?.value || '';
                 formData.append('csrf_token', csrfToken);
+                formData.append('module', 'article');
                 
                 // 显示上传中提示
                 const coverImgInput = document.getElementById('cover_img');

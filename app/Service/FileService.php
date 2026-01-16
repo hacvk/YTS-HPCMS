@@ -133,12 +133,61 @@ class FileService
             ];
         }
 
-        // 移动文件
-        if (!self::moveUploadedFile($uploadedFile['tmp_name'], $pathInfo['full_path'])) {
-            return [
-                'success' => false,
-                'message' => '文件保存失败'
-            ];
+        // WebP 转换：仅对非 setting/category/banner 模块生效
+        $noWebpModules = ['setting', 'category', 'banner'];
+        $shouldConvertToWebp = !in_array($module, $noWebpModules, true);
+
+        $isImage = str_starts_with($pathInfo['mime_type'], 'image/');
+        if ($shouldConvertToWebp && $isImage && function_exists('imagewebp')) {
+            // 更可靠的图片类型识别（避免 mime_content_type 误判）
+            $imgType = @exif_imagetype($uploadedFile['tmp_name']);
+
+            $sourceImage = false;
+            if ($imgType === IMAGETYPE_JPEG) {
+                $sourceImage = @imagecreatefromjpeg($uploadedFile['tmp_name']);
+            } elseif ($imgType === IMAGETYPE_PNG) {
+                $sourceImage = @imagecreatefrompng($uploadedFile['tmp_name']);
+                if ($sourceImage !== false) {
+                    // 处理 PNG 透明通道
+                    @imagepalettetotruecolor($sourceImage);
+                    @imagealphablending($sourceImage, true);
+                    @imagesavealpha($sourceImage, true);
+                }
+            } elseif ($imgType === IMAGETYPE_GIF) {
+                $sourceImage = @imagecreatefromgif($uploadedFile['tmp_name']);
+            } elseif ($imgType === IMAGETYPE_WEBP) {
+                $sourceImage = false; // 已经是 webp，直接走 move
+            }
+
+            if ($sourceImage !== false) {
+                $newFullPath = preg_replace('/\.[^.\/]+$/', '.webp', $pathInfo['full_path']);
+                $newRelativePath = preg_replace('/\.[^.\/]+$/', '.webp', $pathInfo['relative_path']);
+
+                $ok = @imagewebp($sourceImage, $newFullPath, 80);
+                @imagedestroy($sourceImage);
+
+                if ($ok && is_file($newFullPath)) {
+                    $pathInfo['full_path'] = $newFullPath;
+                    $pathInfo['relative_path'] = $newRelativePath;
+                    $pathInfo['mime_type'] = 'image/webp';
+                    $uploadedFile['size'] = (int)filesize($newFullPath);
+                } else {
+                    error_log('[FileService] WebP转换失败，回退原图保存。tmp=' . ($uploadedFile['tmp_name'] ?? '') . ', mime=' . ($pathInfo['mime_type'] ?? '') . ', type=' . (string)$imgType);
+                    if (!self::moveUploadedFile($uploadedFile['tmp_name'], $pathInfo['full_path'])) {
+                        return ['success' => false, 'message' => '文件保存失败'];
+                    }
+                }
+            } else {
+                // 不支持的图片格式或已是 webp，直接移动
+                if (!self::moveUploadedFile($uploadedFile['tmp_name'], $pathInfo['full_path'])) {
+                    return ['success' => false, 'message' => '文件保存失败'];
+                }
+            }
+        } else {
+            // 不需要转换或非图片文件或不支持 GD/WebP，直接移动
+            if (!self::moveUploadedFile($uploadedFile['tmp_name'], $pathInfo['full_path'])) {
+                return ['success' => false, 'message' => '文件保存失败'];
+            }
         }
 
         // 准备数据库记录数据
@@ -550,7 +599,8 @@ class FileService
      */
     public static function getFileUrl(string $relativePath): string
     {
-        return '/uploads/' . ltrim(str_replace('uploads/', '', $relativePath), '/');
+        $relativePath = ltrim($relativePath, '/');
+        return '/' . $relativePath;
     }
 
     /**
