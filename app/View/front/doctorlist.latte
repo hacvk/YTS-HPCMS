@@ -42,13 +42,12 @@
                                         {ifset $a['zhicheng']}<span>{$a['zhicheng']}</span>{/ifset}
                                     </h3>
                                     <aside>
-                                        {var $deptIds = []}
-                                        {ifset $a['keshi']}
-                                            {var $deptIds = is_string($a['keshi']) ? json_decode($a['keshi'], true) : $a['keshi']}
-                                        {/ifset}
-                                        {if is_array($deptIds)}
-                                            {foreach $deptIds as $dept}
-                                                <a href="/article/{$dept[1] ?? ''}">{$dept[2] ?? '查看'}</a><br>
+                                        {var $deptList = $a['keshi'] ?? []}
+                                        {if is_array($deptList) && count($deptList) > 0}
+                                            {foreach $deptList as $dept}
+                                                {if is_array($dept)}
+                                                    <a href="/article/{$dept[1] ?? ''}">{$dept[2] ?? '查看'}</a><br>
+                                                {/if}
                                             {/foreach}
                                         {/if}
                                     </aside>

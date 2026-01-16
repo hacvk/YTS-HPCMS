@@ -362,13 +362,75 @@ class HomeController extends BaseController
                             // 扩展字段映射（attributes 已在 Content::getList 中反序列化）
                             $row['zhicheng'] = $row['zhicheng'] ?? ($row['title2'] ?? $row['position'] ?? '');
 
-                            // keshi 统一为数组，避免模板 foreach 报错
-                            if (isset($row['keshi']) && is_string($row['keshi'])) {
-                                $decoded = json_decode($row['keshi'], true);
-                                $row['keshi'] = is_array($decoded) ? $decoded : [];
-                            } elseif (!isset($row['keshi']) || !is_array($row['keshi'])) {
-                                $row['keshi'] = [];
+                            // keshi 字段处理：来自 doctor.attributes.keshi（lookup_category=9），存的是科室文章ID
+                            // 兼容格式："39" / "39,45" / "[39,45]" / "[[9,39],[9,45]]"
+                            $rawKeshi = $row['keshi'] ?? null;
+                            $keshiIds = [];
+
+                            if (is_string($rawKeshi)) {
+                                $raw = trim($rawKeshi);
+                                if ($raw !== '') {
+                                    if (str_contains($raw, ',')) {
+                                        foreach (explode(',', $raw) as $part) {
+                                            $part = trim($part);
+                                            if ($part !== '' && ctype_digit($part)) {
+                                                $keshiIds[] = (int)$part;
+                                            }
+                                        }
+                                    } elseif ($raw[0] === '[') {
+                                        $decoded = json_decode($raw, true);
+                                        if (is_array($decoded)) {
+                                            foreach ($decoded as $it) {
+                                                if (is_int($it) || ctype_digit((string)$it)) {
+                                                    $keshiIds[] = (int)$it;
+                                                } elseif (is_array($it) && isset($it[1]) && (is_int($it[1]) || ctype_digit((string)$it[1]))) {
+                                                    $keshiIds[] = (int)$it[1];
+                                                }
+                                            }
+                                        }
+                                    } elseif (ctype_digit($raw)) {
+                                        $keshiIds[] = (int)$raw;
+                                    }
+                                }
+                            } elseif (is_int($rawKeshi)) {
+                                $keshiIds[] = $rawKeshi;
+                            } elseif (is_array($rawKeshi)) {
+                                foreach ($rawKeshi as $it) {
+                                    if (is_int($it) || ctype_digit((string)$it)) {
+                                        $keshiIds[] = (int)$it;
+                                    } elseif (is_array($it) && isset($it[1]) && (is_int($it[1]) || ctype_digit((string)$it[1]))) {
+                                        $keshiIds[] = (int)$it[1];
+                                    }
+                                }
                             }
+
+                            $keshiIds = array_values(array_unique(array_filter($keshiIds, fn($v) => $v > 0)));
+
+                            // 批量查科室标题
+                            $deptTitleById = [];
+                            if (count($keshiIds) > 0) {
+                                try {
+                                    $db2 = \App\Core\Database::get();
+                                    $deptRows = $db2->select('sys_content', 
+                                        ['id', 'title'], 
+                                        ['id' => $keshiIds]
+                                    ) ?: [];
+
+                                    foreach ($deptRows as $dr) {
+                                        $deptTitleById[(int)($dr['id'] ?? 0)] = (string)($dr['title'] ?? '');
+                                    }
+                                } catch (\Throwable $e) {
+                                    error_log('Keshi title lookup failed: ' . $e->getMessage());
+                                    $deptTitleById = [];
+                                }
+                            }
+
+                            // 输出为 [[9, 科室文章ID, 科室标题], ...]，供模板直接渲染
+                            $keshiOut = [];
+                            foreach ($keshiIds as $kid) {
+                                $keshiOut[] = [9, $kid, $deptTitleById[$kid] ?? ''];
+                            }
+                            $row['keshi'] = $keshiOut;
                         }
                     }
                     unset($row);
