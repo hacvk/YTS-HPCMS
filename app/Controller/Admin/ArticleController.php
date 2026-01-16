@@ -5,7 +5,6 @@ namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
 use App\Core\App;
-use App\Core\Database;
 use App\Core\Security;
 use App\Model\Content;
 use App\Model\Category;
@@ -18,6 +17,15 @@ use App\Service\LogService;
  */
 class ArticleController extends AdminBaseController
 {
+    public function __construct(
+        private readonly ContentService $contentService,
+        private readonly CategoryService $categoryService,
+        private readonly Content $contentModel,
+        private readonly Category $categoryModel
+    ) {
+        parent::__construct();
+    }
+
     /**
      * 文章列表页
      *
@@ -43,9 +51,7 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章列表
-            $db = Database::get();
-            $contentModel = new Content($db);
-            $result = $contentModel->getList($page, $limit, $where);
+            $result = $this->contentModel->getList($page, $limit, $where);
             
             // 调试信息（开发环境）
             if (App::isDebug()) {
@@ -58,8 +64,7 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取所有栏目用于筛选
-            $categoryModel = new Category($db);
-            $categories = $categoryModel->getAll();
+            $categories = $this->categoryModel->getAll();
             
             $this->render('admin/article/index', [
                 'title' => '文章管理',
@@ -102,10 +107,7 @@ class ArticleController extends AdminBaseController
             
             // 获取栏目树
             error_log('获取栏目树...');
-            $db = Database::get();
-            $categoryModel = new Category($db);
-            $categoryService = new CategoryService($categoryModel);
-            $categories = $categoryService->getTree();
+            $categories = $this->categoryService->getTree();
             error_log('栏目树获取成功，共 ' . count($categories) . ' 个顶级栏目');
             
             // 渲染模板
@@ -157,12 +159,8 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章数据
-            $db = Database::get();
-            $contentModel = new Content($db);
-            $contentService = new ContentService($contentModel, $db);
-            
             try {
-                $article = $contentService->getOne((int)$id);
+                $article = $this->contentService->getOne((int)$id);
             } catch (\App\Core\Exception\RecordNotFoundException $e) {
                 $this->error('文章不存在');
                 return;
@@ -176,9 +174,7 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取栏目树
-            $categoryModel = new Category($db);
-            $categoryService = new CategoryService($categoryModel);
-            $categories = $categoryService->getTree();
+            $categories = $this->categoryService->getTree();
             
             // 将文章数据编码为 JSON，供前端使用
             $articleJson = json_encode($article, JSON_UNESCAPED_UNICODE);
@@ -314,12 +310,8 @@ class ArticleController extends AdminBaseController
             }
             
             // 保存文章
-            $db = Database::get();
-            $contentModel = new Content($db);
-            $contentService = new ContentService($contentModel, $db);
-            
             try {
-                $result = $contentService->save($data);
+                $result = $this->contentService->save($data);
             } catch (\App\Core\Exception\DatabaseOperationException $e) {
                 // 记录失败日志
                 LogService::record(
@@ -407,13 +399,9 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章信息（用于日志）
-            $db = Database::get();
-            $contentModel = new Content($db);
-            $contentService = new ContentService($contentModel, $db);
-            
             $articleTitle = '未知';
             try {
-                $article = $contentService->getOne((int)$id);
+                $article = $this->contentService->getOne((int)$id);
                 $articleTitle = $article['title'] ?? '未知';
             } catch (\App\Core\Exception\RecordNotFoundException $e) {
                 // 文章不存在，继续删除操作（幂等）
