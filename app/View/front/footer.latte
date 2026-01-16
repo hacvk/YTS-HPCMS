@@ -5,7 +5,7 @@
             <dt><a href="javascript:;">友情链接</a></dt>
             <dd class="clearfix">
                 {ifset $friendLinksHtml}
-                    {$friendLinksHtml|noescape}
+                {$friendLinksHtml|noescape}
                 {else}
                     {friendLinks()|noescape}
                 {/ifset}

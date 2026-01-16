@@ -141,7 +141,27 @@ class HomeController extends BaseController
         // 构建当前文章所属栏目的子栏目数据
         $channelItems = $this->buildChannelItems($article['category_id']);
         
-        $this->render('front/article', [
+        // 读取栏目详情模板（detail_template）并渲染
+        $detailTemplate = 'front/article';
+        try {
+            $db = \App\Core\Database::get();
+            $cat = $db->get('sys_category', ['detail_template'], ['id' => (int)$article['category_id']]);
+            $tpl = trim((string)($cat['detail_template'] ?? ''));
+            if ($tpl !== '') {
+                if (!str_ends_with($tpl, '.latte')) {
+                    $tpl .= '.latte';
+                }
+                $candidate = 'front/' . ltrim($tpl, '/\\');
+                $candidatePath = dirname(__DIR__, 1) . '/View/' . $candidate;
+                if (is_file($candidatePath)) {
+                    $detailTemplate = $candidate;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore and fallback
+        }
+
+        $this->render($detailTemplate, [
             'title' => $article['title'],
             'article' => $article,
             'prevArticle' => $prevArticle,
@@ -325,6 +345,37 @@ class HomeController extends BaseController
         $limit = 10; // 每页显示10篇文章
         
         $articles = $this->contentModel->getList($page, $limit, ['cid' => $category['id']]);
+
+        // 如果是专家列表模板（doctorlist.latte），将内容列表映射为模板需要的字段结构
+        $tplName = trim((string)($category['template'] ?? ''));
+        if ($tplName !== '') {
+            $tplBase = basename($tplName);
+            if ($tplBase === 'doctorlist.latte' || $tplBase === 'doctorlist') {
+                $list = $articles['list'] ?? [];
+                if (is_array($list)) {
+                    foreach ($list as &$row) {
+                        if (is_array($row)) {
+                            $row['link'] = $row['link'] ?? ('/article/' . (int)($row['id'] ?? 0));
+                            $row['pic'] = $row['pic'] ?? ($row['cover_img'] ?? '');
+                            $row['description'] = $row['description'] ?? ($row['summary'] ?? '');
+
+                            // 扩展字段映射（attributes 已在 Content::getList 中反序列化）
+                            $row['zhicheng'] = $row['zhicheng'] ?? ($row['title2'] ?? $row['position'] ?? '');
+
+                            // keshi 统一为数组，避免模板 foreach 报错
+                            if (isset($row['keshi']) && is_string($row['keshi'])) {
+                                $decoded = json_decode($row['keshi'], true);
+                                $row['keshi'] = is_array($decoded) ? $decoded : [];
+                            } elseif (!isset($row['keshi']) || !is_array($row['keshi'])) {
+                                $row['keshi'] = [];
+                            }
+                        }
+                    }
+                    unset($row);
+                    $articles['list'] = $list;
+                }
+            }
+        }
         
         // 计算分页信息
         $total = $articles['total'] ?? 0;
@@ -339,7 +390,21 @@ class HomeController extends BaseController
         // 构建当前栏目的子栏目数据
         $channelItems = $this->buildChannelItems($category['id']);
         
-        $this->render('front/list', [
+        // 读取栏目模板（template）并渲染
+        $listTemplate = 'front/list';
+        $tpl = trim((string)($category['template'] ?? ''));
+        if ($tpl !== '') {
+            if (!str_ends_with($tpl, '.latte')) {
+                $tpl .= '.latte';
+            }
+            $candidate = 'front/' . ltrim($tpl, '/\\');
+            $candidatePath = dirname(__DIR__, 1) . '/View/' . $candidate;
+            if (is_file($candidatePath)) {
+                $listTemplate = $candidate;
+            }
+        }
+
+        $this->render($listTemplate, [
             'title' => $category['name'],
             'category' => $category,
             'articles' => $articles,

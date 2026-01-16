@@ -111,7 +111,7 @@ class View
             }
             return rtrim($prefix, '/').'/'.ltrim($path, '/');
         });
-
+        
         // 注册 setting 函数（读取系统设置）
         $this->engine->addFunction('setting', function (string $key, mixed $default = null): mixed {
             try {

@@ -1,0 +1,75 @@
+{* app/View/front/doctor.latte *}
+{extends 'layout.latte'}
+
+{block title}{ifset $category}{($category['name'] ?? '专家列表')}{else}专家列表{/ifset} - {$config['site']['title'] ?? ''}{/block}
+
+{block head}
+    <meta name="keywords" content="{ifset $category}{$category['keywords'] ?? ''}{/ifset}" />
+    <meta name="description" content="{ifset $category}{$category['description'] ?? ''}{/ifset}" />
+{/block}
+
+{block content}
+<!-- Banner -->
+<div class="Banner_dy">
+    <span style="background-image:url({asset('static/picture/20210322110902915.jpg')})"></span>
+    <img src="{asset('static/picture/20210322110902915.jpg')}" alt="">
+</div>
+<!-- Banner End -->
+
+<!-- breadcrumbs -->
+<div class="crumbs">
+    <div class="auto auto_1150">
+        <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&raquo;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{/ifset}
+    </div>
+</div>
+
+<div class="auto auto_1150">
+    <div class="w22 fl">
+        {include 'right_channel.latte'}
+    </div>
+    <div class="w75 fr">
+        <div class="Doctor_list">
+            <ul class="ul clearfix">
+                {var $list = $articles['list'] ?? []}
+                {if count($list) > 0}
+                    {foreach $list as $a}
+                        <li>
+                            <div class="ytable">
+                                <div class="pic ytable-cell"><a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}"><img src="{$a['pic'] ?? $a['cover_img'] ?? ''}"></a></div>
+                                <div class="txt ytable-cell">
+                                    <h3 class="dot">
+                                        <a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}">{$a['title'] ?? ''}</a>
+                                        {ifset $a['zhicheng']}<span>{$a['zhicheng']}</span>{/ifset}
+                                    </h3>
+                                    <aside>
+                                        {var $deptIds = []}
+                                        {ifset $a['keshi']}
+                                            {var $deptIds = is_string($a['keshi']) ? json_decode($a['keshi'], true) : $a['keshi']}
+                                        {/ifset}
+                                        {if is_array($deptIds)}
+                                            {foreach $deptIds as $dept}
+                                                <a href="/article/{$dept[1] ?? ''}">{$dept[2] ?? '查看'}</a><br>
+                                            {/foreach}
+                                        {/if}
+                                    </aside>
+                                    <div class="word"><p class="dot3">{$a['description'] ?? $a['summary'] ?? ''|noescape}</p></div>
+                                </div>
+                            </div>
+                            <div class="btnDiv">
+                                <input type="button" value="预约专家" onclick="window.location.href='{$onlineServiceUrl ?? '#'}'">
+                                <a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}" class="more">查看详细</a>
+                            </div>
+                        </li>
+                    {/foreach}
+                {else}
+                    <li style="padding:20px 0;text-align:center;">暂无专家信息</li>
+                {/if}
+            </ul>
+        </div>
+        <div class="pagelist">
+            {ifset $pagination}{$pagination|noescape}{/ifset}
+        </div>
+    </div>
+    <div class="clear"></div>
+</div>
+{/block}
