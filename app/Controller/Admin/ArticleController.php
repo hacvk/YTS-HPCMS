@@ -4,9 +4,12 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
+use App\Core\Database;
 use App\Core\Security;
 use App\Model\Content;
 use App\Model\Category;
+use App\Service\ContentService;
+use App\Service\CategoryService;
 use App\Service\LogService;
 
 /**
@@ -39,10 +42,13 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章列表
-            $result = Content::getList($page, $limit, $where);
+            $db = Database::get();
+            $contentModel = new Content($db);
+            $result = $contentModel->getList($page, $limit, $where);
             
             // 获取所有栏目用于筛选
-            $categories = Category::getAll();
+            $categoryModel = new Category($db);
+            $categories = $categoryModel->getAll();
             
             $this->render('admin/article/index', [
                 'title' => '文章管理',
@@ -81,7 +87,10 @@ class ArticleController extends AdminBaseController
             
             // 获取栏目树
             error_log('获取栏目树...');
-            $categories = Category::getTree();
+            $db = Database::get();
+            $categoryModel = new Category($db);
+            $categoryService = new CategoryService($categoryModel);
+            $categories = $categoryService->getTree();
             error_log('栏目树获取成功，共 ' . count($categories) . ' 个顶级栏目');
             
             // 渲染模板
@@ -133,8 +142,13 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章数据
-            $article = Content::getOne((int)$id);
-            if (!$article) {
+            $db = Database::get();
+            $contentModel = new Content($db);
+            $contentService = new ContentService($contentModel, $db);
+            
+            try {
+                $article = $contentService->getOne((int)$id);
+            } catch (\App\Core\Exception\RecordNotFoundException $e) {
                 $this->error('文章不存在');
                 return;
             }
@@ -147,7 +161,9 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取栏目树
-            $categories = Category::getTree();
+            $categoryModel = new Category($db);
+            $categoryService = new CategoryService($categoryModel);
+            $categories = $categoryService->getTree();
             
             // 将文章数据编码为 JSON，供前端使用
             $articleJson = json_encode($article, JSON_UNESCAPED_UNICODE);
@@ -283,9 +299,26 @@ class ArticleController extends AdminBaseController
             }
             
             // 保存文章
-            $result = Content::save($data);
+            $db = Database::get();
+            $contentModel = new Content($db);
+            $contentService = new ContentService($contentModel, $db);
             
-            if ($result === false) {
+            try {
+                $result = $contentService->save($data);
+            } catch (\App\Core\Exception\DatabaseOperationException $e) {
+                // 记录失败日志
+                LogService::record(
+                    $this->getAdminId(),
+                    $this->getAdminUsername(),
+                    'error',
+                    "文章保存失败: {$title}",
+                    "保存文章失败: " . $e->getMessage()
+                );
+                $this->errorJson('保存失败: ' . $e->getMessage());
+                return;
+            }
+            
+            if ($result <= 0) {
                 // 记录失败日志
                 LogService::record(
                     $this->getAdminId(),
@@ -359,11 +392,20 @@ class ArticleController extends AdminBaseController
             }
             
             // 获取文章信息（用于日志）
-            $article = Content::getOne((int)$id);
-            $articleTitle = $article ? ($article['title'] ?? '未知') : '未知';
+            $db = Database::get();
+            $contentModel = new Content($db);
+            $contentService = new ContentService($contentModel, $db);
+            
+            $articleTitle = '未知';
+            try {
+                $article = $contentService->getOne((int)$id);
+                $articleTitle = $article['title'] ?? '未知';
+            } catch (\App\Core\Exception\RecordNotFoundException $e) {
+                // 文章不存在，继续删除操作（幂等）
+            }
             
             // 删除文章
-            $result = Content::delete((int)$id);
+            $result = $contentModel->delete((int)$id);
             
             if (!$result) {
                 // 记录删除失败日志

@@ -18,15 +18,16 @@ class App
 
     /**
      * 构造函数（使用 PHP 8.0 构造函数属性提升）
+     * 注意：实例属性 $initialConfig 与静态属性 $config 不同名，避免冲突
      *
-     * @param array<string, mixed> $config 配置数组
+     * @param array<string, mixed> $initialConfig 初始配置数组
      */
     public function __construct(
-        private readonly array $config = []
+        private readonly array $initialConfig = []
     ) {
         // 如果传入配置，则保存到静态属性
-        if (!empty($this->config)) {
-            self::$config = $this->config;
+        if (!empty($this->initialConfig)) {
+            self::$config = $this->initialConfig;
         }
     }
 

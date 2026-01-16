@@ -6,16 +6,15 @@ namespace App\Model\Trait;
 /**
  * JSON 字段处理 Trait
  * 自动处理模型读取/保存时的 JSON 序列化与反序列化
+ * 
+ * 使用说明：
+ * 使用此 Trait 的类必须定义 protected array $jsonFields 属性
+ * 例如：protected array $jsonFields = ['attributes'];
+ * 
+ * 注意：Trait 中不定义此属性，避免与使用类的属性定义冲突
  */
 trait JsonFieldTrait
 {
-    /**
-     * JSON 字段列表
-     * 子类需要定义此属性，指定哪些字段需要 JSON 处理
-     * 
-     * @var array<int, string>
-     */
-    protected array $jsonFields = [];
 
     /**
      * 序列化 JSON 字段（保存到数据库前）
