@@ -364,7 +364,13 @@ function batchDelete() {
         },
         body: 'ids=' + encodeURIComponent(ids) + '&csrf_token=' + encodeURIComponent(csrfToken)
     })
-    .then(function(response) { return response.json(); })
+    .then(function(response) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        }
+        throw new Error('服务器返回错误，请稍后再试');
+    })
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);

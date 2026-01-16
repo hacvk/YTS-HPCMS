@@ -190,6 +190,7 @@ class Router
             'POST /admin/friendlink/save' => ['Admin\\FriendLinkController', 'save'],
             'POST /admin/friendlink/delete' => ['Admin\\FriendLinkController', 'delete'],
             'POST /admin/attachment/delete' => ['Admin\\AttachmentController', 'delete'],
+            'POST /admin/attachment/batchDelete' => ['Admin\\AttachmentController', 'batchDelete'],
 
             // Admin - upload
             'GET /admin/upload' => ['Admin\\UploadController', 'index'],
