@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Core\Database;
+use App\Service\CacheService;
 
 /**
  * 后台首页控制器
@@ -44,30 +45,61 @@ class DashboardController extends AdminBaseController
     }
 
     /**
-     * 获取统计数据
+     * 获取统计数据（使用缓存优化性能）
+     * 缓存时间：10-60 分钟（根据数据更新频率调整）
      *
      * @param \Medoo\Medoo $db 数据库实例
      * @return array<string, mixed>
      */
     private function getStats(\Medoo\Medoo $db): array
     {
+        $cacheService = new CacheService();
+        
+        // 使用缓存记住统计数据，避免每次刷新都查询数据库
+        // 文章和栏目总数：缓存 30 分钟（更新频率低）
+        // 今日登录次数：缓存 10 分钟（需要相对实时）
+        // 系统运行天数：缓存 60 分钟（几乎不变）
+        // 管理员总数：缓存 30 分钟（更新频率低）
+        
         return [
-            // 文章总数
-            'articles' => $this->getArticleCount($db),
+            // 文章总数（缓存 30 分钟）
+            'articles' => $cacheService->remember(
+                'dashboard:stats:articles',
+                fn() => $this->getArticleCount($db),
+                1800 // 30 分钟
+            ),
 
-            // 栏目总数
-            'categories' => $this->getCategoryCount($db),
+            // 栏目总数（缓存 30 分钟）
+            'categories' => $cacheService->remember(
+                'dashboard:stats:categories',
+                fn() => $this->getCategoryCount($db),
+                1800 // 30 分钟
+            ),
 
-            // 今日登录次数
-            'today_logins' => $this->getTodayLoginCount($db),
+            // 今日登录次数（缓存 10 分钟，需要相对实时）
+            'today_logins' => $cacheService->remember(
+                'dashboard:stats:today_logins',
+                fn() => $this->getTodayLoginCount($db),
+                600 // 10 分钟
+            ),
 
-            // 系统运行天数
-            'system_days' => $this->getSystemDays($db),
+            // 系统运行天数（缓存 60 分钟，几乎不变）
+            'system_days' => $cacheService->remember(
+                'dashboard:stats:system_days',
+                fn() => $this->getSystemDays($db),
+                3600 // 60 分钟
+            ),
 
-            // 以下用于“管理员信息”表格
+            // 以下用于"管理员信息"表格
             'login_count' => $this->admin['login_count'] ?? 0,
             'last_login_time' => $this->admin['last_login_time'] ?? '首次登录',
-            'admin_count' => $db->count('sys_admin'),
+            
+            // 管理员总数（缓存 30 分钟）
+            'admin_count' => $cacheService->remember(
+                'dashboard:stats:admin_count',
+                fn() => (int)$db->count('sys_admin'),
+                1800 // 30 分钟
+            ),
         ];
     }
 

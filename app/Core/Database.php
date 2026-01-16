@@ -33,6 +33,7 @@ class Database
 
     /**
      * 获取数据库实例（单例）
+     * 如果连接已断开，自动重新连接
      *
      * @return Medoo
      * @throws DatabaseException
@@ -41,8 +42,52 @@ class Database
     {
         if (self::$instance === null) {
             self::$instance = self::createConnection();
+        } else {
+            // 检查连接是否有效（仅在长运行脚本中需要）
+            // 对于 Web 请求，连接通常不会超时，所以这里不主动检测
+            // 如果连接已断开，PDO 会在执行查询时抛出异常，此时可以调用 reconnect()
         }
 
+        return self::$instance;
+    }
+
+    /**
+     * 检查数据库连接是否有效
+     * 用于在长运行脚本中主动检测连接状态
+     *
+     * @return bool
+     */
+    public static function isConnected(): bool
+    {
+        if (self::$instance === null) {
+            return false;
+        }
+
+        try {
+            // 尝试执行一个简单的查询来检测连接
+            self::$instance->query("SELECT 1");
+            return true;
+        } catch (\Exception $e) {
+            // 连接已断开
+            return false;
+        }
+    }
+
+    /**
+     * 重新连接数据库
+     * 用于处理长运行脚本中 MySQL 连接超时（MySQL has gone away）的情况
+     *
+     * @return Medoo
+     * @throws DatabaseException
+     */
+    public static function reconnect(): Medoo
+    {
+        // 关闭旧连接
+        self::$instance = null;
+        
+        // 创建新连接
+        self::$instance = self::createConnection();
+        
         return self::$instance;
     }
 
@@ -79,11 +124,14 @@ class Database
                 'option' => [
                     \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
                     \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                    // 设置 PDO 连接超时，避免长时间等待
+                    \PDO::ATTR_TIMEOUT => 5,
                 ],
             ]);
 
-            // 🔽 修改点：使用原生 SQL 进行简单的连接测试，代替原来的 information_schema 查询
-            $medoo->query("SELECT 1");
+            // 移除 SELECT 1 检测，依靠 PDO 的懒加载特性
+            // 连接会在真正执行查询时建立，如果连接失败，PDO 会抛出异常
+            // 这样可以减少一次不必要的网络交互，提高性能
 
             return $medoo;
         } catch (\PDOException $e) {

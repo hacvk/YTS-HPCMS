@@ -8,6 +8,7 @@ use App\Core\App;
 use App\Core\Database;
 use App\Core\Security;
 use App\Core\View;
+use App\Service\CaptchaService;
 
 /**
  * 后台登录控制器
@@ -61,64 +62,24 @@ class LoginController extends BaseController
      */
     /**
      * 生成验证码图片
+     * 控制器只负责输出 HTTP Header 和图片内容
+     *
      * @return void
      */
     public function captcha(): void
     {
-        // 生成 5 位数字+字母验证码
-        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-        $code = '';
-        for ($i = 0; $i < 5; $i++) {
-            $code .= $chars[random_int(0, strlen($chars) - 1)];
-        }
-        // 保存到 Session（大写方便比较）
-        $_SESSION['admin_login_captcha'] = strtoupper($code);
+        // 使用 CaptchaService 生成验证码
+        $captchaService = new CaptchaService();
+        $result = $captchaService->generate();
 
-        // 如果 GD 不可用，输出 SVG 以避免服务器404
-        if (!function_exists('imagecreatetruecolor')) {
-            header('Content-Type: image/svg+xml');
-            $chars = str_split($code);
-            $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40">';
-            $svg .= '<rect width="120" height="40" fill="#ffffff"/>';
-            $x = 10;
-            foreach ($chars as $ch) {
-                $color = sprintf('#%06x', random_int(0, 0xffffff));
-                $svg .= '<text x="' . $x . '" y="28" font-size="24" fill="' . $color . '" font-family="Arial,Helvetica,sans-serif">' . $ch . '</text>';
-                $x += 20;
-            }
-            $svg .= '</svg>';
-            echo $svg;
-            exit;
-        }
+        // 保存验证码到 Session（大写方便比较）
+        $_SESSION['admin_login_captcha'] = $result['code'];
 
-        // 创建 PNG 图片
-        $width  = 120;
-        $height = 40;
-        $image  = imagecreatetruecolor($width, $height);
-
-        // 颜色
-        $bgColor   = imagecolorallocate($image, 255, 255, 255);
-        $textColor = imagecolorallocate($image, 50, 50, 50);
-
-        // 填充背景
-        imagefilledrectangle($image, 0, 0, $width, $height, $bgColor);
-
-        // 添加干扰线
-        for ($i = 0; $i < 5; $i++) {
-            $lineColor = imagecolorallocate($image, random_int(100, 200), random_int(100, 200), random_int(100, 200));
-            imageline($image, random_int(0, $width), random_int(0, $height), random_int(0, $width), random_int(0, $height), $lineColor);
-        }
-
-        // 写入验证码
-        $fontSize = 5; // 内置字体大小 (1-5)
-        $x = 10;
-        $y = (int)(($height - imagefontheight($fontSize)) / 2);
-        imagestring($image, $fontSize, $x, $y, $code, $textColor);
-
-        // 输出
-        header('Content-Type: image/png');
-        imagepng($image);
-        imagedestroy($image);
+        // 输出 HTTP Header
+        header('Content-Type: ' . $result['mimeType']);
+        
+        // 输出图片内容
+        echo $result['image'];
         exit;
     }
 

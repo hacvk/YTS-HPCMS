@@ -334,7 +334,7 @@ class CategoryController extends AdminBaseController
             $type = $categoryType->value;
             
             // 读取模型配置文件
-            $modelsFile = dirname(__DIR__, 2) . '/Config/models.php';
+            $modelsFile = \App\Core\App::getConfigPath('models.php');
             
             if (!file_exists($modelsFile)) {
                 $this->json([

@@ -82,7 +82,7 @@ abstract class AdminBaseController extends BaseController
      */
     private function loadMenu(): void
     {
-        $menuFile = dirname(__DIR__, 2) . '/Config/menu.php';
+        $menuFile = \App\Core\App::getConfigPath('menu.php');
 
         if (file_exists($menuFile)) {
             $menu = require $menuFile;

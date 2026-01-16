@@ -110,4 +110,20 @@ class App
     {
         return (bool)self::getConfig('app.debug', false);
     }
+
+    /**
+     * 获取配置文件路径
+     * 避免硬编码路径，提高代码可维护性
+     *
+     * @param string $filename 配置文件名（如：menu.php, models.php）
+     * @return string 完整的配置文件路径
+     */
+    public static function getConfigPath(string $filename): string
+    {
+        // 移除可能的路径分隔符和相对路径
+        $filename = basename($filename);
+        
+        // 配置文件统一放在 app/Config 目录
+        return dirname(__DIR__, 1) . '/Config/' . $filename;
+    }
 }

@@ -395,36 +395,151 @@ class FileService
     }
 
     /**
-     * 删除物理文件
+     * 删除物理文件（带路径遍历防御）
      *
      * @param string $relativePath 文件相对路径（相对于 public 目录）
      * @return bool
+     * @throws \App\Core\Exception\PathTraversalException 当检测到路径遍历攻击时抛出
      */
     public static function deletePhysicalFile(string $relativePath): bool
     {
         $publicDir = dirname(__DIR__, 2) . '/public';
-        $filePath = $publicDir . '/' . ltrim($relativePath, '/');
+        $uploadsDir = $publicDir . '/' . self::UPLOAD_BASE_DIR;
         
-        if (file_exists($filePath)) {
-            return @unlink($filePath);
+        // 清理路径，移除多余的斜杠和点
+        $relativePath = ltrim($relativePath, '/');
+        
+        // 构建完整路径
+        $filePath = $publicDir . '/' . $relativePath;
+        
+        // 使用 realpath 解析路径，防止路径遍历攻击
+        $realPath = realpath($filePath);
+        if ($realPath === false) {
+            // 文件不存在，视为删除成功
+            return true;
+        }
+        
+        // 确保解析后的路径在允许的目录下（必须是 public/uploads 或其子目录）
+        $allowedBaseDir = realpath($uploadsDir);
+        if ($allowedBaseDir === false) {
+            throw new \RuntimeException('上传目录不存在或无法访问: ' . $uploadsDir);
+        }
+        
+        // 验证路径：必须位于 public/uploads 目录下
+        if (strpos($realPath, $allowedBaseDir) !== 0) {
+            throw new \App\Core\Exception\PathTraversalException(
+                '路径遍历攻击检测：尝试访问不允许的目录。路径: ' . $relativePath
+            );
+        }
+        
+        // 安全删除文件
+        if (file_exists($realPath) && is_file($realPath)) {
+            return @unlink($realPath);
         }
         
         return true; // 文件不存在，视为删除成功
     }
 
     /**
-     * 删除物理文件（通过完整路径）
+     * 删除物理文件（通过完整路径，带路径遍历防御）
      *
      * @param string $fullPath 文件完整路径
      * @return bool
+     * @throws \App\Core\Exception\PathTraversalException 当检测到路径遍历攻击时抛出
      */
     public static function deletePhysicalFileByFullPath(string $fullPath): bool
     {
-        if (file_exists($fullPath)) {
-            return @unlink($fullPath);
+        $publicDir = dirname(__DIR__, 2) . '/public';
+        $uploadsDir = $publicDir . '/' . self::UPLOAD_BASE_DIR;
+        
+        // 使用 realpath 解析路径，防止路径遍历攻击
+        $realPath = realpath($fullPath);
+        if ($realPath === false) {
+            // 文件不存在，视为删除成功
+            return true;
+        }
+        
+        // 确保解析后的路径在允许的目录下（必须是 public/uploads 或其子目录）
+        $allowedBaseDir = realpath($uploadsDir);
+        if ($allowedBaseDir === false) {
+            throw new \RuntimeException('上传目录不存在或无法访问: ' . $uploadsDir);
+        }
+        
+        // 验证路径：必须位于 public/uploads 目录下
+        if (strpos($realPath, $allowedBaseDir) !== 0) {
+            throw new \App\Core\Exception\PathTraversalException(
+                '路径遍历攻击检测：尝试访问不允许的目录。路径: ' . $fullPath
+            );
+        }
+        
+        // 安全删除文件
+        if (file_exists($realPath) && is_file($realPath)) {
+            return @unlink($realPath);
         }
         
         return true; // 文件不存在，视为删除成功
+    }
+
+    /**
+     * 删除文件（包含数据库记录和物理文件）
+     * 事务一致性：先删除数据库记录，成功后再删除物理文件
+     * 如果物理文件删除失败，记录日志但不影响数据库删除结果
+     *
+     * @param int $fileId 文件ID
+     * @param \App\Model\File $fileModel 文件模型实例
+     * @param \Medoo\Medoo $db 数据库实例（用于事务）
+     * @return bool 删除是否成功
+     * @throws \App\Core\Exception\PathTraversalException 当检测到路径遍历攻击时抛出
+     * @throws \Exception 当数据库操作失败时抛出
+     */
+    public static function deleteFile(int $fileId, \App\Model\File $fileModel, \Medoo\Medoo $db): bool
+    {
+        // 先获取文件信息（在事务外，避免锁定）
+        $file = $fileModel->getById($fileId);
+        if (!$file) {
+            // 文件记录不存在，视为删除成功
+            return true;
+        }
+        
+        $relativePath = $file['path'] ?? '';
+        if (empty($relativePath)) {
+            // 没有物理文件路径，只删除数据库记录
+            return $fileModel->delete($fileId);
+        }
+        
+        // 使用数据库事务确保一致性
+        try {
+            $db->action(function ($db) use ($fileId, $fileModel, $relativePath) {
+                // 第一步：删除数据库记录
+                $deleteResult = $fileModel->delete($fileId);
+                if (!$deleteResult) {
+                    throw new \RuntimeException('删除数据库记录失败');
+                }
+                
+                // 第二步：数据库删除成功后，删除物理文件
+                // 注意：即使物理文件删除失败，也不回滚数据库删除
+                // 因为文件可能已经被手动删除或移动
+                try {
+                    self::deletePhysicalFile($relativePath);
+                } catch (\App\Core\Exception\PathTraversalException $e) {
+                    // 路径遍历攻击，记录日志但不回滚数据库删除
+                    error_log('[FileService] 路径遍历攻击检测: ' . $e->getMessage());
+                    throw $e; // 重新抛出，让调用方知道有安全问题
+                } catch (\Exception $e) {
+                    // 物理文件删除失败，记录日志但不影响数据库删除
+                    error_log('[FileService] 删除物理文件失败 (文件ID: ' . $fileId . '): ' . $e->getMessage());
+                    // 不抛出异常，允许数据库删除成功
+                }
+            });
+            
+            return true;
+        } catch (\App\Core\Exception\PathTraversalException $e) {
+            // 路径遍历攻击，重新抛出
+            throw $e;
+        } catch (\Exception $e) {
+            error_log('[FileService] 删除文件失败 (文件ID: ' . $fileId . '): ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**

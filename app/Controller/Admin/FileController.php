@@ -4,8 +4,11 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
+use App\Core\Database;
+use App\Core\Exception\PathTraversalException;
 use App\Core\Security;
 use App\Model\File;
+use App\Service\FileService;
 
 /**
  * 文件管理控制器
@@ -39,10 +42,12 @@ class FileController extends AdminBaseController
             }
             
             // 获取文件列表
-            $result = File::getList($page, $limit, $where);
+            $db = Database::get();
+            $fileModel = new File($db);
+            $result = $fileModel->getList($page, $limit, $where);
             
             // 获取统计信息
-            $statistics = File::getStatistics();
+            $statistics = $fileModel->getStatistics();
             
             $this->render('admin/file/index', [
                 'title' => '附件管理',
@@ -92,28 +97,27 @@ class FileController extends AdminBaseController
                 return;
             }
 
-            // 获取文件信息
-            $file = File::getById((int)$id);
-            if (!$file) {
-                $this->errorJson('文件不存在');
-                return;
+            // 使用 FileService 删除文件（包含路径遍历防御和事务一致性）
+            $db = Database::get();
+            $fileModel = new File($db);
+            
+            try {
+                $result = FileService::deleteFile((int)$id, $fileModel, $db);
+                
+                if (!$result) {
+                    $this->errorJson('删除失败');
+                    return;
+                }
+                
+                $this->successJson('删除成功', null, '/admin/file');
+            } catch (PathTraversalException $e) {
+                // 路径遍历攻击，记录日志并返回错误
+                error_log('[FileController] 路径遍历攻击检测: ' . $e->getMessage());
+                $this->errorJson('安全验证失败：非法路径');
+            } catch (\Exception $e) {
+                error_log('删除文件失败: ' . $e->getMessage());
+                $this->errorJson('删除失败: ' . $e->getMessage());
             }
-
-            // 删除物理文件
-            $filePath = dirname(__DIR__, 3) . '/public/' . $file['path'];
-            if (file_exists($filePath)) {
-                @unlink($filePath);
-            }
-
-            // 删除数据库记录
-            $result = File::delete((int)$id);
-
-            if (!$result) {
-                $this->errorJson('删除失败');
-                return;
-            }
-
-            $this->successJson('删除成功', null, '/admin/file');
         } catch (\Exception $e) {
             error_log('删除文件失败: ' . $e->getMessage());
             $this->errorJson('删除失败: ' . $e->getMessage());
@@ -156,7 +160,9 @@ class FileController extends AdminBaseController
             $description = $this->post('description', '');
 
             // 更新文件信息
-            $result = File::updateRelated($id, $relatedType, $relatedId, $fileUsage, $isPrimary > 0);
+            $db = Database::get();
+            $fileModel = new File($db);
+            $result = $fileModel->updateRelated($id, $relatedType, $relatedId, $fileUsage, $isPrimary > 0);
             
             if (!$result) {
                 $this->errorJson('更新失败');
@@ -165,7 +171,6 @@ class FileController extends AdminBaseController
 
             // 如果有其他字段需要更新
             if ($sort > 0 || !empty($description)) {
-                $db = Database::get();
                 $updateData = [];
                 if ($sort > 0) {
                     $updateData['sort'] = $sort;
@@ -174,7 +179,6 @@ class FileController extends AdminBaseController
                     $updateData['description'] = Security::clean($description);
                 }
                 if (!empty($updateData)) {
-                    $db = Database::get();
                     $db->update('sys_files', $updateData, ['id' => $id]);
                 }
             }
