@@ -211,7 +211,7 @@ class Security
         $config->set('URI.SafeIframeRegexp', ''); // 禁止 iframe
 
         // 定义缓存目录（避免每次重新解析定义，提升性能）
-        $cacheDir = dirname(__DIR__, 2) . '/data/cache/htmlpurifier';
+        $cacheDir = dirname(__DIR__, 2) . '/cache/htmlpurifier';
         if (!is_dir($cacheDir)) {
             @mkdir($cacheDir, 0755, true);
         }

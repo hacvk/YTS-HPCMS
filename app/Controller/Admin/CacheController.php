@@ -20,7 +20,7 @@ class CacheController extends AdminBaseController
     {
         try {
             // 获取缓存目录信息
-            $cacheDir = dirname(__DIR__, 3) . '/data/cache';
+            $cacheDir = dirname(__DIR__, 3) . '/cache';
             $latteCacheDir = $cacheDir . '/latte';
 
             $latteFiles = [];
@@ -80,7 +80,7 @@ class CacheController extends AdminBaseController
                 $this->errorJson('CSRF Token 验证失败');
             }
 
-            $cacheDir = dirname(__DIR__, 3) . '/data/cache/latte';
+            $cacheDir = dirname(__DIR__, 3) . '/cache/latte';
 
             if (!is_dir($cacheDir)) {
                 $this->successJson('缓存目录不存在', null, '/admin/cache');
@@ -122,7 +122,7 @@ class CacheController extends AdminBaseController
                 $this->errorJson('CSRF Token 验证失败');
             }
 
-            $cacheDir = dirname(__DIR__, 3) . '/data/cache';
+            $cacheDir = dirname(__DIR__, 3) . '/cache';
 
             if (!is_dir($cacheDir)) {
                 $this->successJson('缓存目录不存在', null, '/admin/cache');

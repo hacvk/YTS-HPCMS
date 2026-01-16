@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Database;
 use App\Service\CacheService;
 
 /**
@@ -11,6 +10,12 @@ use App\Service\CacheService;
  */
 class DashboardController extends AdminBaseController
 {
+    public function __construct(
+        private readonly \Medoo\Medoo $db,
+        private readonly CacheService $cacheService
+    ) {
+    }
+
     /**
      * 控制台首页
      *
@@ -19,10 +24,10 @@ class DashboardController extends AdminBaseController
     public function index(): void
     {
         try {
-            $db = Database::get();
+            $db = $this->db;
 
             // 获取统计数据
-            $stats = $this->getStats($db);
+            $stats = $this->getStats();
 
             // 获取最近的操作日志
             $recentLogs = $this->getRecentLogs($db);
@@ -48,12 +53,12 @@ class DashboardController extends AdminBaseController
      * 获取统计数据（使用缓存优化性能）
      * 缓存时间：10-60 分钟（根据数据更新频率调整）
      *
-     * @param \Medoo\Medoo $db 数据库实例
      * @return array<string, mixed>
      */
-    private function getStats(\Medoo\Medoo $db): array
+    private function getStats(): array
     {
-        $cacheService = new CacheService();
+        $cacheService = $this->cacheService;
+        $db = $this->db;
         
         // 使用缓存记住统计数据，避免每次刷新都查询数据库
         // 文章和栏目总数：缓存 30 分钟（更新频率低）

@@ -3,17 +3,22 @@ declare(strict_types=1);
 
 namespace App\Controller\Admin;
 
-use App\Core\Database;
 use App\Core\Security;
 use App\Service\PermissionService;
 
 class RoleController extends AdminBaseController
 {
+    public function __construct(
+        private readonly \Medoo\Medoo $db,
+        private readonly PermissionService $permissionService
+    ) {
+    }
+
     public function index(): void
     {
         $this->requirePerm('admin:role:view');
 
-        $db = Database::get();
+        $db = $this->db;
         $roles = $db->select('sys_role', [
             'id', 'name', 'title', 'status', 'sort', 'remark', 'created_at', 'updated_at'
         ], [
@@ -33,7 +38,7 @@ class RoleController extends AdminBaseController
         $this->requirePerm('admin:role:save');
 
         $id = (int)$this->get('id', 0);
-        $db = Database::get();
+        $db = $this->db;
 
         $role = null;
         $selectedPermKeys = [];
@@ -60,7 +65,7 @@ class RoleController extends AdminBaseController
         }
 
         // 使用 PermissionService 获取所有权限
-        $permissionService = new PermissionService(Database::get());
+        $permissionService = $this->permissionService;
         [$permGroups, $allPermKeys] = $permissionService->getAllPermissions();
 
         $this->render('admin/role/edit', [
@@ -108,7 +113,7 @@ class RoleController extends AdminBaseController
             return;
         }
 
-        $db = Database::get();
+        $db = $this->db;
 
         $data = [
             'name' => $name,
@@ -146,7 +151,7 @@ class RoleController extends AdminBaseController
         }
 
         // 使用 PermissionService 同步角色权限
-        $permissionService = new PermissionService($db);
+        $permissionService = $this->permissionService;
         $permissionService->syncRolePermissions($id, $permKeys);
 
         $this->successJson('保存成功', null, '/admin/role');
@@ -178,7 +183,7 @@ class RoleController extends AdminBaseController
             return;
         }
 
-        $db = Database::get();
+        $db = $this->db;
         $db->delete('sys_role', ['id' => $id]);
 
         $this->successJson('删除成功', null, '/admin/role');

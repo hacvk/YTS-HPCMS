@@ -5,7 +5,6 @@ namespace App\Controller\Admin;
 
 use App\Controller\BaseController;
 use App\Core\App;
-use App\Core\Database;
 use App\Core\Security;
 use App\Core\View;
 use App\Service\CaptchaService;
@@ -15,18 +14,10 @@ use App\Service\CaptchaService;
  */
 class LoginController extends BaseController
 {
-    /**
-     * View 实例
-     *
-     * @var View
-     */
-    protected View $view;
-
-    /**
-     * 构造函数
-     */
-    public function __construct()
-    {
+    public function __construct(
+        private readonly \Medoo\Medoo $db,
+        private readonly CaptchaService $captchaService
+    ) {
         parent::__construct();
         $this->view = new View();
 
@@ -37,6 +28,15 @@ class LoginController extends BaseController
             exit;
         }
     }
+
+
+    /**
+     * View 实例
+     *
+     * @var View
+     */
+    protected View $view;
+
 
     /**
      * 登录页面
@@ -69,8 +69,7 @@ class LoginController extends BaseController
     public function captcha(): void
     {
         // 使用 CaptchaService 生成验证码
-        $captchaService = new CaptchaService();
-        $result = $captchaService->generate();
+        $result = $this->captchaService->generate();
 
         // 保存验证码到 Session（大写方便比较）
         $_SESSION['admin_login_captcha'] = $result['code'];
@@ -116,7 +115,7 @@ class LoginController extends BaseController
         }
 
         try {
-            $db = Database::get();
+            $db = $this->db;
 
             // 查询管理员
             $admin = $db->get('sys_admin', [
@@ -224,7 +223,7 @@ class LoginController extends BaseController
     private function log(string $message, string $action = '', int $adminId = 0): void
     {
         try {
-            $db = Database::get();
+            $db = $this->db;
             $db->insert('sys_log', [
                 'admin_id' => $adminId,
                 'admin_name' => $_SESSION['admin_name'] ?? '',

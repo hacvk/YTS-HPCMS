@@ -27,7 +27,7 @@ class CacheService
      */
     public function __construct(?string $cacheDir = null)
     {
-        $this->cacheDir = $cacheDir ?? dirname(__DIR__, 2) . '/data/cache/app';
+        $this->cacheDir = $cacheDir ?? dirname(__DIR__, 2) . '/cache/app';
         
         // 确保缓存目录存在
         if (!is_dir($this->cacheDir)) {

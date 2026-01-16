@@ -30,7 +30,7 @@ class View
             $this->templateDir = dirname(__DIR__, 2) . '/app/View';
         }
         if ($this->cacheDir === '') {
-            $this->cacheDir = dirname(__DIR__, 2) . '/data/cache/latte';
+            $this->cacheDir = dirname(__DIR__, 2) . '/cache/latte';
         }
 
         $this->initEngine();

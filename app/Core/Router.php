@@ -17,6 +17,13 @@ class RouterException extends \Exception
  */
 class Router
 {
+    public function __construct(
+        private readonly Container $container
+    ) {
+        $this->uri = $this->parseUri();
+        $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+    }
+
     /**
      * 当前 URI
      *
@@ -38,14 +45,6 @@ class Router
      */
     private string $controllerNamespace = 'App\\Controller\\';
 
-    /**
-     * 构造函数
-     */
-    public function __construct()
-    {
-        $this->uri = $this->parseUri();
-        $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-    }
 
     /**
      * 解析 URI
@@ -355,7 +354,7 @@ class Router
             throw new RouterException("控制器不存在: {$controllerName}");
         }
 
-        $controller = new $controllerName();
+        $controller = $this->container->get($controllerName);
 
         // 检查方法是否存在
         if (!method_exists($controller, $actionName)) {

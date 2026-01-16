@@ -38,8 +38,14 @@ class App
      */
     public function run(): void
     {
-        // 实例化路由器并分发请求
-        $router = new Router();
+        // 初始化依赖注入容器
+        $container = new Container();
+
+        // 注册数据库单例（Medoo）
+        $container->singleton(\Medoo\Medoo::class, Database::get());
+
+        // 实例化路由器并分发请求（通过容器解析控制器依赖）
+        $router = new Router($container);
         $router->dispatch();
     }
 
