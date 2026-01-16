@@ -56,22 +56,22 @@
                 <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>管理员</th>
-                            <th>操作类型</th>
-                            <th>操作内容</th>
-                            <th>目标</th>
-                            <th>IP地址</th>
-                            <th>时间</th>
+                            <th style="min-width: 80px; width: 80px;">ID</th>
+                            <th style="min-width: 120px; width: 120px;">管理员</th>
+                            <th style="min-width: 100px; width: 100px;">操作类型</th>
+                            <th style="min-width: 200px;">操作内容</th>
+                            <th style="min-width: 150px;">目标</th>
+                            <th style="min-width: 130px; width: 130px;">IP地址</th>
+                            <th style="min-width: 160px; width: 160px;">时间</th>
                         </tr>
                     </thead>
                     <tbody>
                         {if count($logs) > 0}
                         {foreach $logs as $log}
                         <tr>
-                            <td>{$log['id']}</td>
-                            <td>{$log['admin_name']}</td>
-                            <td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['id']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['admin_name']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
                                 {if $log['action'] == 'login'}
                                 <span class="badge badge-success">登录</span>
                                 {elseif $log['action'] == 'logout'}
@@ -88,10 +88,18 @@
                                 <span class="badge badge-secondary">{$log['action']}</span>
                                 {/if}
                             </td>
-                            <td>{$log['message']}</td>
-                            <td>{if isset($log['target']) && $log['target']}{$log['target']}{else}-{/if}</td>
-                            <td>{$log['ip']}</td>
-                            <td>{$log['create_time']}</td>
+                            <td style="word-break: break-word; max-width: 200px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['message']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; max-width: 150px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+                                    {if isset($log['target']) && $log['target']}{$log['target']}{else}-{/if}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['ip']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['create_time']}</td>
                         </tr>
                         {/foreach}
                         {else}
