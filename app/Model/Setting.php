@@ -3,10 +3,11 @@ declare(strict_types=1);
 
 namespace App\Model;
 
-use App\Core\Database;
+use Medoo\Medoo;
 
 /**
- * 设置模型
+ * 设置模型（数据访问对象）
+ * 只负责数据库的 CRUD 操作，不包含业务逻辑
  */
 class Setting
 {
@@ -16,16 +17,29 @@ class Setting
     private const TABLE = 'sys_setting';
 
     /**
+     * 数据库实例
+     */
+    private Medoo $db;
+
+    /**
+     * 构造函数
+     *
+     * @param Medoo $db 数据库实例
+     */
+    public function __construct(Medoo $db)
+    {
+        $this->db = $db;
+    }
+
+    /**
      * 获取所有设置
      *
      * @return array<string, string>
      */
-    public static function getAll(): array
+    public function getAll(): array
     {
         try {
-            $db = Database::get();
-            
-            $settings = $db->select(self::TABLE, ['key', 'value']);
+            $settings = $this->db->select(self::TABLE, ['key', 'value']);
             
             $result = [];
             foreach ($settings as $setting) {
@@ -46,12 +60,10 @@ class Setting
      * @param string $default 默认值
      * @return string
      */
-    public static function get(string $key, string $default = ''): string
+    public function get(string $key, string $default = ''): string
     {
         try {
-            $db = Database::get();
-            
-            $value = $db->get(self::TABLE, 'value', ['key' => $key]);
+            $value = $this->db->get(self::TABLE, 'value', ['key' => $key]);
             
             return $value ?: $default;
         } catch (\Exception $e) {
@@ -67,23 +79,21 @@ class Setting
      * @param string $value 设置值
      * @return bool
      */
-    public static function set(string $key, string $value): bool
+    public function set(string $key, string $value): bool
     {
         try {
-            $db = Database::get();
-            
             // 检查设置是否存在
-            $exists = $db->has(self::TABLE, ['key' => $key]);
+            $exists = $this->db->has(self::TABLE, ['key' => $key]);
             
             if ($exists) {
                 // 更新
-                $db->update(self::TABLE, [
+                $this->db->update(self::TABLE, [
                     'value' => $value,
                     'updated_at' => date('Y-m-d H:i:s')
                 ], ['key' => $key]);
             } else {
                 // 插入
-                $db->insert(self::TABLE, [
+                $this->db->insert(self::TABLE, [
                     'key' => $key,
                     'value' => $value,
                     'created_at' => date('Y-m-d H:i:s'),
@@ -104,21 +114,19 @@ class Setting
      * @param array<string, string> $settings 设置数组
      * @return bool
      */
-    public static function setBatch(array $settings): bool
+    public function setBatch(array $settings): bool
     {
         try {
-            $db = Database::get();
-            
             foreach ($settings as $key => $value) {
-                $exists = $db->has(self::TABLE, ['key' => $key]);
+                $exists = $this->db->has(self::TABLE, ['key' => $key]);
                 
                 if ($exists) {
-                    $db->update(self::TABLE, [
+                    $this->db->update(self::TABLE, [
                         'value' => $value,
                         'updated_at' => date('Y-m-d H:i:s')
                     ], ['key' => $key]);
                 } else {
-                    $db->insert(self::TABLE, [
+                    $this->db->insert(self::TABLE, [
                         'key' => $key,
                         'value' => $value,
                         'created_at' => date('Y-m-d H:i:s'),
@@ -140,11 +148,10 @@ class Setting
      * @param string $key 设置键名
      * @return bool
      */
-    public static function delete(string $key): bool
+    public function delete(string $key): bool
     {
         try {
-            $db = Database::get();
-            $db->delete(self::TABLE, ['key' => $key]);
+            $this->db->delete(self::TABLE, ['key' => $key]);
             return true;
         } catch (\Exception $e) {
             error_log('删除设置失败: ' . $e->getMessage());

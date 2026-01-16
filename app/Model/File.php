@@ -3,11 +3,11 @@ declare(strict_types=1);
 
 namespace App\Model;
 
-use App\Core\Database;
-use App\Service\FileService;
+use Medoo\Medoo;
 
 /**
- * 文件模型
+ * 文件模型（数据访问对象）
+ * 只负责数据库的 CRUD 操作，不包含业务逻辑
  */
 class File
 {
@@ -17,16 +17,29 @@ class File
     private const TABLE = 'sys_files';
 
     /**
-     * 保存文件记录
+     * 数据库实例
+     */
+    private Medoo $db;
+
+    /**
+     * 构造函数
+     *
+     * @param Medoo $db 数据库实例
+     */
+    public function __construct(Medoo $db)
+    {
+        $this->db = $db;
+    }
+
+    /**
+     * 插入新记录
      *
      * @param array<string, mixed> $data 文件数据
      * @return int|false 返回文件ID，失败返回false
      */
-    public static function save(array $data): int|false
+    public function insert(array $data): int|false
     {
         try {
-            $db = Database::get();
-            
             // 设置创建时间
             if (!isset($data['created_at'])) {
                 $data['created_at'] = date('Y-m-d H:i:s');
@@ -41,10 +54,10 @@ class File
             }
             
             // 插入文件记录
-            $result = $db->insert(self::TABLE, $data);
+            $result = $this->db->insert(self::TABLE, $data);
             
             if ($result) {
-                return (int)$db->id();
+                return (int)$this->db->id();
             }
             return false;
         } catch (\Exception $e) {
@@ -59,12 +72,10 @@ class File
      * @param int $id 文件ID
      * @return array<string, mixed>|false
      */
-    public static function getById(int $id): array|false
+    public function getById(int $id): array|false
     {
         try {
-            $db = Database::get();
-            
-            $file = $db->get(
+            $file = $this->db->get(
                 self::TABLE,
                 '*',
                 ['id' => $id]
@@ -83,12 +94,10 @@ class File
      * @param string $hash 文件hash
      * @return array<string, mixed>|false
      */
-    public static function getByHash(string $hash): array|false
+    public function getByHash(string $hash): array|false
     {
         try {
-            $db = Database::get();
-            
-            $file = $db->get(
+            $file = $this->db->get(
                 self::TABLE,
                 '*',
                 ['hash' => $hash]
@@ -109,11 +118,9 @@ class File
      * @param array<string, mixed> $where 查询条件
      * @return array{list: array<int, array<string, mixed>>, total: int}
      */
-    public static function getList(int $page, int $limit, array $where = []): array
+    public function getList(int $page, int $limit, array $where = []): array
     {
         try {
-            $db = Database::get();
-            
             $offset = ($page - 1) * $limit;
             
             // 构建查询条件
@@ -138,7 +145,7 @@ class File
             }
             
             // 查询列表
-            $list = $db->select(
+            $list = $this->db->select(
                 self::TABLE,
                 '*',
                 array_merge($conditions, [
@@ -148,7 +155,7 @@ class File
             );
             
             // 获取总数
-            $total = $db->count(self::TABLE, $conditions);
+            $total = $this->db->count(self::TABLE, $conditions);
             
             return [
                 'list' => $list ?: [],
@@ -171,11 +178,9 @@ class File
      * @param string|null $fileUsage 文件用途（可选）
      * @return array<int, array<string, mixed>>
      */
-    public static function getByRelated(string $relatedType, int $relatedId, ?string $fileUsage = null): array
+    public function getByRelated(string $relatedType, int $relatedId, ?string $fileUsage = null): array
     {
         try {
-            $db = Database::get();
-            
             $conditions = [
                 'related_type' => $relatedType,
                 'related_id' => $relatedId
@@ -185,7 +190,7 @@ class File
                 $conditions['file_usage'] = $fileUsage;
             }
             
-            $list = $db->select(
+            $list = $this->db->select(
                 self::TABLE,
                 '*',
                 array_merge($conditions, [
@@ -207,12 +212,10 @@ class File
      * @param int $relatedId 关联ID
      * @return array<string, mixed>|false
      */
-    public static function getPrimary(string $relatedType, int $relatedId): array|false
+    public function getPrimary(string $relatedType, int $relatedId): array|false
     {
         try {
-            $db = Database::get();
-            
-            $file = $db->get(
+            $file = $this->db->get(
                 self::TABLE,
                 '*',
                 [
@@ -240,11 +243,9 @@ class File
      * @param bool $isPrimary 是否为主图
      * @return bool
      */
-    public static function updateRelated(int $fileId, string $relatedType, int $relatedId, ?string $fileUsage = null, bool $isPrimary = false): bool
+    public function updateRelated(int $fileId, string $relatedType, int $relatedId, ?string $fileUsage = null, bool $isPrimary = false): bool
     {
         try {
-            $db = Database::get();
-            
             $data = [
                 'related_type' => $relatedType,
                 'related_id' => $relatedId,
@@ -255,44 +256,11 @@ class File
                 $data['file_usage'] = $fileUsage;
             }
             
-            $db->update(self::TABLE, $data, ['id' => $fileId]);
+            $this->db->update(self::TABLE, $data, ['id' => $fileId]);
             
             return true;
         } catch (\Exception $e) {
             error_log('更新文件关联信息失败: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * 删除关联文件
-     *
-     * @param string $relatedType 关联类型
-     * @param int $relatedId 关联ID
-     * @return bool
-     */
-    public static function deleteByRelated(string $relatedType, int $relatedId): bool
-    {
-        try {
-            $db = Database::get();
-            
-            // 获取关联的文件
-            $files = self::getByRelated($relatedType, $relatedId);
-            
-            // 删除物理文件
-            foreach ($files as $file) {
-                FileService::deletePhysicalFile($file['path']);
-            }
-            
-            // 删除数据库记录
-            $db->delete(self::TABLE, [
-                'related_type' => $relatedType,
-                'related_id' => $relatedId
-            ]);
-            
-            return true;
-        } catch (\Exception $e) {
-            error_log('删除关联文件失败: ' . $e->getMessage());
             return false;
         }
     }
@@ -303,14 +271,34 @@ class File
      * @param int $id 文件ID
      * @return bool
      */
-    public static function delete(int $id): bool
+    public function delete(int $id): bool
     {
         try {
-            $db = Database::get();
-            $db->delete(self::TABLE, ['id' => $id]);
+            $this->db->delete(self::TABLE, ['id' => $id]);
             return true;
         } catch (\Exception $e) {
             error_log('删除文件记录失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 根据关联信息删除文件记录
+     *
+     * @param string $relatedType 关联类型
+     * @param int $relatedId 关联ID
+     * @return bool
+     */
+    public function deleteByRelated(string $relatedType, int $relatedId): bool
+    {
+        try {
+            $this->db->delete(self::TABLE, [
+                'related_type' => $relatedType,
+                'related_id' => $relatedId
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            error_log('删除关联文件失败: ' . $e->getMessage());
             return false;
         }
     }
@@ -320,19 +308,17 @@ class File
      *
      * @return array<string, mixed>
      */
-    public static function getStatistics(): array
+    public function getStatistics(): array
     {
         try {
-            $db = Database::get();
-            
             // 总文件数
-            $totalFiles = $db->count(self::TABLE);
+            $totalFiles = $this->db->count(self::TABLE);
             
             // 总大小
-            $totalSize = $db->sum(self::TABLE, 'size') ?: 0;
+            $totalSize = $this->db->sum(self::TABLE, 'size') ?: 0;
             
             // 按类型统计
-            $typeStats = $db->select(
+            $typeStats = $this->db->select(
                 self::TABLE,
                 [
                     'mime_type',

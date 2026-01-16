@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Model\File;
+use App\Core\Database;
 
 /**
  * 文件服务类
@@ -101,7 +102,8 @@ class FileService
         $fileHash = self::calculateFileHash($uploadedFile['tmp_name']);
 
         // 检查文件是否已存在
-        $existingFile = File::getByHash($fileHash);
+        $fileModel = new File(Database::get());
+        $existingFile = $fileModel->getByHash($fileHash);
         if ($existingFile) {
             $fileUrl = self::getFileUrl($existingFile['path']);
             return [
@@ -159,7 +161,7 @@ class FileService
         }
 
         // 保存到数据库
-        $fileId = File::save($fileData);
+        $fileId = $fileModel->insert($fileData);
         if (!$fileId) {
             // 如果数据库保存失败，删除已上传的文件
             self::deletePhysicalFile($pathInfo['full_path']);
