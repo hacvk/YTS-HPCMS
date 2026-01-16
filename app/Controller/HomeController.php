@@ -32,6 +32,54 @@ class HomeController extends BaseController
         $zbggItems = $this->contentModel->getList(1, 9, ['cid' => 2]);
         $zbggList = $zbggItems['list'] ?? [];
         
+        // 获取专家介绍（栏目ID=3 及其所有子栏目）
+        $doctorCategoryId = 3;
+        $doctorCategoryIds = array_values(array_unique(array_merge(
+            [$doctorCategoryId],
+            $this->categoryService->getAllChildrenIds($doctorCategoryId)
+        )));
+
+        $doctorItems = [];
+        try {
+            $db = \App\Core\Database::get();
+            $rows = $db->select('sys_content', [
+                'id',
+                'category_id',
+                'title',
+                'cover_img',
+                'summary',
+                'attributes',
+                'published_at',
+                'status'
+            ], [
+                'category_id' => $doctorCategoryIds,
+                'status' => 1,
+                'ORDER' => ['id' => 'DESC'],
+                'LIMIT' => 12,
+            ]) ?: [];
+
+            foreach ($rows as $r) {
+                $attrs = [];
+                if (!empty($r['attributes'])) {
+                    $decoded = json_decode((string)$r['attributes'], true);
+                    if (is_array($decoded)) {
+                        $attrs = $decoded;
+                    }
+                }
+
+                $doctorItems[] = [
+                    'url' => '/article/' . (int)$r['id'],
+                    'pic' => (string)($r['cover_img'] ?? ''),
+                    'name' => (string)($attrs['name'] ?? $r['title'] ?? ''),
+                    'dept' => (string)($attrs['dept'] ?? $attrs['department'] ?? ''),
+                    'title' => (string)($attrs['title'] ?? $attrs['position'] ?? ''),
+                    'desc' => (string)($attrs['desc'] ?? $attrs['summary'] ?? $r['summary'] ?? ''),
+                ];
+            }
+        } catch (\Throwable $e) {
+            $doctorItems = [];
+        }
+
         $data = [
             'navItems' => $navItems,
             'bannerItems'=> $this->bannerModel->getEnabled(),
@@ -39,6 +87,7 @@ class HomeController extends BaseController
             'noticeItems' => $zbggList,
             'hospitalNewsMoreUrl' => '/c/yuanwu', // 院务公开栏目别名
             'noticeMoreUrl' => '/c/zhaobiao', // 招标信息栏目别名
+            'doctorItems' => $doctorItems,
             'channelItems' => [], // 首页不需要特定的频道项目
         ];
 
