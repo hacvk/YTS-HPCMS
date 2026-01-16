@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Model;
 
 use App\Core\Database;
+use App\Enum\ContentStatus;
 
 /**
  * 内容模型
@@ -170,7 +171,20 @@ class Content
                     $standardFields['views'] = 0;
                 }
                 if (!isset($standardFields['status'])) {
-                    $standardFields['status'] = 1;
+                    // 使用枚举默认值：已发布
+                    $standardFields['status'] = ContentStatus::Published->value;
+                } else {
+                    // 验证并转换状态值
+                    $statusValue = is_int($standardFields['status']) 
+                        ? $standardFields['status'] 
+                        : (int)$standardFields['status'];
+                    $statusEnum = ContentStatus::tryFrom($statusValue);
+                    if ($statusEnum === null) {
+                        // 如果状态值无效，使用默认值
+                        $standardFields['status'] = ContentStatus::Published->value;
+                    } else {
+                        $standardFields['status'] = $statusEnum->value;
+                    }
                 }
                 
                 // 移除 id 字段（如果是新增）

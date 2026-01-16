@@ -20,17 +20,20 @@ class Category
      * 获取所有栏目
      *
      * @param array<string, mixed> $conditions 查询条件
-     * @param string $order 排序
+     * @param array<string, string>|string $order 排序
      * @return array<int, array<string, mixed>>
      */
-    public static function getAll(array $conditions = [], string $order = 'sort ASC, id ASC'): array
+    public static function getAll(array $conditions = [], array|string $order = ['sort' => 'ASC', 'id' => 'ASC']): array
     {
         try {
             $db = Database::get();
             
-            // 使用PDO原生查询，直接执行SQL语句
-            $stmt = $db->pdo->query("SELECT * FROM " . self::TABLE . " ORDER BY " . $order);
-            return $stmt->fetchAll();
+            // 使用 Medoo 的 select 方法
+            $result = $db->select(self::TABLE, '*', array_merge($conditions, [
+                'ORDER' => $order
+            ]));
+            
+            return $result ?: [];
         } catch (\Exception $e) {
             error_log('获取栏目列表失败: ' . $e->getMessage());
             return [];
@@ -146,40 +149,42 @@ class Category
                 throw new \InvalidArgumentException('栏目名称不能为空');
             }
 
-            $parentId = (int)($data['parent_id'] ?? 0);
-            $name = trim($data['name']);
-            $slug = isset($data['slug']) ? trim($data['slug']) : null;
-            $type = isset($data['type']) ? trim($data['type']) : 'article';
-            $template = isset($data['template']) ? trim($data['template']) : 'list.latte';
-            $detailTemplate = isset($data['detail_template']) ? trim($data['detail_template']) : 'article.latte';
-            $sort = (int)($data['sort'] ?? 0);
-            $isHidden = isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0;
-            $updateTime = date('Y-m-d H:i:s');
+            // 准备数据
+            $saveData = [
+                'parent_id' => (int)($data['parent_id'] ?? 0),
+                'name' => trim($data['name']),
+                'slug' => isset($data['slug']) ? trim($data['slug']) : null,
+                'type' => isset($data['type']) ? trim($data['type']) : 'article',
+                'template' => isset($data['template']) ? trim($data['template']) : 'list.latte',
+                'detail_template' => isset($data['detail_template']) ? trim($data['detail_template']) : 'article.latte',
+                'sort' => (int)($data['sort'] ?? 0),
+                'is_hidden' => isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0,
+                'update_time' => date('Y-m-d H:i:s')
+            ];
 
             // 如果有ID则更新，否则插入
             if (isset($data['id']) && $data['id'] > 0) {
                 $id = (int)$data['id'];
-                // 使用PDO原生更新
-                $stmt = $db->pdo->prepare(
-                    "UPDATE " . self::TABLE . " SET parent_id = ?, name = ?, slug = ?, type = ?, template = ?, detail_template = ?, sort = ?, is_hidden = ?, update_time = ? WHERE id = ?"
-                );
-                $stmt->execute([$parentId, $name, $slug, $type, $template, $detailTemplate, $sort, $isHidden, $updateTime, $id]);
+                
+                // 使用 Medoo 的 update 方法
+                $db->update(self::TABLE, $saveData, ['id' => $id]);
                 
                 // 记录更新日志
-                LogService::updated("栏目: {$name}", "ID: {$id}");
+                LogService::updated("栏目: {$saveData['name']}", "ID: {$id}");
                 
                 return $id;
             } else {
-                $createTime = date('Y-m-d H:i:s');
-                // 使用PDO原生插入
-                $stmt = $db->pdo->prepare(
-                    "INSERT INTO " . self::TABLE . " (parent_id, name, slug, type, template, detail_template, sort, is_hidden, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-                );
-                $stmt->execute([$parentId, $name, $slug, $type, $template, $detailTemplate, $sort, $isHidden, $createTime, $updateTime]);
-                $insertId = (int)$db->pdo->lastInsertId();
+                // 添加创建时间
+                $saveData['create_time'] = date('Y-m-d H:i:s');
+                
+                // 使用 Medoo 的 insert 方法
+                $db->insert(self::TABLE, $saveData);
+                
+                // 使用 Medoo 的 id() 方法获取最后插入ID
+                $insertId = (int)$db->id();
                 
                 // 记录创建日志
-                LogService::created("栏目: {$name}", "ID: {$insertId}");
+                LogService::created("栏目: {$saveData['name']}", "ID: {$insertId}");
                 
                 return $insertId;
             }
@@ -209,19 +214,15 @@ class Category
                 throw new \Exception('栏目不存在');
             }
 
-            // 检查是否有子栏目
-            $stmt = $db->pdo->prepare("SELECT COUNT(*) FROM " . self::TABLE . " WHERE parent_id = ?");
-            $stmt->execute([$id]);
-            $childCount = (int)$stmt->fetchColumn();
+            // 使用 Medoo 的 count 方法检查是否有子栏目
+            $childCount = $db->count(self::TABLE, ['parent_id' => $id]);
 
             if ($childCount > 0) {
                 throw new \Exception('该栏目下还有子栏目，无法删除');
             }
 
             // TODO: 检查是否有文章（文章表创建后需要检查）
-            // $stmt = $db->pdo->prepare("SELECT COUNT(*) FROM sys_article WHERE category_id = ?");
-            // $stmt->execute([$id]);
-            // $articleCount = (int)$stmt->fetchColumn();
+            // $articleCount = $db->count('sys_article', ['category_id' => $id]);
             // if ($articleCount > 0) {
             //     throw new \Exception('该栏目下还有文章，无法删除');
             // }
@@ -229,9 +230,8 @@ class Category
             // 获取栏目名称用于日志
             $categoryName = $category['name'] ?? '未知栏目';
             
-            // 删除栏目
-            $stmt = $db->pdo->prepare("DELETE FROM " . self::TABLE . " WHERE id = ?");
-            $stmt->execute([$id]);
+            // 使用 Medoo 的 delete 方法删除栏目
+            $db->delete(self::TABLE, ['id' => $id]);
 
             // 记录删除日志
             LogService::deleted("栏目: {$categoryName}", "ID: {$id}");
@@ -257,18 +257,15 @@ class Category
         try {
             $db = Database::get();
 
+            $where = ['slug' => $slug];
+            
             if ($excludeId !== null) {
                 // 排除指定ID
-                $stmt = $db->pdo->prepare("SELECT COUNT(*) FROM " . self::TABLE . " WHERE slug = ? AND id != ?");
-                $stmt->execute([$slug, $excludeId]);
-            } else {
-                // 不排除任何ID
-                $stmt = $db->pdo->prepare("SELECT COUNT(*) FROM " . self::TABLE . " WHERE slug = ?");
-                $stmt->execute([$slug]);
+                $where['id[!]'] = $excludeId;
             }
 
-            $count = (int)$stmt->fetchColumn();
-            return $count > 0;
+            // 使用 Medoo 的 has 方法检查记录是否存在
+            return $db->has(self::TABLE, $where);
         } catch (\Exception $e) {
             error_log('检查别名失败: ' . $e->getMessage());
             return false;
@@ -308,10 +305,13 @@ class Category
             $db = Database::get();
 
             foreach ($items as $item) {
-                $stmt = $db->query(
-                    "UPDATE " . self::TABLE . " SET sort = ?, update_time = ? WHERE id = ?",
-                    [(int)$item['sort'], date('Y-m-d H:i:s'), (int)$item['id']]
-                );
+                // 使用 Medoo 的 update 方法
+                $db->update(self::TABLE, [
+                    'sort' => (int)$item['sort'],
+                    'update_time' => date('Y-m-d H:i:s')
+                ], [
+                    'id' => (int)$item['id']
+                ]);
             }
 
             return true;

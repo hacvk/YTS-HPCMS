@@ -176,9 +176,6 @@ class Router
             'POST /admin/banner/save' => ['Admin\\BannerController', 'save'],
             'POST /admin/banner/delete' => ['Admin\\BannerController', 'delete'],
             'POST /admin/attachment/delete' => ['Admin\\AttachmentController', 'delete'],
-            // Admin - file
-            'GET /admin/file' => ['Admin\\FileController', 'index'],
-            'POST /admin/file/delete' => ['Admin\\FileController', 'delete'],
 
             // Admin - upload
             'GET /admin/upload' => ['Admin\\UploadController', 'index'],

@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 use App\Controller\Admin\AdminBaseController;
 use App\Core\Security;
 use App\Model\File;
+use App\Service\FileService;
 
 /**
  * 文件上传控制器
@@ -20,6 +21,7 @@ class UploadController extends AdminBaseController
      * - related_id: 关联ID
      * - file_usage: 文件用途（如：cover, content, attachment等）
      * - is_primary: 是否为主图（0或1）
+     * - module: 模块标识（'setting' 或 'banner'）
      *
      * @return void
      */
@@ -34,194 +36,58 @@ class UploadController extends AdminBaseController
 
         try {
             // 检查是否有文件上传
-            if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-                $errorMsg = $this->getUploadErrorMessage($_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE);
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['errno' => 1, 'message' => $errorMsg], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            $uploadedFile = $_FILES['file'];
-            
-            // 验证文件类型
-            $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            $mimeType = mime_content_type($uploadedFile['tmp_name']);
-            if (!in_array($mimeType, $allowedTypes)) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['errno' => 1, 'message' => '不支持的文件类型，仅支持：' . implode(', ', $allowedTypes)], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            // 验证文件大小（最大 5MB）
-            $maxSize = 5 * 1024 * 1024;
-            if ($uploadedFile['size'] > $maxSize) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['errno' => 1, 'message' => '文件大小超过限制，最大 5MB'], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            // 生成文件hash
-            $fileHash = hash_file('sha256', $uploadedFile['tmp_name']);
-            
-            // 检查文件是否已存在
-            $existingFile = File::getByHash($fileHash);
-            if ($existingFile) {
-                // 文件已存在，直接返回已有文件的URL（wangeditor 4.x 格式）
-                $fileUrl = $this->getFileUrl($existingFile['path']);
+            if (!isset($_FILES['file'])) {
                 header('Content-Type: application/json; charset=utf-8');
                 echo json_encode([
-                    'errno' => 0,
-                    'data' => [$fileUrl]
+                    'errno' => 1,
+                    'message' => FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE)
                 ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
-            // 获取上传目录
-            $uploadDir = $this->getUploadDir();
-            
-            // 获取上传模块标识
-            $module = $this->post('module', ''); // 'setting' 或 'banner'
-            $fileExtension = strtolower(pathinfo($uploadedFile['name'], PATHINFO_EXTENSION));
-            
-            // 根据模块生成不同的文件名和路径
-            if ($module === 'setting') {
-                // Setting 模块：保存为 logo.{ext}
-                $fileName = 'images/logo.' . $fileExtension;
-                $filePath = $uploadDir . '/' . $fileName;
-                $relativePath = 'uploads/' . $fileName;
-                
-                // 如果文件已存在，先删除旧文件
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
-            } elseif ($module === 'banner') {
-                // Banner 模块：保存为 banner{随机数}.{ext}
-                $randomNumber = mt_rand(100000, 999999);
-                $fileName = 'images/banner' . $randomNumber . '.' . $fileExtension;
-                $filePath = $uploadDir . '/' . $fileName;
-                $relativePath = 'uploads/' . $fileName;
-            } else {
-                // 默认：使用原来的按日期+hash命名方式
-                $fileName = date('Y/m/d') . '/' . $fileHash . '.' . $fileExtension;
-                $filePath = $uploadDir . '/' . $fileName;
-                $relativePath = 'uploads/' . $fileName;
-            }
+            $uploadedFile = $_FILES['file'];
 
-            // 创建目录
-            $dir = dirname($filePath);
-            if (!is_dir($dir)) {
-                mkdir($dir, 0755, true);
-            }
-
-            // 移动文件
-            if (!move_uploaded_file($uploadedFile['tmp_name'], $filePath)) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['errno' => 1, 'message' => '文件保存失败'], JSON_UNESCAPED_UNICODE);
-                exit;
-            }
-
-            // 获取当前管理员ID
-            $adminId = $this->getAdminId();
-
-            // 获取关联信息（可选）
-            $relatedType = $this->post('related_type', '');
-            $relatedId = (int)$this->post('related_id', 0);
-            $fileUsage = $this->post('file_usage', 'content'); // 默认为内容图片
-            $isPrimary = (int)$this->post('is_primary', 0);
-
-            // 保存文件记录到数据库
-            $fileData = [
-                'hash' => $fileHash,
-                'original_name' => $uploadedFile['name'],
-                'path' => $relativePath,
-                'mime_type' => $mimeType,
-                'size' => $uploadedFile['size'],
-                'uploaded_by' => $adminId,
-                'created_at' => date('Y-m-d H:i:s')
+            // 获取上传选项
+            $options = [
+                'module' => $this->post('module', ''),
+                'related_type' => $this->post('related_type', ''),
+                'related_id' => (int)$this->post('related_id', 0),
+                'file_usage' => $this->post('file_usage', 'content'),
+                'is_primary' => (int)$this->post('is_primary', 0) > 0,
+                'uploaded_by' => $this->getAdminId()
             ];
 
-            // 如果有关联信息，添加到数据中
-            if (!empty($relatedType) && $relatedId > 0) {
-                $fileData['related_type'] = $relatedType;
-                $fileData['related_id'] = $relatedId;
-                $fileData['file_usage'] = $fileUsage;
-                $fileData['is_primary'] = $isPrimary;
-            }
+            // 处理文件上传（使用 FileService）
+            $result = FileService::handleUpload($uploadedFile, $options);
 
-            $fileId = File::save($fileData);
-
-            if (!$fileId) {
-                // 如果数据库保存失败，删除已上传的文件
-                @unlink($filePath);
+            if (!$result['success']) {
                 header('Content-Type: application/json; charset=utf-8');
-                echo json_encode(['errno' => 1, 'message' => '文件记录保存失败'], JSON_UNESCAPED_UNICODE);
+                echo json_encode([
+                    'errno' => 1,
+                    'message' => $result['message'] ?? '上传失败'
+                ], JSON_UNESCAPED_UNICODE);
                 exit;
             }
 
             // 返回成功响应（wangeditor 4.x 格式）
-            // wangeditor 4.x 期望直接返回图片URL字符串，或者包含 errno 和 data 的对象
-            $fileUrl = $this->getFileUrl($relativePath);
-            
-            // 直接返回 wangeditor 4.x 期望的格式
             header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'errno' => 0,
-                'data' => [
-                    $fileUrl  // wangeditor 4.x 期望 data 是图片URL数组
-                ]
+                'data' => [$result['url']]  // wangeditor 4.x 期望 data 是图片URL数组
             ], JSON_UNESCAPED_UNICODE);
             exit;
 
         } catch (\Exception $e) {
             error_log('文件上传失败: ' . $e->getMessage());
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['errno' => 1, 'message' => '上传失败: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'errno' => 1,
+                'message' => '上传失败: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
             exit;
         }
     }
 
-    /**
-     * 获取上传错误信息
-     *
-     * @param int $errorCode 错误代码
-     * @return string
-     */
-    private function getUploadErrorMessage(int $errorCode): string
-    {
-        $messages = [
-            UPLOAD_ERR_INI_SIZE => '文件大小超过服务器限制',
-            UPLOAD_ERR_FORM_SIZE => '文件大小超过表单限制',
-            UPLOAD_ERR_PARTIAL => '文件只有部分被上传',
-            UPLOAD_ERR_NO_FILE => '没有文件被上传',
-            UPLOAD_ERR_NO_TMP_DIR => '找不到临时文件夹',
-            UPLOAD_ERR_CANT_WRITE => '文件写入失败',
-            UPLOAD_ERR_EXTENSION => '文件上传被扩展程序阻止',
-        ];
-
-        return $messages[$errorCode] ?? '未知错误';
-    }
-
-    /**
-     * 获取上传目录
-     *
-     * @return string
-     */
-    private function getUploadDir(): string
-    {
-        $baseDir = dirname(__DIR__, 3) . '/public/uploads';
-        return $baseDir;
-    }
-
-    /**
-     * 获取文件访问URL
-     *
-     * @param string $path 文件相对路径
-     * @return string
-     */
-    private function getFileUrl(string $path): string
-    {
-        return '/uploads/' . ltrim($path, 'uploads/');
-    }
 
     /**
      * 文件管理列表页
@@ -301,10 +167,7 @@ class UploadController extends AdminBaseController
             }
 
             // 删除物理文件
-            $filePath = dirname(__DIR__, 3) . '/public/' . $file['path'];
-            if (file_exists($filePath)) {
-                @unlink($filePath);
-            }
+            FileService::deletePhysicalFile($file['path']);
 
             // 删除数据库记录
             $result = File::delete((int)$id);

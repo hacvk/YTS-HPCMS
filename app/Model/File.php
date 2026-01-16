@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Model;
 
 use App\Core\Database;
+use App\Service\FileService;
 
 /**
  * 文件模型
@@ -280,10 +281,7 @@ class File
             
             // 删除物理文件
             foreach ($files as $file) {
-                $filePath = dirname(__DIR__, 2) . '/public/' . $file['path'];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
+                FileService::deletePhysicalFile($file['path']);
             }
             
             // 删除数据库记录

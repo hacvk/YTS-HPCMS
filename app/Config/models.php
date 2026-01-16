@@ -3,10 +3,12 @@
  * 模型配置文件
  * 定义不同栏目类型对应的扩展字段
  * 
+ * 注意：配置键必须与 App\Enum\CategoryType 枚举值匹配
+ * 
  * @return array<string, array{name: string, fields: array<string, array{type: string, label: string, options?: array<string, string>}>}>
  */
 return [
-    // 文章模型
+    // 文章模型 (CategoryType::Article->value)
     'article' => [
         'name' => '文章',
         'fields' => [
@@ -21,19 +23,19 @@ return [
         ],
     ],
     
-    // 单页模型
+    // 单页模型 (CategoryType::Page->value)
     'page' => [
         'name' => '单页',
         'fields' => [],
     ],
     
-    // 图文模型
+    // 图文模型 (CategoryType::Pic->value)
     'pic' => [
         'name' => '图文',
         'fields' => [],
     ],
     
-    // 专家模型
+    // 专家模型 (CategoryType::Doctor->value)
     'doctor' => [
         'name' => '专家',
         'fields' => [

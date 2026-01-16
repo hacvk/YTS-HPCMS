@@ -8,6 +8,7 @@ use App\Core\Security;
 use App\Core\Database;
 use App\Model\File;
 use App\Service\LogService;
+use App\Service\FileService;
 
 /**
  * 附件管理控制器
@@ -148,13 +149,8 @@ class AttachmentController extends AdminBaseController
             $fileName = $file['name'] ?? '未知';
 
             // 删除物理文件
-            $publicDir = dirname(__DIR__, 3) . '/public';
-            $filePath = $publicDir . '/' . ltrim($file['path'], '/');
-            
-            if (file_exists($filePath)) {
-                if (!@unlink($filePath)) {
-                    error_log('删除附件文件失败: ' . $filePath);
-                }
+            if (!FileService::deletePhysicalFile($file['path'])) {
+                error_log('删除附件文件失败: ' . $file['path']);
             }
 
             // 删除数据库记录
@@ -238,10 +234,7 @@ class AttachmentController extends AdminBaseController
                 }
 
                 // 删除物理文件
-                $filePath = dirname(__DIR__, 3) . '/public/' . $file['path'];
-                if (file_exists($filePath)) {
-                    @unlink($filePath);
-                }
+                FileService::deletePhysicalFile($file['path']);
 
                 // 删除数据库记录
                 if (File::delete($id)) {

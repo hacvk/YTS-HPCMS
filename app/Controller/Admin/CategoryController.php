@@ -6,6 +6,7 @@ namespace App\Controller\Admin;
 use App\Core\Security;
 use App\Model\Category;
 use App\Service\LogService;
+use App\Enum\CategoryType;
 
 /**
  * 栏目管理控制器
@@ -124,7 +125,7 @@ class CategoryController extends AdminBaseController
             $id = (int)($this->post('id', 0));
             $name = trim($this->post('name', ''));
             $slug = trim($this->post('slug', ''));
-            $type = $this->post('type', 'article');
+            $typeInput = $this->post('type', 'article');
             $parentId = (int)($this->post('parent_id', 0));
             $sort = (int)($this->post('sort', 0));
             $isHidden = (int)($this->post('is_hidden', 0));
@@ -137,10 +138,12 @@ class CategoryController extends AdminBaseController
                 $this->errorJson('栏目名称不能为空');
             }
 
-            // 验证类型
-            if (!in_array($type, ['article', 'page', 'pic', 'doctor'])) {
-                $this->errorJson('栏目类型无效');
+            // 使用枚举验证类型
+            $categoryType = CategoryType::tryFrom($typeInput);
+            if ($categoryType === null) {
+                $this->errorJson('栏目类型无效，支持的类型：' . implode('、', CategoryType::values()));
             }
+            $type = $categoryType->value;
 
             // 如果设置了别名，检查是否重复
             if (!empty($slug)) {
@@ -149,19 +152,19 @@ class CategoryController extends AdminBaseController
                 }
             }
 
-            // 按栏目模型类型处理模板
+            // 按栏目模型类型处理模板（使用枚举值）
             $typeTemplateMap = [
-                'article' => ['template' => 'list.latte', 'detail_template' => 'article.latte'],
-                'page' => ['template' => '', 'detail_template' => 'pages.latte'],
-                'pic' => ['template' => 'piclist.latte', 'detail_template' => 'pic.latte'],
-                'doctor' => ['template' => 'doctorlist.latte', 'detail_template' => 'doctor.latte'],
+                CategoryType::Article->value => ['template' => 'list.latte', 'detail_template' => 'article.latte'],
+                CategoryType::Page->value => ['template' => '', 'detail_template' => 'pages.latte'],
+                CategoryType::Pic->value => ['template' => 'piclist.latte', 'detail_template' => 'pic.latte'],
+                CategoryType::Doctor->value => ['template' => 'doctorlist.latte', 'detail_template' => 'doctor.latte'],
             ];
 
             $template = $template === '' ? ($typeTemplateMap[$type]['template'] ?? '') : $template;
             $detailTemplate = $detailTemplate === '' ? ($typeTemplateMap[$type]['detail_template'] ?? '') : $detailTemplate;
 
             // 单页内容模型：不允许列表模板
-            if ($type === 'page') {
+            if ($categoryType === CategoryType::Page) {
                 $template = '';
             }
 
@@ -276,15 +279,26 @@ class CategoryController extends AdminBaseController
     public function getModelFields(): void
     {
         try {
-            $type = $this->get('type', '');
+            $typeInput = $this->get('type', '');
             
-            if (empty($type)) {
+            if (empty($typeInput)) {
                 $this->json([
                     'code' => 0,
                     'data' => [],
                 ]);
                 return;
             }
+            
+            // 使用枚举验证类型
+            $categoryType = CategoryType::tryFrom($typeInput);
+            if ($categoryType === null) {
+                $this->json([
+                    'code' => 0,
+                    'data' => [],
+                ]);
+                return;
+            }
+            $type = $categoryType->value;
             
             // 读取模型配置文件
             $modelsFile = dirname(__DIR__, 2) . '/Config/models.php';
