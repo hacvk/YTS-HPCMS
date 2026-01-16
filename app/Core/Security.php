@@ -186,20 +186,37 @@ class Security
         );
     }
 
-    // app/Core/Security.php 中添加
     public static function sanitizeHtml(string $html): string
     {
-    // 检查是否已安装 HTMLPurifier
+        // 确保 HTMLPurifier 类可用（项目内置在 app/Lib/HTMLPurifier）
         if (!class_exists('HTMLPurifier')) {
-            throw new \RuntimeException('HTMLPurifier 未安装');
+            $autoload = dirname(__DIR__, 1) . '/Lib/HTMLPurifier/HTMLPurifier.auto.php';
+            $autoload2 = dirname(__DIR__, 1) . '/Lib/HTMLPurifier/HTMLPurifier.autoload.php';
+
+            if (is_file($autoload)) {
+                require_once $autoload;
+            } elseif (is_file($autoload2)) {
+                require_once $autoload2;
+            }
         }
-        
+
+        if (!class_exists('HTMLPurifier') || !class_exists('HTMLPurifier_Config')) {
+            throw new \RuntimeException('HTMLPurifier 未安装或自动加载失败');
+        }
+
         // 配置 HTMLPurifier
         $config = \HTMLPurifier_Config::createDefault();
         $config->set('HTML.Allowed', 'div,p,span,b,i,u,strong,em,a[href|title],img[src|alt|title],ul,ol,li,h1,h2,h3,h4,h5,h6,br,hr,blockquote,pre,code,table,tr,td,th,thead,tbody');
         $config->set('HTML.TargetBlank', true);
         $config->set('URI.SafeIframeRegexp', ''); // 禁止 iframe
-        
+
+        // 定义缓存目录（避免每次重新解析定义，提升性能）
+        $cacheDir = dirname(__DIR__, 2) . '/data/cache/htmlpurifier';
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $config->set('Cache.SerializerPath', $cacheDir);
+
         // 初始化并净化 HTML
         $purifier = new \HTMLPurifier($config);
         return $purifier->purify($html);

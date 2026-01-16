@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Controller\Admin;
 
 use App\Controller\Admin\AdminBaseController;
+use App\Core\App;
 use App\Core\Database;
 use App\Core\Security;
 use App\Model\Content;
@@ -46,28 +47,42 @@ class ArticleController extends AdminBaseController
             $contentModel = new Content($db);
             $result = $contentModel->getList($page, $limit, $where);
             
+            // 调试信息（开发环境）
+            if (App::isDebug()) {
+                error_log('文章列表查询结果: ' . json_encode([
+                    'count' => count($result['list'] ?? []),
+                    'total' => $result['total'] ?? 0,
+                    'page' => $page,
+                    'limit' => $limit
+                ], JSON_UNESCAPED_UNICODE));
+            }
+            
             // 获取所有栏目用于筛选
             $categoryModel = new Category($db);
             $categories = $categoryModel->getAll();
             
             $this->render('admin/article/index', [
                 'title' => '文章管理',
-                'articles' => $result['list'],
-                'total' => $result['total'],
+                'articles' => $result['list'] ?? [],
+                'total' => $result['total'] ?? 0,
                 'page' => $page,
                 'limit' => $limit,
                 'cid' => $cid,
                 'keyword' => $keyword,
-                'categories' => $categories
+                'categories' => $categories ?? []
             ]);
         } catch (\Exception $e) {
             error_log('获取文章列表失败: ' . $e->getMessage());
+            error_log('错误堆栈: ' . $e->getTraceAsString());
             $this->render('admin/article/index', [
                 'title' => '文章管理',
                 'articles' => [],
                 'total' => 0,
                 'page' => 1,
                 'limit' => 10,
+                'cid' => 0,
+                'keyword' => '',
+                'categories' => [],
                 'error' => $e->getMessage()
             ]);
         }

@@ -156,6 +156,9 @@ class Router
             'GET /admin/category/edit' => ['Admin\\CategoryController', 'edit'],
             'POST /admin/category/save' => ['Admin\\CategoryController', 'save'],
             'POST /admin/category/delete' => ['Admin\\CategoryController', 'delete'],
+            'GET /admin/category/getModelFields' => ['Admin\\CategoryController', 'getModelFields'],
+            'GET /admin/category/tree' => ['Admin\\CategoryController', 'tree'],
+            'GET /admin/category/getCategoryOptions' => ['Admin\\CategoryController', 'getCategoryOptions'],
 
             // Admin - page
             'GET /admin/page' => ['Admin\\PageController', 'index'],
@@ -165,9 +168,13 @@ class Router
 
             // Admin - article
             'GET /admin/article' => ['Admin\\ArticleController', 'index'],
+            'GET /admin/article/add' => ['Admin\\ArticleController', 'add'],
             'GET /admin/article/edit' => ['Admin\\ArticleController', 'edit'],
+            'GET /admin/article/edit/' => ['Admin\\ArticleController', 'edit'],
+            'GET /admin/article/edit/{id}' => ['Admin\\ArticleController', 'edit'],
             'POST /admin/article/save' => ['Admin\\ArticleController', 'save'],
             'POST /admin/article/delete' => ['Admin\\ArticleController', 'delete'],
+            'POST /admin/article/delete/' => ['Admin\\ArticleController', 'delete'],
 
             // Admin - attachment
             'GET /admin/attachment' => ['Admin\\AttachmentController', 'index'],
@@ -211,8 +218,27 @@ class Router
             ];
         }
         
-        // 动态路由匹配 - 处理文章详情页
+        // 动态路由匹配
+
+        // Admin - article edit (GET /admin/article/edit/{id})
         if ($method === 'GET') {
+            if (preg_match('#^/admin/article/edit/([0-9]+)$#', $uri, $matches)) {
+                $_GET['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\ArticleController',
+                    'action' => 'edit',
+                ];
+            }
+
+            if (preg_match('#^/admin/article/edit/([0-9]+)/$#', $uri, $matches)) {
+                $_GET['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\ArticleController',
+                    'action' => 'edit',
+                ];
+            }
+
+            // 动态路由匹配 - 处理文章详情页
             if (preg_match('#^/article/([0-9]+)$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
                 return [
@@ -237,6 +263,17 @@ class Router
                 return [
                     'controller' => 'HomeController',
                     'action' => 'category',
+                ];
+            }
+        }
+
+        // Admin - article delete (POST /admin/article/delete/{id})
+        if ($method === 'POST') {
+            if (preg_match('#^/admin/article/delete/([0-9]+)$#', $uri, $matches)) {
+                $_POST['id'] = (int)$matches[1];
+                return [
+                    'controller' => 'Admin\\ArticleController',
+                    'action' => 'delete',
                 ];
             }
         }

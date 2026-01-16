@@ -51,24 +51,26 @@ class Content
             $offset = ($page - 1) * $limit;
             
             // 构建 Medoo 查询条件
+            // 注意：在 join 查询中，WHERE 条件应该使用表别名
             $conditions = [];
             
-            // 处理栏目ID条件
+            // 处理栏目ID条件（使用别名）
             if (isset($where['cid']) && $where['cid'] > 0) {
                 $conditions['content.category_id'] = (int)$where['cid'];
             }
             
-            // 处理关键词搜索条件
+            // 处理关键词搜索条件（使用别名）
             if (isset($where['keyword']) && !empty($where['keyword'])) {
                 $conditions['content.title[~]'] = $where['keyword'];
             }
             
             // 使用 Medoo 的 join 方法进行关联查询
             // Medoo join 语法: '[>]table(alias)' => ['left_field' => 'right_field']
+            // 注意：join 条件中的字段名不需要表前缀，Medoo 会自动处理
             $list = $this->db->select(
                 self::TABLE . '(content)',
                 [
-                    '[>]sys_category(category)' => ['content.category_id' => 'category.id']
+                    '[>]sys_category(category)' => ['category_id' => 'id']
                 ],
                 [
                     'content.id',
@@ -79,6 +81,7 @@ class Content
                     'content.status',
                     'content.views',
                     'content.published_at',
+                    'content.attributes', // 选择 attributes 字段用于 JSON 反序列化
                     'category.name(category_name)'
                 ],
                 array_merge($conditions, [
@@ -86,6 +89,19 @@ class Content
                     'LIMIT' => [$offset, $limit]
                 ])
             );
+            
+            // 检查 Medoo 错误
+            if ($this->db->error) {
+                error_log('Medoo查询错误: ' . json_encode($this->db->error, JSON_UNESCAPED_UNICODE));
+                error_log('Medoo错误信息: ' . json_encode($this->db->errorInfo ?? [], JSON_UNESCAPED_UNICODE));
+            }
+            
+            // 批量反序列化 JSON 字段（attributes 字段）
+            if (!empty($list) && is_array($list)) {
+                $list = $this->deserializeJsonFieldsBatch($list);
+            } else {
+                $list = [];
+            }
             
             // 获取总数（Medoo 的 count 方法不支持 join，需要单独查询主表）
             // 但我们需要应用相同的 WHERE 条件
@@ -99,12 +115,13 @@ class Content
             $total = $this->db->count(self::TABLE, $countConditions);
             
             return [
-                'list' => $list ?: [],
+                'list' => $list,
                 'total' => $total
             ];
             
         } catch (\Exception $e) {
             error_log('获取文章列表失败: ' . $e->getMessage());
+            error_log('错误堆栈: ' . $e->getTraceAsString());
             return [
                 'list' => [],
                 'total' => 0
