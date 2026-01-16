@@ -183,6 +183,12 @@ class Router
             'GET /admin/banner/edit' => ['Admin\\BannerController', 'edit'],
             'POST /admin/banner/save' => ['Admin\\BannerController', 'save'],
             'POST /admin/banner/delete' => ['Admin\\BannerController', 'delete'],
+
+            // Admin - friendlink
+            'GET /admin/friendlink' => ['Admin\\FriendLinkController', 'index'],
+            'GET /admin/friendlink/edit' => ['Admin\\FriendLinkController', 'edit'],
+            'POST /admin/friendlink/save' => ['Admin\\FriendLinkController', 'save'],
+            'POST /admin/friendlink/delete' => ['Admin\\FriendLinkController', 'delete'],
             'POST /admin/attachment/delete' => ['Admin\\AttachmentController', 'delete'],
 
             // Admin - upload

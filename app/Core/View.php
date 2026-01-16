@@ -154,6 +154,29 @@ class View
         
         // 注册 json_encode 过滤器（用于JavaScript变量）
         $this->engine->addFilter('json_encode', fn($value) => json_encode($value, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT));
+
+        // 注册 friendLinks 函数（用于前台页脚）
+        $this->engine->addFunction('friendLinks', function (): string {
+            try {
+                $db = \App\Core\Database::get();
+                $links = $db->select('sys_friend_link', 
+                    ['title', 'url'], 
+                    ['status' => 1, 'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']]
+                ) ?: [];
+
+                $html = '';
+                foreach ($links as $link) {
+                    $url = htmlspecialchars((string)($link['url'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $title = htmlspecialchars((string)($link['title'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $html .= "<a href=\"$url\" target=\"_blank\" rel=\"nofollow\">$title</a>";
+                }
+                return $html;
+            } catch (\Throwable $e) {
+                // 生产环境静默失败，仅记录日志
+                error_log('Failed to render friend links: ' . $e->getMessage());
+                return '';
+            }
+        });
     }
 
     /**

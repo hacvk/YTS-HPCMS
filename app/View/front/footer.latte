@@ -1,9 +1,14 @@
+{* app/View/front/footer.latte *}
 <div class="footer_dyseo">
     <div class="auto auto_1150">
         <dl>
             <dt><a href="javascript:;">友情链接</a></dt>
             <dd class="clearfix">
-                {$friendLinksHtml|noescape}
+                {ifset $friendLinksHtml}
+                    {$friendLinksHtml|noescape}
+                {else}
+                    {friendLinks()|noescape}
+                {/ifset}
             </dd>
         </dl>
 

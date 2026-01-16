@@ -44,7 +44,8 @@ return [
         'icon'  => 'folder',
         'children' => [
             ['title' => '附件管理', 'route' => '/admin/attachment', 'perm' => 'admin:attachment:view'],
-            ['title' => 'Banner管理', 'route' => '/admin/banner', 'perm' => 'admin:banner:view']
+            ['title' => 'Banner管理', 'route' => '/admin/banner', 'perm' => 'admin:banner:view'],
+            ['title' => '友情链接管理', 'route' => '/admin/friendlink', 'perm' => 'admin:friendlink:view'],
         ]
     ],
 
