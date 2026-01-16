@@ -467,6 +467,149 @@ class HomeController extends BaseController
             }
         }
 
+        // 如果是专家列表模板，获取筛选数据（科室和职称）
+        $filterData = [];
+        $tplBase = basename($listTemplate);
+        if ($tplBase === 'doctorlist.latte' || $tplBase === 'doctorlist') {
+            try {
+                // 获取所有专家数据（从当前栏目）
+                $allDoctors = $db->select('sys_content', ['attributes'], [
+                    'category_id' => $category['id'],
+                    'status' => 1
+                ]);
+                
+                // 收集所有科室ID（从专家的 attributes.keshi 字段）
+                $allKeshiIds = [];
+                $allZhichengSet = [];
+                
+                foreach ($allDoctors ?: [] as $doctor) {
+                    if (isset($doctor['attributes']) && !empty($doctor['attributes'])) {
+                        $attrs = is_string($doctor['attributes']) 
+                            ? json_decode($doctor['attributes'], true) 
+                            : $doctor['attributes'];
+                        
+                        if (is_array($attrs)) {
+                            // 提取职称
+                            if (isset($attrs['zhicheng']) && !empty($attrs['zhicheng'])) {
+                                $zhicheng = trim((string)$attrs['zhicheng']);
+                                if ($zhicheng !== '') {
+                                    $allZhichengSet[$zhicheng] = true;
+                                }
+                            }
+                            
+                            // 提取科室ID（keshi 字段）
+                            if (isset($attrs['keshi'])) {
+                                $rawKeshi = $attrs['keshi'];
+                                $keshiIds = [];
+                                
+                                if (is_string($rawKeshi)) {
+                                    $raw = trim($rawKeshi);
+                                    if ($raw !== '') {
+                                        if (str_contains($raw, ',')) {
+                                            foreach (explode(',', $raw) as $part) {
+                                                $part = trim($part);
+                                                if ($part !== '' && ctype_digit($part)) {
+                                                    $keshiIds[] = (int)$part;
+                                                }
+                                            }
+                                        } elseif ($raw[0] === '[') {
+                                            $decoded = json_decode($raw, true);
+                                            if (is_array($decoded)) {
+                                                foreach ($decoded as $it) {
+                                                    if (is_int($it) || ctype_digit((string)$it)) {
+                                                        $keshiIds[] = (int)$it;
+                                                    } elseif (is_array($it) && isset($it[1]) && (is_int($it[1]) || ctype_digit((string)$it[1]))) {
+                                                        $keshiIds[] = (int)$it[1];
+                                                    }
+                                                }
+                                            }
+                                        } elseif (ctype_digit($raw)) {
+                                            $keshiIds[] = (int)$raw;
+                                        }
+                                    }
+                                } elseif (is_int($rawKeshi)) {
+                                    $keshiIds[] = $rawKeshi;
+                                } elseif (is_array($rawKeshi)) {
+                                    foreach ($rawKeshi as $it) {
+                                        if (is_int($it) || ctype_digit((string)$it)) {
+                                            $keshiIds[] = (int)$it;
+                                        } elseif (is_array($it) && isset($it[1]) && (is_int($it[1]) || ctype_digit((string)$it[1]))) {
+                                            $keshiIds[] = (int)$it[1];
+                                        }
+                                    }
+                                }
+                                
+                                foreach ($keshiIds as $kid) {
+                                    if ($kid > 0) {
+                                        $allKeshiIds[$kid] = true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // 批量查询科室标题（从 sys_content 表中）
+                $clinicalDepts = [];
+                $medicalTechDepts = [];
+                
+                if (!empty($allKeshiIds)) {
+                    $keshiIdsArray = array_keys($allKeshiIds);
+                    $deptContents = $db->select('sys_content', ['id', 'title', 'category_id'], [
+                        'id' => $keshiIdsArray,
+                        'status' => 1,
+                        'ORDER' => ['title' => 'ASC']
+                    ]);
+                    
+                    foreach ($deptContents ?: [] as $dept) {
+                        $deptItem = [
+                            'id' => (int)($dept['id'] ?? 0),
+                            'title' => (string)($dept['title'] ?? ''),
+                            'category_id' => (int)($dept['category_id'] ?? 0)
+                        ];
+                        
+                        // 根据 category_id 分类：临床科室（10, 12）和医技科室（13）
+                        $catId = (int)($dept['category_id'] ?? 0);
+                        if (in_array($catId, [10, 12], true)) {
+                            $clinicalDepts[] = $deptItem;
+                        } elseif ($catId === 13) {
+                            $medicalTechDepts[] = $deptItem;
+                        } else {
+                            // 如果不在预定义分类中，默认归为临床科室
+                            $clinicalDepts[] = $deptItem;
+                        }
+                    }
+                }
+                
+                // 获取职称列表
+                $zhichengOptions = array_keys($allZhichengSet);
+                if (empty($zhichengOptions)) {
+                    // 如果数据库中没有，使用预定义列表
+                    $zhichengOptions = [
+                        '主任医师', '副主任医师', '主治医师', '住院医师',
+                        '主任中医师', '副主任中医师',
+                        '主任技师', '副主任技师', '主管技师', '技师'
+                    ];
+                } else {
+                    sort($zhichengOptions);
+                }
+                
+                $filterData = [
+                    'departments' => [
+                        'clinical' => $clinicalDepts,
+                        'medical_tech' => $medicalTechDepts
+                    ],
+                    'titles' => $zhichengOptions
+                ];
+            } catch (\Throwable $e) {
+                error_log('获取筛选数据失败: ' . $e->getMessage());
+                $filterData = [
+                    'departments' => ['clinical' => [], 'medical_tech' => []],
+                    'titles' => []
+                ];
+            }
+        }
+
         $this->render($listTemplate, [
             'title' => $category['name'],
             'category' => $category,
@@ -476,6 +619,7 @@ class HomeController extends BaseController
             'totalPages' => $totalPages,
             'navItems' => $navItems,
             'channelItems' => $channelItems,
+            'filterData' => $filterData,
         ]);
     }
 }
