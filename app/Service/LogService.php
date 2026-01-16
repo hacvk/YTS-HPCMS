@@ -4,14 +4,18 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Core\Database;
+use App\Service\Log\DatabaseLogDriver;
+use App\Service\Log\FileLogDriver;
+use App\Service\Log\LogDriverInterface;
 
 /**
  * 日志服务类
+ * 支持多种日志驱动：文件、数据库、Redis等
  */
 class LogService
 {
     /**
-     * 日志表名
+     * 日志表名（用于数据库驱动）
      */
     private const TABLE_NAME = 'sys_log';
 
@@ -23,6 +27,46 @@ class LogService
     public const LEVEL_ERROR = 'error';
     public const LEVEL_DEBUG = 'debug';
     public const LEVEL_WARNING = 'warning';
+
+    /**
+     * 日志驱动实例（单例）
+     */
+    private static ?LogDriverInterface $driver = null;
+
+    /**
+     * 获取日志驱动实例
+     *
+     * @return LogDriverInterface
+     */
+    private static function getDriver(): LogDriverInterface
+    {
+        if (self::$driver === null) {
+            // 从配置读取日志驱动类型，默认使用文件驱动
+            $driverType = \App\Core\App::getConfig('log.driver', 'file');
+            
+            self::$driver = match ($driverType) {
+                'file' => new FileLogDriver(
+                    \App\Core\App::getConfig('log.file.dir', ''),
+                    \App\Core\App::getConfig('log.file.format', 'app-{date}.log')
+                ),
+                'database', 'db' => new DatabaseLogDriver(),
+                default => new FileLogDriver(), // 默认使用文件驱动
+            };
+        }
+        
+        return self::$driver;
+    }
+
+    /**
+     * 设置日志驱动（用于测试或动态切换）
+     *
+     * @param LogDriverInterface $driver 日志驱动实例
+     * @return void
+     */
+    public static function setDriver(LogDriverInterface $driver): void
+    {
+        self::$driver = $driver;
+    }
 
     /**
      * 记录日志
@@ -50,8 +94,6 @@ class LogService
         ?int $line = null
     ): bool {
         try {
-            $db = Database::get();
-
             // 如果没有提供消息，则根据操作类型和目标自动生成
             if ($message === null) {
                 $message = self::generateMessage($action, $target);
@@ -61,8 +103,8 @@ class LogService
             $ip = self::getClientIp();
             $userAgent = self::getUserAgent();
 
-            // 插入日志
-            $result = $db->insert(self::TABLE_NAME, [
+            // 构建日志数据
+            $logData = [
                 'admin_id' => $adminId,
                 'admin_name' => $username,
                 'action' => $action,
@@ -75,9 +117,10 @@ class LogService
                 'ip' => $ip,
                 'user_agent' => $userAgent,
                 'create_time' => date('Y-m-d H:i:s'),
-            ]);
+            ];
 
-            return $result !== false;
+            // 使用配置的日志驱动记录日志（异步写入，不阻塞主流程）
+            return self::getDriver()->record($logData);
         } catch (\Exception $e) {
             // 日志记录失败不应影响主流程，记录到错误日志
             error_log('[LogService] 日志记录失败: ' . $e->getMessage());
@@ -351,6 +394,7 @@ class LogService
 
     /**
      * 获取管理员日志列表
+     * 注意：此方法仅在使用数据库驱动时有效
      *
      * @param int $adminId 管理员ID
      * @param int $limit 限制数量
@@ -375,6 +419,7 @@ class LogService
 
     /**
      * 获取所有日志列表
+     * 注意：此方法仅在使用数据库驱动时有效
      *
      * @param array<string, mixed> $conditions 查询条件
      * @param int $limit 限制数量
@@ -400,6 +445,7 @@ class LogService
 
     /**
      * 获取日志总数
+     * 注意：此方法仅在使用数据库驱动时有效
      *
      * @param array<string, mixed> $conditions 查询条件
      * @return int
@@ -418,6 +464,7 @@ class LogService
 
     /**
      * 清理过期日志
+     * 注意：此方法仅在使用数据库驱动时有效
      *
      * @param int $days 保留天数（默认30天）
      * @return int 删除的记录数

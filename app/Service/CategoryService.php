@@ -23,6 +23,12 @@ class CategoryService
 
     /**
      * 获取无限级分类树结构
+     * 优化版本：使用引用传递算法，时间复杂度从 O(n^2) 降至 O(n)
+     * 
+     * 算法原理：
+     * 1. 一次循环遍历所有分类，建立 ID -> 分类数据的映射
+     * 2. 使用引用传递，将子分类直接添加到父分类的 children 数组中
+     * 3. 同时计算层级，避免递归查找
      *
      * @param int $parentId 父级ID（默认0表示顶级）
      * @param array<int, array<string, mixed>>|null $allCategories 所有栏目数据
@@ -34,38 +40,107 @@ class CategoryService
             $allCategories = $this->categoryModel->getAll();
         }
 
-        $tree = [];
-
-        foreach ($allCategories as $category) {
-            if ((int)$category['parent_id'] === $parentId) {
-                $category['children'] = $this->getTree((int)$category['id'], $allCategories);
-                $category['level'] = $this->getLevel($category['id'], $allCategories);
-                $tree[] = $category;
-            }
+        if (empty($allCategories)) {
+            return [];
         }
 
-        return $tree;
+        // 第一步：建立 ID -> 分类数据的映射，并初始化 children 和 level
+        $categoryMap = [];
+        foreach ($allCategories as &$category) {
+            $id = (int)$category['id'];
+            $category['children'] = [];
+            $category['level'] = 0; // 初始层级，后续计算
+            $categoryMap[$id] = &$category;
+        }
+        unset($category); // 释放引用
+
+        // 第二步：建立 parent_id -> 子分类ID列表的映射
+        $childrenMap = [];
+        foreach ($allCategories as $category) {
+            $pid = (int)$category['parent_id'];
+            if (!isset($childrenMap[$pid])) {
+                $childrenMap[$pid] = [];
+            }
+            $childrenMap[$pid][] = (int)$category['id'];
+        }
+
+        // 第三步：使用引用传递构建树结构，并计算层级
+        // 从根节点开始，使用 BFS（广度优先搜索）计算层级
+        $rootNodes = [];
+        foreach ($allCategories as &$category) {
+            $id = (int)$category['id'];
+            $pid = (int)$category['parent_id'];
+            
+            if ($pid === 0) {
+                // 根节点
+                $rootNodes[] = $id;
+            } else {
+                // 子节点：通过引用直接添加到父节点的 children 数组
+                if (isset($categoryMap[$pid])) {
+                    $categoryMap[$pid]['children'][] = &$category;
+                }
+            }
+        }
+        unset($category); // 释放引用
+
+        // 第四步：计算每个节点的层级（使用 BFS）
+        $this->calculateLevels($categoryMap, $childrenMap, $rootNodes);
+
+        // 第五步：根据 parentId 返回对应的树结构
+        if ($parentId === 0) {
+            // 返回所有根节点
+            $tree = [];
+            foreach ($rootNodes as $rootId) {
+                if (isset($categoryMap[$rootId])) {
+                    $tree[] = $categoryMap[$rootId];
+                }
+            }
+            return $tree;
+        } else {
+            // 返回指定父节点的子节点树
+            if (isset($categoryMap[$parentId])) {
+                return $categoryMap[$parentId]['children'];
+            }
+            return [];
+        }
     }
 
     /**
-     * 获取栏目层级
+     * 计算所有节点的层级（使用 BFS 广度优先搜索）
      *
-     * @param int $id 栏目ID
-     * @param array<int, array<string, mixed>> $allCategories 所有栏目
-     * @param int $level 当前层级
-     * @return int
+     * @param array<int, array<string, mixed>> $categoryMap 分类映射表（引用传递）
+     * @param array<int, array<int>> $childrenMap 子节点映射表
+     * @param array<int> $rootNodes 根节点ID列表
+     * @return void
      */
-    private function getLevel(int $id, array $allCategories, int $level = 0): int
+    private function calculateLevels(array &$categoryMap, array $childrenMap, array $rootNodes): void
     {
-        foreach ($allCategories as $category) {
-            if ((int)$category['id'] === $id) {
-                if ((int)$category['parent_id'] === 0) {
-                    return $level;
-                }
-                return $this->getLevel((int)$category['parent_id'], $allCategories, $level + 1);
+        // 使用队列进行 BFS
+        $queue = [];
+        
+        // 初始化：所有根节点的层级为 0
+        foreach ($rootNodes as $rootId) {
+            if (isset($categoryMap[$rootId])) {
+                $categoryMap[$rootId]['level'] = 0;
+                $queue[] = $rootId;
             }
         }
-        return $level;
+
+        // BFS 遍历：计算每个节点的层级
+        while (!empty($queue)) {
+            $currentId = array_shift($queue);
+            $currentLevel = $categoryMap[$currentId]['level'] ?? 0;
+
+            // 处理当前节点的所有子节点
+            if (isset($childrenMap[$currentId])) {
+                foreach ($childrenMap[$currentId] as $childId) {
+                    if (isset($categoryMap[$childId])) {
+                        $categoryMap[$childId]['level'] = $currentLevel + 1;
+                        $queue[] = $childId;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -93,19 +168,41 @@ class CategoryService
 
     /**
      * 获取栏目的所有子栏目ID（包括所有层级）
+     * 优化版本：使用 BFS 算法，时间复杂度 O(n)
      *
      * @param int $parentId 父级ID
      * @return array<int, int>
      */
     public function getAllChildrenIds(int $parentId): array
     {
-        $ids = [];
         $allCategories = $this->categoryModel->getAll();
+        
+        if (empty($allCategories)) {
+            return [];
+        }
 
+        // 建立 parent_id -> 子分类ID列表的映射
+        $childrenMap = [];
         foreach ($allCategories as $category) {
-            if ((int)$category['parent_id'] === $parentId) {
-                $ids[] = (int)$category['id'];
-                $ids = array_merge($ids, $this->getAllChildrenIds((int)$category['id']));
+            $pid = (int)$category['parent_id'];
+            if (!isset($childrenMap[$pid])) {
+                $childrenMap[$pid] = [];
+            }
+            $childrenMap[$pid][] = (int)$category['id'];
+        }
+
+        // 使用 BFS 收集所有子节点ID
+        $ids = [];
+        $queue = [$parentId];
+        
+        while (!empty($queue)) {
+            $currentId = array_shift($queue);
+            
+            if (isset($childrenMap[$currentId])) {
+                foreach ($childrenMap[$currentId] as $childId) {
+                    $ids[] = $childId;
+                    $queue[] = $childId;
+                }
             }
         }
 
