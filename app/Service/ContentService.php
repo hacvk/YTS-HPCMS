@@ -185,4 +185,100 @@ class ContentService
         // attributes 中的扩展字段已自动合并到主数组，attributes 字段本身已被移除
         return $this->contentModel->getByCategoryId($categoryId);
     }
+
+    /**
+     * 获取上一篇文章
+     * 注意：返回的数据已通过 JsonFieldTrait 自动处理 JSON 字段反序列化
+     *
+     * @param int $currentId 当前文章ID
+     * @param int $categoryId 栏目ID
+     * @return array<string, mixed>|null 返回上一篇文章数据，不存在则返回 null
+     */
+    public function getPrevArticle(int $currentId, int $categoryId): ?array
+    {
+        try {
+            $article = $this->db->get(
+                'sys_content',
+                '*',
+                [
+                    'AND' => [
+                        'id[<]' => $currentId,
+                        'category_id' => $categoryId,
+                        'status' => 1
+                    ],
+                    'ORDER' => ['id' => 'DESC']
+                ]
+            );
+
+            if (!$article) {
+                return null;
+            }
+
+            // 使用 Model 的方法处理 JSON 字段反序列化
+            // 注意：这里直接使用 db->get，需要手动处理 attributes
+            if (isset($article['attributes']) && !empty($article['attributes'])) {
+                $attributes = is_string($article['attributes'])
+                    ? json_decode($article['attributes'], true)
+                    : $article['attributes'];
+
+                if (is_array($attributes)) {
+                    unset($article['attributes']);
+                    $article = array_merge($article, $attributes);
+                }
+            }
+
+            return $article;
+        } catch (\Throwable $e) {
+            error_log('获取上一篇文章失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 获取下一篇文章
+     * 注意：返回的数据已通过 JsonFieldTrait 自动处理 JSON 字段反序列化
+     *
+     * @param int $currentId 当前文章ID
+     * @param int $categoryId 栏目ID
+     * @return array<string, mixed>|null 返回下一篇文章数据，不存在则返回 null
+     */
+    public function getNextArticle(int $currentId, int $categoryId): ?array
+    {
+        try {
+            $article = $this->db->get(
+                'sys_content',
+                '*',
+                [
+                    'AND' => [
+                        'id[>]' => $currentId,
+                        'category_id' => $categoryId,
+                        'status' => 1
+                    ],
+                    'ORDER' => ['id' => 'ASC']
+                ]
+            );
+
+            if (!$article) {
+                return null;
+            }
+
+            // 使用 Model 的方法处理 JSON 字段反序列化
+            // 注意：这里直接使用 db->get，需要手动处理 attributes
+            if (isset($article['attributes']) && !empty($article['attributes'])) {
+                $attributes = is_string($article['attributes'])
+                    ? json_decode($article['attributes'], true)
+                    : $article['attributes'];
+
+                if (is_array($attributes)) {
+                    unset($article['attributes']);
+                    $article = array_merge($article, $attributes);
+                }
+            }
+
+            return $article;
+        } catch (\Throwable $e) {
+            error_log('获取下一篇文章失败: ' . $e->getMessage());
+            return null;
+        }
+    }
 }

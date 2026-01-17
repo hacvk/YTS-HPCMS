@@ -267,32 +267,40 @@ class Router
                 ];
             }
 
-            // 动态路由匹配 - 处理文章详情页
-            if (preg_match('#^/article/([0-9]+)$#', $uri, $matches)) {
+            // 动态路由匹配 - 处理文章详情页 (GET /article/{id})
+            // 匹配格式：/article/123，ID 必须为正整数
+            if (preg_match('#^/article/([1-9][0-9]*)$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
                 return [
-                    'controller' => 'HomeController',
-                    'action' => 'article',
+                    'controller' => 'ArticleController',
+                    'action' => 'index',
                 ];
             }
             
-            // 动态路由匹配 - 处理栏目列表页
-            if (preg_match('#^/c/([^/]+)$#', $uri, $matches)) {
-                $_GET['slug'] = $matches[1];
-                return [
-                    'controller' => 'HomeController',
-                    'action' => 'category',
-                ];
-            }
-            
-            // 动态路由匹配 - 处理栏目列表页（带分页）
-            if (preg_match('#^/c/([^/]+)/page/([0-9]+)$#', $uri, $matches)) {
+            // 动态路由匹配 - 处理栏目列表页（带分页）(GET /c/{slug}/page/{page})
+            // 先匹配带分页的，避免被无分页的路由捕获
+            // 匹配格式：/c/yuanwu/page/2，slug 不能包含斜杠，page 必须为正整数
+            if (preg_match('#^/c/([^/]+)/page/([1-9][0-9]*)$#', $uri, $matches)) {
                 $_GET['slug'] = $matches[1];
                 $_GET['page'] = (int)$matches[2];
                 return [
-                    'controller' => 'HomeController',
-                    'action' => 'category',
+                    'controller' => 'CategoryController',
+                    'action' => 'index',
                 ];
+            }
+            
+            // 动态路由匹配 - 处理栏目列表页 (GET /c/{slug})
+            // 匹配格式：/c/yuanwu，slug 不能包含斜杠，且不能为空
+            if (preg_match('#^/c/([^/]+)$#', $uri, $matches)) {
+                $slug = $matches[1];
+                // 确保 slug 不为空且不包含特殊字符
+                if ($slug !== '' && !preg_match('#[<>"\']#', $slug)) {
+                    $_GET['slug'] = $slug;
+                    return [
+                        'controller' => 'CategoryController',
+                        'action' => 'index',
+                    ];
+                }
             }
         }
 
