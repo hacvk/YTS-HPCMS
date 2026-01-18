@@ -33,12 +33,12 @@ class Autoloader
         // 标准化命名空间前缀
         $prefix = trim($prefix, '\\') . '\\';
         
-        // 修复点：如果是 .php 文件，不要加目录分隔符
+        // 修复点：如果是.php 文件，不要加目录分隔符
         if (str_ends_with($baseDir, '.php')) {
             // 文件映射：保持原样
             $this->prefixes[$prefix] = $baseDir;
         } else {
-            // 目录映射：确保以 / 或 \ 结尾
+            // 目录映射：确保以 / \ 结尾
             $baseDir = rtrim($baseDir, '/\\') . DIRECTORY_SEPARATOR;
             $this->prefixes[$prefix] = $baseDir;
         }
@@ -56,7 +56,7 @@ class Autoloader
     }
 
     /**
-     * 自动加载类
+     * 自动加载器
      */
     public function loadClass(string $class): bool
     {
@@ -93,7 +93,7 @@ class Autoloader
             return false;
         }
         
-        // 情况2：目录映射 (App, Latte)
+        // 情况2：目录映射(App, Latte)
         $relativePath = str_replace('\\', DIRECTORY_SEPARATOR, $relativeClass);
         $file = $baseDir . $relativePath . '.php';
         

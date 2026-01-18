@@ -32,7 +32,7 @@ class Database
     }
 
     /**
-     * 获取数据库实例（单例）
+     * 获取数据库实例（单例模式）
      * 如果连接已断开，自动重新连接
      *
      * @return Medoo
@@ -44,7 +44,7 @@ class Database
             self::$instance = self::createConnection();
         } else {
             // 检查连接是否有效（仅在长运行脚本中需要）
-            // 对于 Web 请求，连接通常不会超时，所以这里不主动检测
+            // 对于 Web 请求，连接通常不会超时，所以这里不主动检查
             // 如果连接已断开，PDO 会在执行查询时抛出异常，此时可以调用 reconnect()
         }
 

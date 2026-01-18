@@ -104,7 +104,7 @@ class Container
             }
 
             $name = $param->getName();
-            throw new \RuntimeException("Container: 无法解析 {$class} 构造函数参数: {$name}");
+            throw new \RuntimeException("Container: 无法解析 {$class} 构造函数参数 {$name}");
         }
 
         return $ref->newInstanceArgs($args);
