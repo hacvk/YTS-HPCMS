@@ -7,9 +7,19 @@ use App\Controller\Admin\AdminBaseController;
 use App\Model\Banner;
 use App\Core\Security;
 use App\Service\LogService;
+use Medoo\Medoo;
 
 class BannerController extends AdminBaseController
 {
+    private Banner $bannerModel;
+    
+    public function __construct(
+        private readonly Medoo $db
+    ) {
+        parent::__construct();
+        $this->bannerModel = new Banner($this->db);
+    }
+    
     /**
      * 列表
      */
@@ -17,7 +27,7 @@ class BannerController extends AdminBaseController
     {
         $page  = (int)$this->get('page', 1);
         $limit = 20;
-        $data  = Banner::getPage($page, $limit);
+        $data  = $this->bannerModel->getPage($page, $limit);
 
         $this->render('admin/banner/index', [
             'title' => 'Banner 管理',
@@ -34,7 +44,7 @@ class BannerController extends AdminBaseController
     public function edit(): void
     {
         $id = (int)$this->get('id', 0);
-        $banner = $id ? Banner::getById($id) : null;
+        $banner = $id ? $this->bannerModel->getById($id) : null;
         $this->render('admin/banner/edit', [
             'title' => $id ? '编辑 Banner' : '新增 Banner',
             'banner' => $banner,
@@ -61,7 +71,7 @@ class BannerController extends AdminBaseController
         if($data['title']===''||$data['image_path']===''){
             $this->errorJson('标题和图片不能为空');
         }
-        Banner::save($data);
+        $this->bannerModel->save($data);
         LogService::record($this->getAdminId(),$this->getAdminUsername(),'update','保存Banner','id:'.$data['id']);
         $this->successJson('保存成功',null,'/admin/banner');
     }
@@ -75,7 +85,7 @@ class BannerController extends AdminBaseController
         if(!Security::checkCsrfToken($this->post('csrf_token',''))){$this->errorJson('CSRF校验失败');}
         $id=(int)$this->post('id',0);
         if($id<=0){$this->errorJson('参数错误');}
-        Banner::delete($id);
+        $this->bannerModel->delete($id);
         LogService::record($this->getAdminId(),$this->getAdminUsername(),'delete','删除Banner','id:'.$id);
         $this->successJson('删除成功');
     }

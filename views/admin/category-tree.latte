@@ -1,0 +1,71 @@
+{foreach $categories as $category}
+    <tr data-id="{$category['id']}" n:attr="'data-parent' => $category['parent_id']" n:class="$level > 0 ? hidden-row">
+        <td>{$category['id']}</td>
+        <td>
+            <div class="category-name">
+                {if count($category['children']) > 0}
+                    <span class="tree-toggle" onclick="toggleTree({$category['id']})">
+                        <i class="bi bi-caret-right-fill"></i>
+                    </span>
+                {else}
+                    <span class="tree-toggle" style="cursor: default; color: transparent;">
+                        <i class="bi bi-dot"></i>
+                    </span>
+                {/if}
+                <span class="category-level">
+                    {for $i = 0; $i < $level; $i++}└─{/for}
+                </span>
+                <strong>{$category['name']}</strong>
+                {if $category['is_hidden']}
+                    <span class="badge bg-secondary ms-2">隐藏</span>
+                {/if}
+            </div>
+        </td>
+        <td>
+            {if $category['slug']}
+                <code class="small">{$category['slug']}</code>
+            {else}
+                <span class="text-muted">-</span>
+            {/if}
+        </td>
+        <td>
+            {if $category['type'] == 'article'}
+                <span class="badge bg-primary">文章</span>
+            {elseif $category['type'] == 'page'}
+                <span class="badge bg-info">单页</span>
+            {elseif $category['type'] == 'pic'}
+                <span class="badge bg-warning">图文</span>
+            {elseif $category['type'] == 'doctor'}
+                <span class="badge bg-success">专家</span>
+            {/if}
+        </td>
+        <td>{$category['sort']}</td>
+        <td>
+            {if $category['is_hidden']}
+                <span class="badge bg-danger">隐藏</span>
+            {else}
+                <span class="badge bg-success">显示</span>
+            {/if}
+        </td>
+        <td>
+            <div class="btn-group" role="group">
+                <a href="/admin/category/edit?id={$category['id']}" class="btn btn-sm btn-outline-primary btn-icon" title="编辑">
+                    <i class="bi bi-pencil"></i>
+                </a>
+                {if $category['parent_id'] == 0}
+                    <a href="/admin/category/add?parent_id={$category['id']}" class="btn btn-sm btn-outline-success btn-icon" title="添加子栏目">
+                        <i class="bi bi-plus"></i>
+                    </a>
+                {/if}
+                <button type="button" class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteCategory({$category['id']}, '{$category['name']}')" title="删除">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </td>
+    </tr>
+
+    {if count($category['children']) > 0}
+        {include 'category-tree.latte', categories => $category['children'], level => $level + 1}
+    {/if}
+{/foreach}
+

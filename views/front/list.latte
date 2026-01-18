@@ -1,0 +1,64 @@
+{extends 'layout.latte'}
+
+{block content}
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('static/picture/20210322110902915.jpg')) : asset('static/picture/20210322110902915.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+
+<div class="crumbs">
+    <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > {$category['name']} </div>
+</div>
+
+<div class="auto auto_1150">
+  <div class="w22 fl"> 
+    {include 'right_channel.latte'} 
+  </div>
+  <div class="w75 fr"> 
+    <!--Artlist star-->
+    <div class="Artlist">
+      <ul class="ul">
+        {ifset $articles}
+          {foreach $articles['list'] as $a}
+          <li>
+            <time>{date('Y-m-d', strtotime($a['published_at']))}</time>
+            <a href='/article/{$a['id']}' class="dot">{$a['title']}</a>
+          </li>
+          {/foreach}
+        {/ifset}
+      </ul>
+    </div>
+    <!--Artlist end--> 
+    
+    <!--分页开始-->
+    <div class="pagelist">
+      {ifset $pagination}
+        {$pagination|noescape}
+      {else}
+        <!-- 如果没有现成的分页HTML，根据数据生成简单分页 -->
+        {ifset $totalPages}
+          <div class="pagination">
+            {if $currentPage > 1}
+              <a href="/c/{$category['slug']}/page/{=$currentPage - 1}" class="prev">上一页</a>
+            {/if}
+            
+            {for $i = 1; $i <= $totalPages; $i++}
+              {if $i == $currentPage}
+                <span class="current">{$i}</span>
+              {else}
+                <a href="/c/{$category['slug']}/page/{$i}">{$i}</a>
+              {/if}
+            {/for}
+            
+            {if $currentPage < $totalPages}
+              <a href="/c/{$category['slug']}/page/{=$currentPage + 1}" class="next">下一页</a>
+            {/if}
+          </div>
+        {/ifset}
+      {/ifset}
+    </div>
+  </div>
+  <div class="clear"></div>
+</div>
+{/block}

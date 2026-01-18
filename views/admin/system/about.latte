@@ -1,0 +1,63 @@
+{layout '../layout.latte'}
+
+{block content}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12 col-lg-11 col-xl-10">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-4">关于系统</h4>
+
+                    <table class="table table-bordered align-middle mb-0">
+                        <tbody>
+                            <tr>
+                                <th style="width: 220px;">系统名称</th>
+                                <td>{$system['name'] ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>版本号</th>
+                                <td>{$system['version'] ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>发布日期</th>
+                                <td>{$system['release_date'] ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>开发者</th>
+                                <td>
+                                    {if isset($system['developer_url']) && $system['developer_url']}
+                                        <a href="{$system['developer_url']}" target="_blank" rel="noopener">{$system['developer'] ?? $system['developer_url']}</a>
+                                    {else}
+                                        {$system['developer'] ?? '-'}
+                                    {/if}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>版权信息</th>
+                                <td>{$system['copyright'] ?? '-'|noescape}</td>
+                            </tr>
+                            <tr>
+                                <th>系统运行时间</th>
+                                <td>{$runtime ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>系统上次重启时间</th>
+                                <td>{$last_reboot_at ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>系统运行必备PHP扩展</th>
+                                <td>{$required_php_extensions ?? '-'}</td>
+                            </tr>
+                            <tr>
+                                <th>当前 URL</th>
+                                <td>{$current_url ?? '-'}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{/block}

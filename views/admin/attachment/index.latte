@@ -1,0 +1,387 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部操作栏 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+        <div>
+            <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm" onclick="batchDelete()" id="batchDeleteBtn" style="display: none;">
+                <i class="bi bi-trash"></i> 批量删除
+            </button>
+        </div>
+    </div>
+    
+    <!-- 统计信息卡片 -->
+    {if isset($statistics)}
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总文件数</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{$statistics['total_files'] ?? 0}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-file-earmark-text fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">总存储大小</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{$statistics['total_size_mb'] ?? 0} MB</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-hdd fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {/if}
+    
+    <!-- 筛选搜索框 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form class="form-inline" method="get" action="/admin/attachment">
+                <div class="form-group mr-3 mb-2">
+                    <label for="mime_type" class="mr-2">文件类型：</label>
+                    <select class="form-control" id="mime_type" name="mime_type">
+                        <option value="">全部类型</option>
+                        {foreach $mime_types as $type}
+                        <option value="{$type['mime_type']}" {if isset($type['mime_type']) && $type['mime_type'] == $mime_type}selected{/if}>
+                            {$type['mime_type']} ({$type['count']})
+                        </option>
+                        {/foreach}
+                    </select>
+                </div>
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="related_type" class="mr-2">关联类型：</label>
+                    <select class="form-control" id="related_type" name="related_type">
+                        <option value="">全部</option>
+                        <option value="article" {if $related_type == 'article'}selected{/if}>文章</option>
+                        <option value="page" {if $related_type == 'page'}selected{/if}>单页</option>
+                        <option value="category" {if $related_type == 'category'}selected{/if}>栏目</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="file_usage" class="mr-2">用途：</label>
+                    <select class="form-control" id="file_usage" name="file_usage">
+                        <option value="">全部</option>
+                        <option value="cover" {if $file_usage == 'cover'}selected{/if}>封面</option>
+                        <option value="content" {if $file_usage == 'content'}selected{/if}>内容</option>
+                        <option value="attachment" {if $file_usage == 'attachment'}selected{/if}>附件</option>
+                    </select>
+                </div>
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="keyword" class="mr-2">关键词：</label>
+                    <input type="text" class="form-control" id="keyword" name="keyword" placeholder="文件名/路径" value="{$keyword}">
+                </div>
+                
+                <button type="submit" class="btn btn-primary mb-2">
+                    <i class="bi bi-search"></i> 搜索
+                </button>
+                <a href="/admin/attachment" class="btn btn-secondary mb-2 ml-2">
+                    <i class="bi bi-arrow-clockwise"></i> 重置
+                </a>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 附件列表表格 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">附件列表</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                            </th>
+                            <th>ID</th>
+                            <th>预览</th>
+                            <th>文件名</th>
+                            <th>文件类型</th>
+                            <th>大小</th>
+                            <th>关联信息</th>
+                            <th>上传时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($files) > 0}
+                        {foreach $files as $file}
+                        <tr>
+                            <td>
+                                <input type="checkbox" class="file-checkbox" value="{$file['id']}">
+                            </td>
+                            <td>{$file['id']}</td>
+                            <td>
+                                {if isset($file['mime_type']) && strpos($file['mime_type'], 'image/') === 0}
+                                <img src="/{$file['path']}" width="60" height="60" class="img-thumbnail" style="object-fit: cover; cursor: pointer;" onclick="previewImage('/{$file['path']}')">
+                                {else}
+                                <div class="text-center" style="width: 60px; height: 60px; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                                    <i class="bi bi-file-earmark" style="font-size: 24px; color: #999;"></i>
+                                </div>
+                                {/if}
+                            </td>
+                            <td>
+                                <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{$file['name'] ?? ''}">
+                                    {$file['name'] ?? '未知'}
+                                </div>
+                                {if isset($file['description']) && $file['description']}
+                                <small class="text-muted d-block">{$file['description']}</small>
+                                {/if}
+                            </td>
+                            <td>
+                                <small>{$file['mime_type'] ?? '未知'}</small>
+                            </td>
+                            <td>
+                                {if isset($file['size'])}
+                                    {if $file['size'] < 1024}
+                                        {$file['size']} B
+                                    {elseif $file['size'] < 1048576}
+                                        {round($file['size'] / 1024, 2)} KB
+                                    {else}
+                                        {round($file['size'] / 1048576, 2)} MB
+                                    {/if}
+                                {else}
+                                    未知
+                                {/if}
+                            </td>
+                            <td>
+                                {if isset($file['related_type']) && $file['related_type']}
+                                <span class="badge badge-info">{$file['related_type']}</span>
+                                {if isset($file['related_id']) && $file['related_id']}
+                                <small class="text-muted">ID: {$file['related_id']}</small>
+                                {/if}
+                                {if isset($file['file_usage']) && $file['file_usage']}
+                                <br><small class="text-muted">用途: {$file['file_usage']}</small>
+                                {/if}
+                                {else}
+                                <span class="text-muted">未关联</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if isset($file['created_at']) && $file['created_at']}
+                                {date('Y-m-d H:i', strtotime($file['created_at']))}
+                                {else}
+                                未知
+                                {/if}
+                            </td>
+                            <td>
+                                <a href="/{$file['path']}" target="_blank" class="btn btn-info btn-sm" title="查看">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteAttachment({$file['id']})" title="删除">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="9" class="text-center">暂无数据</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            {if $total > 0}
+            <div class="pagination justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {if $page == 1}disabled{/if}">
+                        <a class="page-link" href="/admin/attachment?page={$page-1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    
+                    {var $totalPages = ceil($total / $limit)}
+                    {var $startPage = max(1, $page - 4)}
+                    {var $endPage = min($totalPages, $startPage + 8)} 
+                    {if $startPage > 1}
+                    <li class="page-item"><a class="page-link" href="/admin/attachment?page=1&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {/if}
+                    
+                    {for $i = $startPage; $i <= $endPage; $i++}
+                    <li class="page-item {if $i == $page}active{/if}">
+                        <a class="page-link" href="/admin/attachment?page={$i}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$i}</a>
+                    </li>
+                    {/for}
+                    
+                    {if $endPage < $totalPages}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="/admin/attachment?page={$totalPages}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$totalPages}</a></li>
+                    {/if}
+                    
+                    <li class="page-item {if $page == $totalPages}disabled{/if}">
+                        <a class="page-link" href="/admin/attachment?page={$page+1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {/if}
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览模态框 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">图片预览</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="previewImage" src="" alt="预览" style="max-width: 100%; max-height: 70vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 脚本 -->
+<script>
+// 全选/取消全选
+function toggleSelectAll() {
+    var selectAll = document.getElementById('selectAll');
+    var checkboxes = document.querySelectorAll('.file-checkbox');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.checked = selectAll.checked;
+    });
+    updateBatchDeleteButton();
+}
+
+// 更新批量删除按钮显示状态
+function updateBatchDeleteButton() {
+    var checkedBoxes = document.querySelectorAll('.file-checkbox:checked');
+    var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+    if (checkedBoxes.length > 0) {
+        batchDeleteBtn.style.display = 'inline-block';
+    } else {
+        batchDeleteBtn.style.display = 'none';
+    }
+}
+
+// 监听单个复选框变化
+document.addEventListener('DOMContentLoaded', function() {
+    var checkboxes = document.querySelectorAll('.file-checkbox');
+    checkboxes.forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            updateBatchDeleteButton();
+            // 更新全选状态
+            var allChecked = document.querySelectorAll('.file-checkbox:checked').length === checkboxes.length;
+            document.getElementById('selectAll').checked = allChecked && checkboxes.length > 0;
+        });
+    });
+});
+
+// 预览图片
+function previewImage(src) {
+    document.getElementById('previewImage').src = src;
+    var modal = new bootstrap.Modal(document.getElementById('imagePreviewModal'));
+    modal.show();
+}
+
+// 删除附件
+function deleteAttachment(id) {
+    if (confirm('确定要删除这个附件吗？删除后无法恢复！')) {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        fetch('/admin/attachment/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(response) {
+            // 检查响应是否为 JSON
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            } else {
+                // 如果不是 JSON，返回错误信息
+                throw new Error('服务器返回错误，请稍后再试');
+            }
+        })
+        .then(function(data) {
+            if (data.code === 0) {
+                alert(data.message);
+                window.location.reload();
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(function(error) {
+            console.error('删除附件错误:', error);
+            alert('删除失败：' + error.message);
+        });
+    }
+}
+
+// 批量删除
+function batchDelete() {
+    var checkedBoxes = document.querySelectorAll('.file-checkbox:checked');
+    if (checkedBoxes.length === 0) {
+        alert('请选择要删除的附件');
+        return;
+    }
+    
+    if (!confirm('确定要删除选中的 ' + checkedBoxes.length + ' 个附件吗？删除后无法恢复！')) {
+        return;
+    }
+    
+    var ids = Array.from(checkedBoxes).map(function(cb) { return cb.value; }).join(',');
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    
+    fetch('/admin/attachment/batchDelete', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'ids=' + encodeURIComponent(ids) + '&csrf_token=' + encodeURIComponent(csrfToken)
+    })
+    .then(function(response) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            return response.json();
+        }
+        throw new Error('服务器返回错误，请稍后再试');
+    })
+    .then(function(data) {
+        if (data.code === 0) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message);
+        }
+    })
+    .catch(function(error) {
+        alert('批量删除失败：' + error.message);
+    });
+}
+</script>
+{/block}
