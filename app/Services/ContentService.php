@@ -5,9 +5,10 @@ namespace App\Services;
 
 use App\Core\Exception\DatabaseOperationException;
 use App\Core\Exception\RecordNotFoundException;
+use App\Core\Exception\ValidationException;
+use App\Core\Security;
 use App\Enums\ContentStatus;
 use App\Models\Content;
-use PDOException;
 
 /**
  * 内容服务类
@@ -28,112 +29,147 @@ class ContentService
     }
 
     /**
-     * 保存内容，智能分离标准字段和扩展字段
+     * 保存内容（包含验证、格式化、业务规则处理）
      *
      * @param array<string, mixed> $data 内容数据
+     * @param int|null $adminId 管理员ID（用于日志记录）
+     * @param string|null $adminUsername 管理员用户名（用于日志记录）
      * @return int 保存成功返回ID
-     * @throws DatabaseOperationException 当保存失败时抛出异常
+     * @throws ValidationException 当数据验证失败时抛出
+     * @throws DatabaseOperationException 当保存失败时抛出
      */
-    public function save(array $data): int
+    public function save(array $data, ?int $adminId = null, ?string $adminUsername = null): int
+    {
+        $this->validate($data);
+
+        $data = $this->format($data);
+
+        $data = $this->processExtraFields($data);
+
+        $result = $this->performSave($data);
+
+        $this->logOperation($result, $data, $adminId, $adminUsername);
+
+        return $result;
+    }
+
+    /**
+     * 验证文章数据
+     *
+     * @param array<string, mixed> $data 待验证的数据
+     * @throws ValidationException 验证失败时抛出
+     */
+    private function validate(array $data): void
+    {
+        $title = $data['title'] ?? '';
+        if (empty(trim($title))) {
+            throw new ValidationException('标题不能为空');
+        }
+
+        $categoryId = $data['category_id'] ?? 0;
+        if ($categoryId <= 0) {
+            throw new ValidationException('请选择栏目');
+        }
+
+        $content = $data['content'] ?? '';
+        if (empty(trim($content))) {
+            LogService::record(
+                $adminId ?? 0,
+                $adminUsername ?? 'system',
+                'warning',
+                "文章内容为空: {$title}",
+                "保存文章警告：文章内容为空"
+            );
+        }
+    }
+
+    /**
+     * 格式化文章数据
+     *
+     * @param array<string, mixed> $data 待格式化的数据
+     * @return array<string, mixed> 格式化后的数据
+     */
+    private function format(array $data): array
+    {
+        if (isset($data['title'])) {
+            $data['title'] = Security::clean(trim((string)$data['title']));
+        }
+
+        if (isset($data['cover_img'])) {
+            $data['cover_img'] = Security::clean(trim((string)$data['cover_img']));
+        }
+
+        if (isset($data['summary'])) {
+            $data['summary'] = Security::clean(trim((string)$data['summary']));
+        }
+
+        if (isset($data['published_at'])) {
+            $data['published_at'] = $this->formatPublishedAt((string)$data['published_at']);
+        } else {
+            $data['published_at'] = date('Y-m-d H:i:s');
+        }
+
+        return $data;
+    }
+
+    /**
+     * 格式化发布时间
+     *
+     * @param string $publishedAt 原始发布时间
+     * @return string 格式化后的发布时间
+     */
+    private function formatPublishedAt(string $publishedAt): string
+    {
+        if (!empty($publishedAt)) {
+            $publishedAt = str_replace('T', ' ', $publishedAt);
+            if (strlen($publishedAt) == 16) {
+                $publishedAt .= ':00';
+            }
+            return $publishedAt;
+        }
+
+        return date('Y-m-d H:i:s');
+    }
+
+    /**
+     * 处理扩展字段
+     *
+     * @param array<string, mixed> $data 待处理的数据
+     * @return array<string, mixed> 处理后的数据
+     */
+    private function processExtraFields(array $data): array
+    {
+        $excludeFields = [
+            'id', 'category_id', 'title', 'cover_img', 'summary',
+            'content', 'status', 'published_at', 'is_top', 'is_image_news'
+        ];
+
+        foreach ($data as $key => $value) {
+            if (!in_array($key, $excludeFields, true) && !is_array($value)) {
+                $data[$key] = Security::clean(trim((string)$value));
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * 执行保存操作
+     *
+     * @param array<string, mixed> $data 格式化后的数据
+     * @return int 保存成功返回ID
+     * @throws DatabaseOperationException 保存失败时抛出
+     */
+    private function performSave(array $data): int
     {
         try {
-            // 分离标准字段和扩展字段
-            $standardFields = [];
-            $extendedFields = [];
-            
-            // 获取模型配置，用于过滤扩展字段
-            $modelFields = [];
-            if (isset($data['category_id']) && $data['category_id'] > 0) {
-                $categoryId = (int)$data['category_id'];
-                // 获取栏目信息
-                $category = $this->db->get('sys_category', ['type'], ['id' => $categoryId]);
-                if ($category && isset($category['type'])) {
-                    $categoryType = $category['type'];
-                    // 读取模型配置文件
-                    $modelsFile = \App\Core\App::getConfigPath('models.php');
-                    if (file_exists($modelsFile)) {
-                        $models = require $modelsFile;
-                        if (isset($models[$categoryType]) && isset($models[$categoryType]['fields'])) {
-                            $modelFields = array_keys($models[$categoryType]['fields']);
-                        }
-                    }
-                }
-            }
-            
-            // 标准字段列表
-            $tableFields = [
-                'id', 'category_id', 'title', 'cover_img', 'summary', 'content', 
-                'views', 'status', 'published_at', 'created_at', 'updated_at', 'is_top', 'is_image_news', 'attributes'
-            ];
-            
-            foreach ($data as $key => $value) {
-                if (in_array($key, $tableFields, true)) {
-                    // 标准字段直接保存
-                    $standardFields[$key] = $value;
-                } else {
-                    // 扩展字段：只保存模型配置中定义的字段
-                    if (empty($modelFields) || in_array($key, $modelFields, true)) {
-                        $extendedFields[$key] = $value;
-                    }
-                }
-            }
-            
-            // 处理attributes字段（表中已有此字段）
-            // 注意：将扩展字段作为数组放入 attributes，Model 中的 JsonFieldTrait 会自动序列化为 JSON
-            if (!empty($extendedFields)) {
-                $standardFields['attributes'] = $extendedFields;
-            } else {
-                // 如果没有扩展字段，清空attributes
-                $standardFields['attributes'] = null;
-            }
-            
-            // 设置时间字段
-            $now = date('Y-m-d H:i:s');
-            if (isset($data['id']) && $data['id'] > 0) {
-                // 更新
-                $standardFields['updated_at'] = $now;
-                $this->contentModel->update((int)$data['id'], $standardFields);
-                return (int)$data['id'];
-            } else {
-                // 添加
-                $standardFields['created_at'] = $now;
-                $standardFields['updated_at'] = $now;
-                
-                // 确保必填字段存在
-                if (!isset($standardFields['views'])) {
-                    $standardFields['views'] = 0;
-                }
-                if (!isset($standardFields['status'])) {
-                    // 使用枚举默认值：已发布
-                    $standardFields['status'] = ContentStatus::Published->value;
-                } else {
-                    // 验证并转换状态值
-                    $statusValue = is_int($standardFields['status']) 
-                        ? $standardFields['status'] 
-                        : (int)$standardFields['status'];
-                    $statusEnum = ContentStatus::tryFrom($statusValue);
-                    if ($statusEnum === null) {
-                        // 如果状态值无效，使用默认值
-                        $standardFields['status'] = ContentStatus::Published->value;
-                    } else {
-                        $standardFields['status'] = $statusEnum->value;
-                    }
-                }
-                
-                // 移除 id 字段（如果是新增）
-                unset($standardFields['id']);
-                
-                // 插入新记录
-                return $this->contentModel->insert($standardFields);
-            }
-            
+            return $this->saveInternal($data);
         } catch (\PDOException $e) {
             $errorMsg = $e->getMessage();
             $errorInfo = $e->errorInfo ?? [];
             error_log('保存内容失败 (PDO): ' . $errorMsg);
             error_log('PDO错误信息: ' . json_encode($errorInfo, JSON_UNESCAPED_UNICODE));
             error_log('保存内容堆栈: ' . $e->getTraceAsString());
-            // 记录数据信息（不记录完整内容，避免日志过大）
             $dataForLog = $data;
             if (isset($dataForLog['content'])) {
                 $dataForLog['content'] = substr($dataForLog['content'], 0, 100) . '...';
@@ -146,7 +182,6 @@ class ContentService
             $errorMsg = $e->getMessage();
             error_log('保存内容失败: ' . $errorMsg);
             error_log('保存内容堆栈: ' . $e->getTraceAsString());
-            // 记录数据信息（不记录完整内容，避免日志过大）
             $dataForLog = $data;
             if (isset($dataForLog['content'])) {
                 $dataForLog['content'] = substr($dataForLog['content'], 0, 100) . '...';
@@ -154,6 +189,111 @@ class ContentService
             error_log('保存内容数据: ' . json_encode($dataForLog, JSON_UNESCAPED_UNICODE | JSON_PARTIAL_OUTPUT_ON_ERROR));
             throw new DatabaseOperationException('保存内容失败: ' . $errorMsg, 0, $e);
         }
+    }
+
+    /**
+     * 内部保存方法
+     *
+     * @param array<string, mixed> $data 数据
+     * @return int 文章ID
+     */
+    private function saveInternal(array $data): int
+    {
+        $standardFields = [];
+        $extendedFields = [];
+
+        $modelFields = [];
+        if (isset($data['category_id']) && $data['category_id'] > 0) {
+            $categoryId = (int)$data['category_id'];
+            $category = $this->db->get('sys_category', ['type'], ['id' => $categoryId]);
+            if ($category && isset($category['type'])) {
+                $categoryType = $category['type'];
+                $modelsFile = \App\Core\App::getConfigPath('models.php');
+                if (file_exists($modelsFile)) {
+                    $models = require $modelsFile;
+                    if (isset($models[$categoryType]) && isset($models[$categoryType]['fields'])) {
+                        $modelFields = array_keys($models[$categoryType]['fields']);
+                    }
+                }
+            }
+        }
+
+        $tableFields = [
+            'id', 'category_id', 'title', 'cover_img', 'summary', 'content',
+            'views', 'status', 'published_at', 'created_at', 'updated_at', 'is_top', 'is_image_news', 'attributes'
+        ];
+
+        foreach ($data as $key => $value) {
+            if (in_array($key, $tableFields, true)) {
+                $standardFields[$key] = $value;
+            } else {
+                if (empty($modelFields) || in_array($key, $modelFields, true)) {
+                    $extendedFields[$key] = $value;
+                }
+            }
+        }
+
+        if (!empty($extendedFields)) {
+            $standardFields['attributes'] = $extendedFields;
+        } else {
+            $standardFields['attributes'] = null;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        if (isset($data['id']) && $data['id'] > 0) {
+            $standardFields['updated_at'] = $now;
+            $this->contentModel->update((int)$data['id'], $standardFields);
+            return (int)$data['id'];
+        } else {
+            $standardFields['created_at'] = $now;
+            $standardFields['updated_at'] = $now;
+
+            if (!isset($standardFields['views'])) {
+                $standardFields['views'] = 0;
+            }
+            if (!isset($standardFields['status'])) {
+                $standardFields['status'] = ContentStatus::Published->value;
+            } else {
+                $statusValue = is_int($standardFields['status'])
+                    ? $standardFields['status']
+                    : (int)$standardFields['status'];
+                $statusEnum = ContentStatus::tryFrom($statusValue);
+                if ($statusEnum === null) {
+                    $standardFields['status'] = ContentStatus::Published->value;
+                } else {
+                    $standardFields['status'] = $statusEnum->value;
+                }
+            }
+
+            unset($standardFields['id']);
+
+            return $this->contentModel->insert($standardFields);
+        }
+    }
+
+    /**
+     * 记录操作日志
+     *
+     * @param int $articleId 文章ID
+     * @param array<string, mixed> $data 保存的数据
+     * @param int|null $adminId 管理员ID
+     * @param string|null $adminUsername 管理员用户名
+     */
+    private function logOperation(int $articleId, array $data, ?int $adminId, ?string $adminUsername): void
+    {
+        $action = ($data['id'] ?? 0) > 0 ? 'update' : 'create';
+        $title = $data['title'] ?? '未知';
+        $message = ($data['id'] ?? 0) > 0
+            ? "编辑文章: {$title} (ID: {$articleId})"
+            : "新建文章: {$title} (ID: {$articleId})";
+
+        LogService::record(
+            $adminId ?? 0,
+            $adminUsername ?? 'system',
+            $action,
+            "文章ID: {$articleId}",
+            $message
+        );
     }
 
     /**

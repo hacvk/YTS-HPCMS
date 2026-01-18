@@ -214,162 +214,58 @@ class ArticleController extends AdminBaseController
     {
         $this->requirePerm('admin:article:save');
 
-        // 只接受POST请求
         if (!$this->isPost()) {
             $this->errorJson('请求方法错误');
             return;
         }
-        
+
+        $csrfToken = $this->post('csrf_token', '');
+        if (!Security::checkCsrfToken($csrfToken)) {
+            $this->errorJson('CSRF Token验证失败');
+            return;
+        }
+
         try {
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
-                return;
-            }
-            
-            // 获取提交的数据
-            $id = (int)$this->post('id', 0);
-            $categoryId = (int)$this->post('category_id', 0);
-            $title = $this->post('title', '');
-            $coverImg = $this->post('cover_img', '');
-            $summary = $this->post('summary', '');
-            $content = Security::sanitizeHtml($this->post('content', '')); // 富文本内容，进行HTML净身
-            $publishedAt = $this->post('published_at', '');
-            $status = (int)$this->post('status', 1);
-            $isTop = (int)$this->post('is_top', 0);
-            $isImageNews = (int)$this->post('is_image_news', 0);
-            
-            // 验证必填字段
-            if (empty($title)) {
-                LogService::record(
-                    $this->getAdminId(),
-                    $this->getAdminUsername(),
-                    'error',
-                    "文章标题为空",
-                    "保存文章失败：标题不能为空"
-                );
-                $this->errorJson('标题不能为空');
-                return;
-            }
-            
-            if ($categoryId <= 0) {
-                LogService::record(
-                    $this->getAdminId(),
-                    $this->getAdminUsername(),
-                    'error',
-                    "文章栏目未选择: {$title}",
-                    "保存文章失败：请选择栏目"
-                );
-                $this->errorJson('请选择栏目');
-                return;
-            }
-            
-            // 验证内容字段（允许为空，但记录警告）
-            if (empty(trim($content))) {
-                // 内容可以为空，但记录日志
-                LogService::record(
-                    $this->getAdminId(),
-                    $this->getAdminUsername(),
-                    'error',
-                    "文章内容为空: {$title}",
-                    "保存文章警告：文章内容为空"
-                );
-            }
-            
-            // 准备保存数据
             $data = [
-                'category_id' => $categoryId,
-                'title' => Security::clean($title),
-                'cover_img' => Security::clean($coverImg),
-                'summary' => Security::clean($summary),
-                'content' => $content, // 富文本内容已净身
-                'status' => $status,
-                'is_top' => $isTop,
-                'is_image_news' => $isImageNews
+                'id' => (int)$this->post('id', 0),
+                'category_id' => (int)$this->post('category_id', 0),
+                'title' => $this->post('title', ''),
+                'cover_img' => $this->post('cover_img', ''),
+                'summary' => $this->post('summary', ''),
+                'content' => Security::sanitizeHtml($this->post('content', '')),
+                'published_at' => $this->post('published_at', ''),
+                'status' => (int)$this->post('status', 1),
+                'is_top' => (int)$this->post('is_top', 0),
+                'is_image_news' => (int)$this->post('is_image_news', 0),
             ];
-            
-            // 如果有发布时间，则设置（需要转换为正确的格式）
-            if (!empty($publishedAt)) {
-                // datetime-local 格式：YYYY-MM-DDTHH:mm，需要转换为 YYYY-MM-DD HH:mm:ss
-                $publishedAt = str_replace('T', ' ', $publishedAt);
-                if (strlen($publishedAt) == 16) {
-                    $publishedAt .= ':00'; // 添加秒数
-                }
-                $data['published_at'] = $publishedAt;
-            } else {
-                // 如果没有发布时间，设置为当前时间
-                $data['published_at'] = date('Y-m-d H:i:s');
-            }
-            
-            // 如果有ID，则是更新
-            if ($id > 0) {
-                $data['id'] = $id;
-            }
-            
-            // 获取所有其他字段（扩展字段）
+
             $allPostData = $_POST;
-            $excludeFields = ['id', 'category_id', 'title', 'cover_img', 'summary', 'content', 'status', 'published_at', 'csrf_token'];
-            
+            $excludeFields = [
+                'id', 'category_id', 'title', 'cover_img', 'summary',
+                'content', 'status', 'published_at', 'is_top', 'is_image_news', 'csrf_token'
+            ];
+
             foreach ($allPostData as $key => $value) {
-                if (!in_array($key, $excludeFields) && !is_array($value)) {
-                    $data[$key] = Security::clean($value);
+                if (!in_array($key, $excludeFields, true) && !is_array($value)) {
+                    $data[$key] = $value;
                 }
             }
-            
-            // 保存文章
-            try {
-                $result = $this->contentService->save($data);
-            } catch (\App\Core\Exception\DatabaseOperationException $e) {
-                // 记录失败日志
-                LogService::record(
-                    $this->getAdminId(),
-                    $this->getAdminUsername(),
-                    'error',
-                    "文章保存失败: {$title}",
-                    "保存文章失败: " . $e->getMessage()
-                );
-                $this->errorJson('保存失败: ' . $e->getMessage());
-                return;
-            }
-            
-            if ($result <= 0) {
-                // 记录失败日志
-                LogService::record(
-                    $this->getAdminId(),
-                    $this->getAdminUsername(),
-                    'error',
-                    "文章保存失败: {$title}",
-                    "保存文章失败，标题 {$title}"
-                );
-                $this->errorJson('保存失败');
-                return;
-            }
-            
-            // 记录成功日志
-            $action = $id > 0 ? 'update' : 'create';
-            $message = $id > 0 ? "编辑文章: {$title} (ID: {$result})" : "新建文章: {$title} (ID: {$result})";
-            LogService::record(
+
+            $result = $this->contentService->save(
+                $data,
                 $this->getAdminId(),
-                $this->getAdminUsername(),
-                $action,
-                "文章ID: {$result}",
-                $message
+                $this->getAdminUsername()
             );
-            
+
             $this->successJson('保存成功', null, '/admin/article');
+        } catch (\App\Core\Exception\ValidationException $e) {
+            $this->errorJson($e->getMessage());
+        } catch (\App\Core\Exception\DatabaseOperationException $e) {
+            error_log('保存文章失败: ' . $e->getMessage());
+            $this->errorJson('保存失败: ' . $e->getMessage());
         } catch (\Exception $e) {
-            // 记录异常日志
-            $errorMsg = $e->getMessage();
-            LogService::record(
-                $this->getAdminId(),
-                $this->getAdminUsername(),
-                'error',
-                "文章保存异常: {$title}",
-                "保存文章异常: {$errorMsg}"
-            );
-            error_log('保存文章失败: ' . $errorMsg);
-            $this->errorJson('保存失败: ' . $errorMsg);
+            error_log('保存文章异常: ' . $e->getMessage());
+            $this->errorJson('保存失败: ' . $e->getMessage());
         }
     }
     

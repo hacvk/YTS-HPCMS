@@ -7,18 +7,18 @@ namespace App\Support\Traits;
  * JSON 字段处理 Trait
  * 自动处理模型读取/保存时的 JSON 序列化与反序列化
  * 
- * 使用说明�?
- * 使用�?Trait 的类必须定义 protected array $jsonFields 属�?
+ * 使用说明�?
+ * 使用�?Trait 的类必须定义 protected array $jsonFields 属�?
  * 例如：protected array $jsonFields = ['attributes'];
  * 
- * 注意：Trait 中不定义此属性，避免与使用类的属性定义冲�?
+ * 注意：Trait 中不定义此属性，避免与使用类的属性定义冲�?
  */
 trait JsonFieldTrait
 {
 
     /**
-     * 序列�?JSON 字段（保存到数据库前�?
-     * 将数�?对象转换�?JSON 字符�?
+     * 序列�?JSON 字段（保存到数据库前�?
+     * 将数�?对象转换�?JSON 字符�?
      *
      * @param array<string, mixed> $data 数据数组
      * @return array<string, mixed> 处理后的数据数组
@@ -39,8 +39,8 @@ trait JsonFieldTrait
     }
 
     /**
-     * 反序列化 JSON 字段（从数据库读取后�?
-     * �?JSON 字符串转换为数组/对象
+     * 反序列化 JSON 字段（从数据库读取后�?
+     * �?JSON 字符串转换为数组/对象
      *
      * @param array<string, mixed>|false $data 数据数组
      * @return array<string, mixed>|false 处理后的数据数组
@@ -55,17 +55,17 @@ trait JsonFieldTrait
             if (isset($data[$field]) && is_string($data[$field]) && !empty($data[$field])) {
                 $decoded = json_decode($data[$field], true);
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                    // 成功解码且是数组，则替换原字�?
+                    // 成功解码且是数组，则替换原字�?
                     unset($data[$field]);
-                    // 将解码后的字段合并到主数�?
+                    // 将解码后的字段合并到主数�?
                     $data = array_merge($data, $decoded);
                 } else {
-                    // 解码失败或不是数组，保持原�?
+                    // 解码失败或不是数组，保持原�?
                     // 可以选择记录错误日志
                     error_log("JSON 字段 {$field} 解码失败: " . json_last_error_msg());
                 }
             } elseif (isset($data[$field]) && ($data[$field] === null || $data[$field] === '')) {
-                // 空值或 null，直接移�?
+                // 空值或 null，直接移�?
                 unset($data[$field]);
             }
         }
