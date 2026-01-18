@@ -62,7 +62,6 @@ oldhtml/
 
 # 忽略 data/cache 目录（包括目录下所有缓存文件）
 data/cache/
-cache/
 database/
 sql/
 storage/cache/
