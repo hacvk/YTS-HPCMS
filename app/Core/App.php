@@ -18,7 +18,7 @@ class App
 
     /**
      * 构造函数（使用 PHP 8.0 构造函数属性提升）
-     * 注意：实例属性 $initialConfig 与静态属性 $config 不同名，避免冲突
+     * 注意：实例属性$initialConfig 与静态属性$config 不同名，避免冲突
      *
      * @param array<string, mixed> $initialConfig 初始配置数组
      */
@@ -45,14 +45,14 @@ class App
         $container->singleton(\Medoo\Medoo::class, Database::get());
 
         // 实例化路由器并分发请求（通过容器解析控制器依赖）
-        $router = new Router($container);
+        $router = new \App\Http\Router($container);
         $router->dispatch();
     }
 
     /**
      * 获取配置
      *
-     * 支持点语法访问嵌套配置，如 getConfig('db.host')
+     * 支持点语法访问嵌套配置，如getConfig('db.host')
      *
      * @param string $key 配置键名（支持点语法）
      * @param mixed $default 默认值
@@ -130,7 +130,7 @@ class App
         // 移除可能的路径分隔符和相对路径
         $filename = basename($filename);
         
-        // 配置文件统一放在 app/Config 目录
-        return dirname(__DIR__, 1) . '/Config/' . $filename;
+        // 配置文件统一放在 config 目录
+        return dirname(__DIR__, 2) . '/config/' . $filename;
     }
 }

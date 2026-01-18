@@ -29,9 +29,9 @@ $baseConfig = [
     ],
 ];
 
-// 合并 app/Config 下的扩展配置（用于后台菜单、模型、系统信息等）
+// 合并 config 下的扩展配置（用于后台菜单、模型、系统信息等）
 $extraConfigFiles = [
-    APP_ROOT . '/app/Config/system.php',
+    APP_ROOT . '/config/system.php',
 ];
 
 foreach ($extraConfigFiles as $file) {

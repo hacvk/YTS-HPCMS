@@ -27,23 +27,23 @@ class View
     ) {
         // 如果未提供参数，使用默认值
         if ($this->templateDir === '') {
-            $this->templateDir = dirname(__DIR__, 2) . '/app/View';
+            $this->templateDir = dirname(__DIR__, 2) . '/views';
         }
         if ($this->cacheDir === '') {
-            $this->cacheDir = dirname(__DIR__, 2) . '/cache/latte';
+            $this->cacheDir = dirname(__DIR__, 2) . '/storage/cache/latte';
         }
 
         $this->initEngine();
     }
 
     /**
-     * 初始化 Latte 引擎
+     * 初始化Latte 引擎
      *
      * @return void
      */
     private function initEngine(): void
     {
-        // 预加载 Latte 必要的类，避免自动加载问题
+        // 预加载Latte 必要的类，避免自动加载问题
         require_once dirname(__DIR__, 2) . '/app/Lib/Latte/src/Latte/exceptions.php';
         require_once dirname(__DIR__, 2) . '/app/Lib/Latte/src/Latte/PositionAwareException.php';
 
@@ -64,7 +64,7 @@ class View
         // 生产模式：严格关闭自动刷新，避免文件系统 I/O 损耗
         $this->engine->setAutoRefresh($isDebug);
         
-        // 开启 Latte Strict 模式（如果版本支持）
+        // 开启Latte Strict 模式（如果版本支持）
         // Strict 模式会启用更严格的类型检查和错误报告
         if (method_exists($this->engine, 'setStrictTypes')) {
             $this->engine->setStrictTypes(true);
@@ -74,7 +74,7 @@ class View
         if (!$isDebug) {
             // 确保生产环境关闭所有调试相关功能
             if (method_exists($this->engine, 'setStrictParsing')) {
-                // 如果支持，启用严格解析模式
+                // 如果支持，启用严格解析模板
                 $this->engine->setStrictParsing(true);
             }
         }
@@ -104,7 +104,7 @@ class View
             // 读取系统设置中的 static_url，如果没有则使用默认前缀
             try {
                 $db = \App\Core\Database::get();
-                $setting = new \App\Model\Setting($db);
+                $setting = new \App\Models\Setting($db);
                 $prefix = $setting->get('static_url', '/static/front');
             } catch (\Throwable $e) {
                 $prefix = '/static/front';
@@ -116,7 +116,7 @@ class View
         $this->engine->addFunction('setting', function (string $key, mixed $default = null): mixed {
             try {
                 $db = \App\Core\Database::get();
-                $setting = new \App\Model\Setting($db);
+                $setting = new \App\Models\Setting($db);
                 return $setting->get($key, $default);
             } catch (\Throwable $e) {
                 return $default;
@@ -126,15 +126,11 @@ class View
         // 注册 repeat 过滤器
         $this->engine->addFilter('repeat', fn($string, $count) => str_repeat((string)$string, (int)$count));
         
-        // 注册 escapejs 过滤器（用于JavaScript字符串转义）
-        // 使用 json_encode 标准方法，这是 PHP 输出数据到 JavaScript 上下文的行业标准做法
-        // JSON_HEX_TAG: 将 < 和 > 转换为 \u003C 和 \u003E
-        // JSON_HEX_AMP: 将 & 转换为 \u0026
-        // JSON_HEX_APOS: 将 ' 转换为 \u0027
-        // JSON_HEX_QUOT: 将 " 转换为 \u0022
-        // 
-        // 注意：此过滤器用于在 JavaScript 字符串字面量中使用（如：var str = "{$value|escapejs}";）
-        // json_encode 会返回带引号的 JSON 字符串，需要去掉首尾引号才能嵌入到 JavaScript 字符串中
+        // 注册 escapejs 过滤器（用于 JavaScript 字符串转义）
+        // 使用 json_encode 做安全转义，输出到 JS 字符串上下文
+        // JSON_HEX_TAG/AMP/APOS/QUOT 用于转义 < > & ' "
+        // 注意：用于 JS 字符串字面量场景
+        // json_encode 返回带引号的 JSON 字符串，这里会去掉首尾引号
         $this->engine->addFilter('escapejs', function ($value): string {
             // 将值转换为字符串
             $stringValue = (string)$value;
@@ -143,7 +139,7 @@ class View
             $encoded = json_encode($stringValue, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
             
             // json_encode 返回的格式是 "..."（带引号），需要去掉首尾引号
-            // 这样可以直接嵌入到 JavaScript 字符串字面量中
+            // 这样可以直接嵌入到JavaScript 字符串字面量中
             if (strlen($encoded) >= 2 && $encoded[0] === '"' && $encoded[-1] === '"') {
                 return substr($encoded, 1, -1);
             }
@@ -211,7 +207,7 @@ class View
     /**
      * 渲染模板
      *
-     * @param string $name 模板名称（不含 .latte 扩展名）
+     * @param string $name 模板名称（不需要 .latte 扩展名）
      * @param array<string, mixed> $params 模板参数
      * @return void
      */
@@ -231,7 +227,7 @@ class View
 
             // 检查模板是否存在
             if (!file_exists($templatePath)) {
-                throw new \RuntimeException("模板文件不存在: {$templatePath}");
+                throw new \RuntimeException("模板文件不存在 {$templatePath}");
             }
 
             // 先合并传入的参数（优先级更高）
