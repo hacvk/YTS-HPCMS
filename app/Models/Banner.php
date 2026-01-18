@@ -89,7 +89,18 @@ class Banner
     {
         return $this->getByType('indexFast', $limit);
     }
-
+    
+    /**
+     * 获取启用的首页专题（indexZt类型）
+     *
+     * @param int $limit 限制数量
+     * @return array<int, array<string, mixed>>
+     */
+    public function getIndexZtItems(int $limit = 10): array
+    {
+        return $this->getByType('indexZt', $limit);
+    }
+    
     /**
      * 分页列表
      *

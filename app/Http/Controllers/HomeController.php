@@ -61,10 +61,22 @@ class HomeController extends BaseController
         // 获取科室数据用于首页展示（parent_id=9的栏目及其子栏目文章）
         $departmentData = $this->getDepartmentDataWithArticles();
 
+        // 从 sys_setting 表获取站点配置
+        $siteSettings = [
+            'site_title' => $this->db->get('sys_setting', 'value', ['key' => 'site_title']),
+            'site_keywords' => $this->db->get('sys_setting', 'value', ['key' => 'site_keywords']),
+            'site_description' => $this->db->get('sys_setting', 'value', ['key' => 'site_description'])
+        ];
+        
         $data = [
+            'title' => $siteSettings['site_title'] ?? '默认标题',
+            'keywords' => $siteSettings['site_keywords'] ?? '',
+            'description' => $siteSettings['site_description'] ?? '',
             'navItems' => $navItems,
             'bannerItems' => $this->bannerModel->getBanners(), // 轮播图
             'indexFastItems' => $this->bannerModel->getIndexFastItems(10), // 首页快捷方式
+            'picLinks' => $this->bannerModel->getIndexFastItems(10), // 首页快捷方式（别名）
+            'indexZtItems' => $this->bannerModel->getIndexZtItems(10), // 首页专题
             'newsSliderItems' => $imageNewsItems, // 图片新闻轮播
             'hospitalNewsItems' => $ywggList,
             'noticeItems' => $zbggList,

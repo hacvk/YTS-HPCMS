@@ -256,11 +256,12 @@
 <!--ipic_box star-->
 <div class="ipic_box">
     <ul class="ul auto auto_1150 clearfix">
-        {ifset $picLinks}
-            {foreach $picLinks as $item}
+    
+        {ifset $indexZtItems}
+            {foreach $indexZtItems as $item}
                 <li>
                     <a href="{$item['url']}">
-                        <img src="{$item['pic']}">
+                        <img src="{$item['image_path']}">
                         <aside class="dot">{$item['title']}</aside>
                     </a>
                 </li>

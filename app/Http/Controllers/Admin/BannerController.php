@@ -31,6 +31,7 @@ class BannerController extends AdminBaseController
         return match($type) {
             'indexFast' => '首页快捷方式',
             'banner' => '轮播图',
+            'indexZt' => '首页专题',
             default => '未知类型'
         };
     }

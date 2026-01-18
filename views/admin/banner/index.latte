@@ -10,11 +10,13 @@
         <div class="col-md-6">
             <a class="btn btn-primary mr-2" href="/admin/banner/edit"><i class="fas fa-plus"></i> 新增 Banner</a>
             <a class="btn btn-success" href="/admin/banner/edit?type=indexFast"><i class="fas fa-plus"></i> 新增首页快捷方式</a>
+            <a class="btn btn-warning" href="/admin/banner/edit?type=indexZt"><i class="fas fa-plus"></i> 新增首页专题</a>
         </div>
         <div class="col-md-6 text-right">
             <a class="btn btn-{if $current_type == ''}primary{else}secondary{/if} mr-1" href="/admin/banner">全部</a>
             <a class="btn btn-{if $current_type == 'banner'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=banner">轮播图</a>
-            <a class="btn btn-{if $current_type == 'indexFast'}primary{else}secondary{/if}" href="/admin/banner?type=indexFast">首页快捷方式</a>
+            <a class="btn btn-{if $current_type == 'indexFast'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=indexFast">首页快捷方式</a>
+            <a class="btn btn-{if $current_type == 'indexZt'}primary{else}secondary{/if}" href="/admin/banner?type=indexZt">首页专题</a>
         </div>
     </div>
     <table class="table table-bordered table-hover">
@@ -33,6 +35,8 @@
                     <span class="badge bg-success rounded-pill">首页快捷方式</span>
                 {elseif $b['type'] == 'banner'}
                     <span class="badge bg-info rounded-pill">轮播图</span>
+                {elseif $b['type'] == 'indexZt'}
+                    <span class="badge bg-warning rounded-pill">首页专题</span>
                 {else}
                     <span class="badge bg-secondary rounded-pill">未知</span>
                 {/if}

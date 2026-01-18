@@ -14,6 +14,7 @@
             <select class="form-control" name="type" required>
                 <option value="banner" {if !isset($banner['type']) || $banner['type'] == 'banner'}selected{/if}>轮播图</option>
                 <option value="indexFast" {if isset($banner['type']) && $banner['type'] == 'indexFast'}selected{/if}>首页快捷方式</option>
+                <option value="indexZt" {if isset($banner['type']) && $banner['type'] == 'indexZt'}selected{/if}>首页专题</option>
             </select>
         </div>
 
