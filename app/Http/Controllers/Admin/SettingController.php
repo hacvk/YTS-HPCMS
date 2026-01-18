@@ -48,14 +48,7 @@ class SettingController extends AdminBaseController
                         'site_favicon' => ['label' => '网站图标', 'type' => 'image'],
                     ]
                 ],
-                'contact' => [
-                    'title' => '联系信息',
-                    'fields' => [
-                        'site_email' => ['label' => '联系邮箱', 'type' => 'email'],
-                        'site_phone' => ['label' => '联系电话', 'type' => 'text'],
-                        'site_address' => ['label' => '联系地址', 'type' => 'textarea'],
-                    ]
-                ],
+
                 'footer' => [
                     'title' => '页脚信息',
                     'fields' => [

@@ -23,19 +23,19 @@
                             <a title="分享到微信" class="bshare-weixin"></a>
                         </div>
                     </ol>
-                    <li><img src="{$qrCodeUrl ?? ''}"></li>
+                    <li><img src="{setting('contact_qr_code', '')}"></li>
                 </ul>
             </div>
 
             <div class="copyright fl" style="position:relative;">
                 <a style="position:absolute;left:0;top:0;width:100px;height:100%;z-index:5;" target="_blank" href="{$orgPlatformUrl ?? '#'}"></a>
-                &copy; {=date('Y')} {$hospitalName ?? ''}
-                <a id="icp_record" href="//beian.miit.gov.cn" target="_blank">{$icpRecord ?? ''}</a>
-                <a style="color: #bcbec0;" href="http://www.beian.gov.cn/portal/registerSystemInfo?recordcode={$policeRecordCode ?? ''}">
-                    <img src="{asset('static/front/images/gaba.png')}" style="vertical-align: middle; display: inline-block;">{$policeRecord ?? ''}
+                &copy; {=date('Y')} {setting('site_name', '')}
+                <a id="icp_record" href="//beian.miit.gov.cn" target="_blank">{setting('site_icp', '')}</a>
+                <a style="color: #bcbec0;" href="{setting('site_beian_url', 'http://www.beian.gov.cn/portal/registerSystemInfo?recordcode=')}{setting('site_beian', '')}">
+                    <img src="{asset('static/front/images/gaba.png')}" style="vertical-align: middle; display: inline-block;">{setting('site_beian', '')}
                 </a>
-                <p>乘车方式：{$traffic ?? ''}</p>
-                <p>院址：{$address ?? ''} 邮编:{$zip ?? ''}&emsp;服务热线：{$phone ?? ''}&emsp;举报电话：{$reportPhone ?? ''}</p>
+                <p>乘车方式：{setting('contact_traffic', '')}</p>
+                <p>院址：{setting('contact_address', '')} 邮编:{setting('contact_zip', '')}&emsp;服务热线：{setting('contact_phone', '')}&emsp;举报电话：{setting('contact_report_phone', '')}</p>
             </div>
         </div>
     </div>
@@ -70,11 +70,11 @@
     <a href="#" class="icon1">
         官方微信
         <span class="img-box">
-            <img src="{$wechatQrUrl ?? ''}" alt="">
+            <img src="{setting('contact_wechat_qr', '')}" alt="">
         </span>
     </a>
     <a href="/jiuzhenzhinan/" class="icon2">来院路线</a>
-    <a href="{$onlineServiceUrl ?? ''}" class="icon3">在线客服</a>
+    <a href="{setting('contact_online_service', '')}" class="icon3">在线客服</a>
     <a href="javascript:void(0);" onclick="$('body,html').animate({ scrollTop: 0 },500);" class="top"><b>TOP</b>回到顶部</a>
 </div>
 

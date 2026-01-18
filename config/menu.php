@@ -7,6 +7,7 @@ return [
         'children' => [
             ['title' => '单页管理', 'route' => '/admin/page', 'perm' => 'admin:page:view'],
             ['title' => '缓存管理', 'route' => '/admin/cache', 'perm' => 'admin:cache:view'],
+            ['title' => '联系方式', 'route' => '/admin/contact', 'perm' => 'admin:contact:view'],
         ],
         'is_shortcut' => true, // 标识为快捷导航组
     ],
@@ -32,6 +33,7 @@ return [
         'icon'  => 'gear',
         'children' => [
             ['title' => '基本设置', 'route' => '/admin/setting', 'perm' => 'admin:setting:view'],
+            ['title' => '联系方式', 'route' => '/admin/contact', 'perm' => 'admin:contact:view'],
             ['title' => '角色管理', 'route' => '/admin/role', 'perm' => 'admin:role:view'],
             ['title' => '管理员管理', 'route' => '/admin/admin', 'perm' => 'admin:admin:view'],
             ['title' => '操作日志', 'route' => '/admin/log', 'perm' => 'admin:log:view'],

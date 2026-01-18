@@ -110,6 +110,8 @@ class PermissionService
         $add('系统设置', 'admin:role:delete', '角色管理（删除）');
         $add('系统设置', 'admin:admin:save', '管理员管理（新增/编辑）');
         $add('系统设置', 'admin:admin:delete', '管理员管理（删除）');
+        $add('系统设置', 'admin:contact:save', '联系方式（新增/编辑）');
+        $add('系统设置', 'admin:contact:delete', '联系方式（删除）');
         $add('内容管理', 'admin:category:save', '栏目管理（新增/编辑）');
         $add('内容管理', 'admin:category:delete', '栏目管理（删除）');
         $add('内容管理', 'admin:article:save', '文章管理（新增/编辑）');
