@@ -605,6 +605,87 @@ class FileService
     }
 
     /**
+     * 删除封面图片（删除物理文件并记录日志）
+     * 
+     * @param string $imageUrl 图片URL（如: /uploads/images/2024/01/01/xxx.jpg）
+     * @param int $adminId 管理员ID
+     * @param string $username 管理员用户名
+     * @param string $target 删除目标描述（如: "文章封面", "栏目图片"等）
+     * @return bool 删除是否成功
+     */
+    public static function deleteCoverImage(string $imageUrl, int $adminId, string $username, string $target = '封面图片'): bool
+    {
+        try {
+            // 清理URL，确保格式正确
+            $imageUrl = ltrim($imageUrl, '/');
+            
+            // 验证URL格式，确保是上传目录下的文件
+            if (!preg_match('/^uploads\/images\//', $imageUrl)) {
+                error_log('[FileService] 封面图片删除失败：URL格式不正确 ' . $imageUrl);
+                return false;
+            }
+            
+            // 验证文件路径安全性（防止路径遍历攻击）
+            if (strpos($imageUrl, '../') !== false || strpos($imageUrl, '..\\') !== false) {
+                error_log('[FileService] 封面图片删除失败：检测到路径遍历攻击 ' . $imageUrl);
+                return false;
+            }
+            
+            // 删除物理文件
+            $result = self::deletePhysicalFile($imageUrl);
+            
+            if ($result) {
+                // 记录删除成功日志
+                try {
+                    \App\Services\LogService::deleted(
+                        $target,
+                        "图片路径: {$imageUrl}",
+                        $adminId,
+                        $username
+                    );
+                } catch (\Exception $e) {
+                    error_log('[FileService] 记录删除日志失败: ' . $e->getMessage());
+                }
+                
+                error_log("[FileService] 封面图片删除成功: {$imageUrl} (管理员: {$username})");
+                return true;
+            } else {
+                // 记录删除失败日志
+                try {
+                    \App\Services\LogService::record(
+                        $adminId,
+                        $username,
+                        'delete',
+                        $target,
+                        "封面图片删除失败: {$imageUrl}",
+                        \App\Services\LogService::LEVEL_ERROR
+                    );
+                } catch (\Exception $e) {
+                    error_log('[FileService] 记录删除失败日志失败: ' . $e->getMessage());
+                }
+                
+                error_log("[FileService] 封面图片删除失败: {$imageUrl} (管理员: {$username})");
+                return false;
+            }
+        } catch (\Exception $e) {
+            // 记录异常日志
+            try {
+                \App\Services\LogService::error(
+                    $e,
+                    'delete',
+                    $adminId,
+                    $username
+                );
+            } catch (\Exception $logException) {
+                error_log('[FileService] 记录异常日志失败: ' . $logException->getMessage());
+            }
+            
+            error_log('[FileService] 删除封面图片异常: ' . $e->getMessage() . ' (图片: ' . $imageUrl . ')');
+            return false;
+        }
+    }
+
+    /**
      * 获取文件访问URL
      *
      * @param string $relativePath 文件相对路径

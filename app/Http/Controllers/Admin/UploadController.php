@@ -35,13 +35,20 @@ class UploadController extends AdminBaseController
     {
         // 只接受POST请求
         if (!$this->isPost()) {
-            $this->errorJson('请求方法错误', 1);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['errno' => 1, 'message' => '请求方法错误'], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
         try {
             // 检查是否有文件上传
             if (!isset($_FILES['file'])) {
-                $this->errorJson(FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE), 1);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'errno' => 1,
+                    'message' => FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE)
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
             }
 
             $uploadedFile = $_FILES['file'];
@@ -56,19 +63,50 @@ class UploadController extends AdminBaseController
                 'uploaded_by' => $this->getAdminId()
             ];
 
-            // 处理文件上传（使用FileService）
+            // 处理文件上传（使用 FileService）
             $result = FileService::handleUpload($uploadedFile, $options);
 
             if (!$result['success']) {
-                $this->errorJson($result['message'] ?? '上传失败', 1);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'errno' => 1,
+                    'message' => $result['message'] ?? '上传失败'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // 如果指定了更新内容表的参数，则更新 sys_content 表的 cover_img 字段
+            $updateTable = $this->post('update_table', '');
+            $updateField = $this->post('update_field', '');
+            $updateId = (int)$this->post('update_id', 0);
+
+            if ($updateTable === 'sys_content' && $updateField === 'cover_img' && $updateId > 0) {
+                try {
+                    $db = \App\Core\Database::get();
+                    $contentModel = new \App\Models\Content($db);
+                    $contentModel->update($updateId, ['cover_img' => $result['url']]);
+                } catch (\Exception $e) {
+                    error_log('更新内容表封面图片失败: ' . $e->getMessage());
+                    // 不中断上传流程，只是记录错误
+                }
             }
 
             // 返回成功响应（wangeditor 4.x 格式）
-            $this->successJson('上传成功', ['errno' => 0, 'data' => [$result['url']]]);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'errno' => 0,
+                'data' => [$result['url']]  // wangeditor 4.x 期望 data 是图片URL数组
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
 
         } catch (\Exception $e) {
             error_log('文件上传失败: ' . $e->getMessage());
-            $this->errorJson('上传失败: ' . $e->getMessage(), 1);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'errno' => 1,
+                'message' => '上传失败: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
     }
 
@@ -98,19 +136,45 @@ class UploadController extends AdminBaseController
 
         $uploadedFile = $_FILES['file'];
 
-        // 使用FileService处理上传，指定module为'banner'
-        $options = [
-            'module' => 'banner',
-            'uploaded_by' => $this->getAdminId()
-        ];
-
-        $result = FileService::handleUpload($uploadedFile, $options);
-
-        if (!$result['success']) {
-            $this->errorJson($result['message'] ?? '上传失败');
+        if (!is_array($uploadedFile) || ($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $this->errorJson(FileService::getUploadErrorMessage((int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE)));
         }
 
-        $this->successJson('上传成功', ['url' => $result['url']]);
+        $ext = strtolower(pathinfo((string)($uploadedFile['name'] ?? ''), PATHINFO_EXTENSION));
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        if ($ext === '' || !in_array($ext, $allowed, true)) {
+            $this->errorJson('仅支持jpg/jpeg/png/gif/webp');
+        }
+
+        $root = dirname(__DIR__, 3);
+        $dir = $root . '/public/uploads/images';
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+
+        // 计算下一个序号
+        $max = 0;
+        $files = glob($dir . '/Categorybanner*.*') ?: [];
+        foreach ($files as $f) {
+            $base = basename($f);
+            if (preg_match('/^Categorybanner(\d+)\./i', $base, $m)) {
+                $n = (int)$m[1];
+                if ($n > $max) {
+                    $max = $n;
+                }
+            }
+        }
+        $next = $max + 1;
+
+        $filename = 'Categorybanner' . $next . '.' . $ext;
+        $dest = $dir . '/' . $filename;
+
+        if (!move_uploaded_file((string)$uploadedFile['tmp_name'], $dest)) {
+            $this->errorJson('上传失败：保存文件失败');
+        }
+
+        $url = '/uploads/images/' . $filename;
+        $this->successJson('上传成功', ['url' => $url]);
     }
 
 
@@ -150,6 +214,105 @@ class UploadController extends AdminBaseController
         } catch (\Exception $e) {
             error_log('获取文件列表失败: ' . $e->getMessage());
             $this->error('加载页面失败: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 删除封面图片
+     * 
+     * @return void
+     */
+    public function deleteCoverImage(): void
+    {
+        // 只接受POST请求
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+            return;
+        }
+
+        try {
+            // 验证CSRF Token
+            $csrfToken = $this->post('csrf_token', '');
+            if (!Security::checkCsrfToken($csrfToken)) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'code' => 1,
+                    'message' => 'CSRF Token验证失败'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // 获取图片URL
+            $imageUrl = $this->post('image_url', '');
+            if (empty($imageUrl)) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'code' => 1,
+                    'message' => '图片URL不能为空'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // 验证URL格式，确保是上传目录下的图片
+            if (!preg_match('/^\/uploads\/images\//', $imageUrl)) {
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'code' => 1,
+                    'message' => '无效的图片URL'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+
+            // 调用FileService删除封面图片并记录日志
+            $result = FileService::deleteCoverImage(
+                $imageUrl,
+                $this->getAdminId(),
+                $this->getAdminUsername(),
+                '文章封面'
+            );
+
+            if ($result) {
+                // 如果图片URL存在于数据库中，也需要清除相关记录
+                try {
+                    $db = \App\Core\Database::get();
+                    $contentModel = new \App\Models\Content($db);
+                    
+                    // 查找使用该图片的所有内容记录
+                    $contents = $db->select('sys_content', ['id'], ['cover_img' => $imageUrl]);
+                    
+                    foreach ($contents as $content) {
+                        // 清除cover_img字段
+                        $contentModel->update($content['id'], ['cover_img' => '']);
+                    }
+                } catch (\Exception $e) {
+                    error_log('更新内容表封面图片字段失败: ' . $e->getMessage());
+                    // 不中断删除流程，只记录错误
+                }
+
+                // 确保返回JSON格式
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'code' => 0,
+                    'message' => '封面图片删除成功'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            } else {
+                // 确保返回JSON格式
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode([
+                    'code' => 1,
+                    'message' => '封面图片删除失败'
+                ], JSON_UNESCAPED_UNICODE);
+                exit;
+            }
+        } catch (\Exception $e) {
+            error_log('删除封面图片失败: ' . $e->getMessage());
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'code' => 1,
+                'message' => '删除封面图片失败: ' . $e->getMessage()
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
         }
     }
 

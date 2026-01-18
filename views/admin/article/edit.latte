@@ -94,6 +94,9 @@
                                 {if isset($article['cover_img']) && $article['cover_img']}
                                 <div class="mt-2">
                                     <img src="{$article['cover_img']}" width="200" class="img-thumbnail">
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteCoverImage()">删除封面图</button>
+                                    </div>
                                 </div>
                                 {/if}
                             </div>
@@ -327,6 +330,14 @@
                 formData.append('csrf_token', csrfToken);
                 formData.append('module', 'article');
                 
+                // 如果是编辑模式，添加更新内容表的参数
+                const articleId = document.querySelector('input[name="id"]');
+                if (articleId && articleId.value) {
+                    formData.append('update_table', 'sys_content');
+                    formData.append('update_field', 'cover_img');
+                    formData.append('update_id', articleId.value);
+                }
+                
                 // 显示上传中提示
                 const coverImgInput = document.getElementById('cover_img');
                 const originalValue = coverImgInput.value;
@@ -372,6 +383,61 @@
             document.body.appendChild(input);
             input.click();
             document.body.removeChild(input);
+        };
+
+        // 删除封面图片函数
+        window.deleteCoverImage = function() {
+            if (!confirm('确定要删除当前封面图片吗？此操作不可撤销！')) {
+                return;
+            }
+
+            const coverImgInput = document.getElementById('cover_img');
+            const imageUrl = coverImgInput.value;
+            if (!imageUrl) {
+                alert('没有可删除的封面图片');
+                return;
+            }
+
+            // 显示删除中状态
+            const deleteBtn = event.target;
+            const originalText = deleteBtn.innerHTML;
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '删除中...';
+
+            // 准备删除请求数据
+            const formData = new FormData();
+            formData.append('image_url', imageUrl);
+            const csrfToken = document.getElementById('csrf_token')?.value || '';
+            formData.append('csrf_token', csrfToken);
+
+            // 发送删除请求
+            fetch('/admin/upload/deleteCoverImage', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+                if (data.code === 0) {
+                    // 删除成功，清空封面图片输入框和预览
+                    coverImgInput.value = '';
+                    const preview = coverImgInput.parentElement.nextElementSibling;
+                    if (preview && preview.classList.contains('mt-2')) {
+                        preview.innerHTML = '';
+                    }
+                    alert(data.message || '封面图片删除成功');
+                } else {
+                    // 删除失败
+                    alert(data.message || '封面图片删除失败');
+                }
+            })
+            .catch(error => {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalText;
+                console.error('删除错误:', error);
+                alert('封面图片删除失败，请重试');
+            });
         };
         
         // 动态加载扩展字段（根据栏目类型）
@@ -569,6 +635,14 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 const csrfToken = document.getElementById('csrf_token')?.value || '';
+                
+                // 如果是编辑模式，添加更新内容表的参数
+                const articleId = document.querySelector('input[name="id"]');
+                if (articleId && articleId.value) {
+                    formData.append('update_table', 'sys_content');
+                    formData.append('update_field', 'cover_img');
+                    formData.append('update_id', articleId.value);
+                }
                 formData.append('csrf_token', csrfToken);
                 
                 const targetInput = document.getElementById(inputId);
