@@ -141,7 +141,12 @@ class CategoryController extends BaseController
 
             // 构建完整路径
             $candidate = 'front/' . ltrim($tpl, '/\\');
-            $candidatePath = dirname(__DIR__, 1) . '/View/' . $candidate;
+            $candidatePath = dirname(__DIR__, 2) . '/views/' . $candidate;
+            
+            // 添加调试信息
+            error_log('Template check - candidate: ' . $candidate);
+            error_log('Template check - candidatePath: ' . $candidatePath);
+            error_log('Template check - file exists: ' . (is_file($candidatePath) ? 'true' : 'false'));
 
             // 检查文件是否存在
             if (is_file($candidatePath)) {

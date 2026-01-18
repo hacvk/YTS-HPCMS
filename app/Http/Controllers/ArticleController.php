@@ -73,6 +73,9 @@ class ArticleController extends BaseController
 
             // 获取栏目信息
             $category = $this->categoryModel->getById($categoryId);
+            
+            // 构建面包屑导航
+            $breadcrumbs = $this->buildBreadcrumbs($category);
 
             $this->render($detailTemplate, [
                 'title' => $article['title'] ?? '',
@@ -82,12 +85,59 @@ class ArticleController extends BaseController
                 'nextArticle' => $nextArticle,
                 'channelItems' => $channelItems,
                 'navItems' => $navItems,
+                'breadcrumbs' => $breadcrumbs,
             ]);
         } catch (\Throwable $e) {
             error_log('文章详情页加载失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             $this->redirect('/');
         }
+    }
+    
+    /**
+     * 构建面包屑导航
+     *
+     * @param array|null $category 当前栏目
+     * @return array
+     */
+    private function buildBreadcrumbs(?array $category): array
+    {
+        $breadcrumbs = [];
+        
+        if (!$category) {
+            // 添加首页链接
+            $breadcrumbs[] = ['title' => '首页', 'url' => '/'];
+            return $breadcrumbs;
+        }
+        
+        // 递归获取父级栏目
+        $parentCategories = [];
+        $currentCat = $category;
+        
+        while ($currentCat) {
+            array_unshift($parentCategories, [
+                'title' => $currentCat['name'] ?? '',
+                'url' => '/c/' . ($currentCat['slug'] ?? '')
+            ]);
+            
+            $parentId = (int)($currentCat['parent_id'] ?? 0);
+            if ($parentId > 0) {
+                $currentCat = $this->categoryModel->getById($parentId);
+            } else {
+                $currentCat = null;
+            }
+        }
+        
+        // 添加首页链接
+        $breadcrumbs[] = ['title' => '首页', 'url' => '/'];
+        
+        // 添加父级栏目链接
+        $breadcrumbs = array_merge($breadcrumbs, $parentCategories);
+        
+        // 添加当前文章标题（不带链接）
+        $breadcrumbs[] = ['title' => $category['name'] ?? '未知栏目', 'url' => ''];
+        
+        return $breadcrumbs;
     }
 
     /**
@@ -118,7 +168,12 @@ class ArticleController extends BaseController
 
             // 构建完整路径
             $candidate = 'front/' . ltrim($tpl, '/\\');
-            $candidatePath = dirname(__DIR__, 1) . '/View/' . $candidate;
+            $candidatePath = dirname(__DIR__, 2) . '/views/' . $candidate;
+            
+            // 添加调试信息
+            error_log('Detail template check - candidate: ' . $candidate);
+            error_log('Detail template check - candidatePath: ' . $candidatePath);
+            error_log('Detail template check - file exists: ' . (is_file($candidatePath) ? 'true' : 'false'));
 
             // 检查文件是否存在
             if (is_file($candidatePath)) {
