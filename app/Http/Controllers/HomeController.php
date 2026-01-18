@@ -54,6 +54,9 @@ class HomeController extends BaseController
 
         // 获取专家介绍（栏目ID=3 及其所有子栏目）
         $doctorItems = $this->getDoctorItems();
+        
+        // 获取科室数据用于首页展示（parent_id=9的栏目及其子栏目文章）
+        $departmentData = $this->getDepartmentDataWithArticles();
 
         $data = [
             'navItems' => $navItems,
@@ -64,11 +67,78 @@ class HomeController extends BaseController
             'noticeMoreUrl' => '/c/zhaobiao', // 招标信息栏目别名
             'doctorItems' => $doctorItems,
             'channelItems' => [], // 首页不需要特定的频道项目
+            'departmentTabs' => $departmentData['tabs'],
+            'departmentGroups' => $departmentData['groups'],
         ];
 
         $this->render('front/index', $data);
     }
 
+    /**
+     * 获取科室数据用于首页展示
+     * parent_id=9的栏目作为标签页，其子栏目下的文章作为内容
+     *
+     * @return array{tabs: array<string>, groups: array<array<array<string, mixed>>>}
+     */
+    private function getDepartmentDataWithArticles(): array
+    {
+        try {
+            // 获取 parent_id=9 的栏目（作为标签页）
+            $parentDepartments = $this->db->select('sys_category', [
+                'id',
+                'name',
+                'parent_id'
+            ], [
+                'parent_id' => 9,
+                'is_hidden' => 0,
+                'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+            ]) ?: [];
+            
+            $tabs = [];
+            $groups = [];
+            
+            foreach ($parentDepartments as $dept) {
+                $tabs[] = $dept['name'];
+                
+                // 直接获取该父栏目下的文章（因为parent_id=9的子栏目就是我们要获取文章的栏目）
+                $articles = $this->db->select('sys_content', [
+                    'id',
+                    'title',
+                    'cover_img',
+                    'summary',
+                    'published_at'
+                ], [
+                    'category_id' => $dept['id'],
+                    'status' => 1,
+                    'ORDER' => ['published_at' => 'DESC'],
+                    'LIMIT' => 9 // 限制每组最多显示6篇文章
+                ]) ?: [];
+                
+                $groupItems = [];
+                foreach ($articles as $article) {
+                    $groupItems[] = [
+                        'title' => $article['title'],
+                        'pic' => $article['cover_img'] ? $article['cover_img'] : '', // 有图片则使用原图，否则留空
+                        'url' => '/article/' . $article['id']
+                    ];
+                }
+                
+                $groups[] = $groupItems;
+            }
+            
+            return [
+                'tabs' => $tabs,
+                'groups' => $groups
+            ];
+        } catch (\Throwable $e) {
+            error_log('获取科室数据失败: ' . $e->getMessage());
+            return [
+                'tabs' => [],
+                'groups' => []
+            ];
+        }
+    }
+    
     /**
      * 获取专家介绍列表
      * 从栏目ID=3及其所有子栏目中获取专家数据
