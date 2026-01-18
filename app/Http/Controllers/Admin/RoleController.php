@@ -46,7 +46,7 @@ class RoleController extends AdminBaseController
         if ($id > 0) {
             $role = $db->get('sys_role', ['id', 'name', 'title', 'status', 'sort', 'remark'], ['id' => $id]);
             if (!$role) {
-                $this->error('角色不存�?);
+                $this->error('角色不存在');
             }
 
             $rows = $db->select('sys_role_permission', [
@@ -65,7 +65,7 @@ class RoleController extends AdminBaseController
             }
         }
 
-        // 使用 PermissionService 获取所有权�?
+        // 使用 PermissionService 获取所有权�?
         $permissionService = $this->permissionService;
         [$permGroups, $allPermKeys] = $permissionService->getAllPermissions();
 
@@ -110,7 +110,7 @@ class RoleController extends AdminBaseController
         }
 
         if ($name === '') {
-            $this->errorJson('请输入角色标�?);
+            $this->errorJson('请输入角色标识');
             return;
         }
 
@@ -127,7 +127,7 @@ class RoleController extends AdminBaseController
         if ($id > 0) {
             $exists = $db->has('sys_role', ['id' => $id]);
             if (!$exists) {
-                $this->errorJson('角色不存�?);
+                $this->errorJson('角色不存在');
                 return;
             }
 
@@ -136,7 +136,7 @@ class RoleController extends AdminBaseController
                 'id[!]' => $id
             ]);
             if ($conflict) {
-                $this->errorJson('角色标识已存�?);
+                $this->errorJson('角色标识已存在');
                 return;
             }
 
@@ -144,7 +144,7 @@ class RoleController extends AdminBaseController
         } else {
             $conflict = $db->has('sys_role', ['name' => $name]);
             if ($conflict) {
-                $this->errorJson('角色标识已存�?);
+                $this->errorJson('角色标识已存在');
                 return;
             }
             $db->insert('sys_role', $data);
