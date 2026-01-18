@@ -146,7 +146,8 @@
         editor.config.uploadImgTimeout = 30000;
         editor.config.uploadFileName = 'file';
         editor.config.uploadImgParams = {
-            csrf_token: csrfToken
+            csrf_token: csrfToken,
+            module: 'page'
         };
         
         editor.create();
@@ -239,6 +240,7 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('csrf_token', csrfToken);
+                formData.append('module', 'page');
                 
                 const coverImgInput = document.getElementById('cover_img');
                 const originalValue = coverImgInput.value;

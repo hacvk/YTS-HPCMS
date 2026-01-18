@@ -323,8 +323,6 @@
                 // 创建 FormData
                 const formData = new FormData();
                 formData.append('file', file);
-                
-                // 获取 CSRF Token
                 const csrfToken = document.getElementById('csrf_token')?.value || '';
                 formData.append('csrf_token', csrfToken);
                 formData.append('module', 'article');

@@ -35,20 +35,13 @@ class UploadController extends AdminBaseController
     {
         // 只接受POST请求
         if (!$this->isPost()) {
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(['errno' => 1, 'message' => '请求方法错误'], JSON_UNESCAPED_UNICODE);
-            exit;
+            $this->errorJson('请求方法错误', 1);
         }
 
         try {
             // 检查是否有文件上传
             if (!isset($_FILES['file'])) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode([
-                    'errno' => 1,
-                    'message' => FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE)
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
+                $this->errorJson(FileService::getUploadErrorMessage(UPLOAD_ERR_NO_FILE), 1);
             }
 
             $uploadedFile = $_FILES['file'];
@@ -67,30 +60,15 @@ class UploadController extends AdminBaseController
             $result = FileService::handleUpload($uploadedFile, $options);
 
             if (!$result['success']) {
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode([
-                    'errno' => 1,
-                    'message' => $result['message'] ?? '上传失败'
-                ], JSON_UNESCAPED_UNICODE);
-                exit;
+                $this->errorJson($result['message'] ?? '上传失败', 1);
             }
 
             // 返回成功响应（wangeditor 4.x 格式）
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'errno' => 0,
-                'data' => [$result['url']]  // wangeditor 4.x 期望 data 是图片URL数组
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
+            $this->successJson('上传成功', ['errno' => 0, 'data' => [$result['url']]]);
 
         } catch (\Exception $e) {
             error_log('文件上传失败: ' . $e->getMessage());
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode([
-                'errno' => 1,
-                'message' => '上传失败: ' . $e->getMessage()
-            ], JSON_UNESCAPED_UNICODE);
-            exit;
+            $this->errorJson('上传失败: ' . $e->getMessage(), 1);
         }
     }
 
@@ -120,45 +98,19 @@ class UploadController extends AdminBaseController
 
         $uploadedFile = $_FILES['file'];
 
-        if (!is_array($uploadedFile) || ($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            $this->errorJson(FileService::getUploadErrorMessage((int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE)));
+        // 使用FileService处理上传，指定module为'banner'
+        $options = [
+            'module' => 'banner',
+            'uploaded_by' => $this->getAdminId()
+        ];
+
+        $result = FileService::handleUpload($uploadedFile, $options);
+
+        if (!$result['success']) {
+            $this->errorJson($result['message'] ?? '上传失败');
         }
 
-        $ext = strtolower(pathinfo((string)($uploadedFile['name'] ?? ''), PATHINFO_EXTENSION));
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if ($ext === '' || !in_array($ext, $allowed, true)) {
-            $this->errorJson('仅支持jpg/jpeg/png/gif/webp');
-        }
-
-        $root = dirname(__DIR__, 3);
-        $dir = $root . '/public/uploads/images';
-        if (!is_dir($dir)) {
-            @mkdir($dir, 0777, true);
-        }
-
-        // 计算下一个序号
-        $max = 0;
-        $files = glob($dir . '/Categorybanner*.*') ?: [];
-        foreach ($files as $f) {
-            $base = basename($f);
-            if (preg_match('/^Categorybanner(\d+)\./i', $base, $m)) {
-                $n = (int)$m[1];
-                if ($n > $max) {
-                    $max = $n;
-                }
-            }
-        }
-        $next = $max + 1;
-
-        $filename = 'Categorybanner' . $next . '.' . $ext;
-        $dest = $dir . '/' . $filename;
-
-        if (!move_uploaded_file((string)$uploadedFile['tmp_name'], $dest)) {
-            $this->errorJson('上传失败：保存文件失败');
-        }
-
-        $url = '/uploads/images/' . $filename;
-        $this->successJson('上传成功', ['url' => $url]);
+        $this->successJson('上传成功', ['url' => $result['url']]);
     }
 
 
