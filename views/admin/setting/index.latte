@@ -143,22 +143,12 @@ function deleteImage(inputId, previewId, fieldName) {
         return;
     }
     
-    console.log('deleteImage函数开始执行');
-    console.log('输入框ID:', inputId);
-    console.log('预览区域ID:', previewId);
-    console.log('字段名:', fieldName);
-    
     const inputElement = document.getElementById(inputId);
     const previewElement = document.getElementById(previewId);
-    
-    console.log('输入框元素:', inputElement);
-    console.log('预览区域元素:', previewElement);
     
     // 如果是网站Logo或网站图标，向服务器发送请求删除对应的文件
     if (fieldName === 'site_logo' || fieldName === 'site_favicon') {
         const csrfToken = document.getElementById('csrf_token')?.value || '';
-        
-        console.log('发送删除请求，字段名:', fieldName, 'CSRF Token:', csrfToken);
         
         // 发送AJAX请求通知服务器删除文件
         const formData = new FormData();
@@ -170,11 +160,9 @@ function deleteImage(inputId, previewId, fieldName) {
             body: formData
         })
         .then(response => {
-            console.log('删除请求响应状态:', response.status);
             return response.json();
         })
         .then(data => {
-            console.log('删除请求响应数据:', data);
             if (data.code !== 0) {
                 console.error('删除服务器图片失败:', data.message);
                 alert('删除失败: ' + data.message);
@@ -186,19 +174,13 @@ function deleteImage(inputId, previewId, fieldName) {
                     previewElement.innerHTML = '<img src="' + inputElement.dataset.originalValue + '" width="200" class="img-thumbnail" style="margin-bottom: 10px;">';
                 }
             } else {
-                console.log('删除服务器图片成功');
-                console.log('开始清空UI');
                 // 仅在服务器成功删除后才真正清空UI
                 if (inputElement) {
-                    console.log('清空输入框前的值:', inputElement.value);
                     inputElement.value = '';
-                    console.log('清空输入框后的值:', inputElement.value);
                 }
                 
                 if (previewElement) {
-                    console.log('清空预览区域前的HTML:', previewElement.innerHTML);
                     previewElement.innerHTML = '';
-                    console.log('清空预览区域后的HTML:', previewElement.innerHTML);
                 }
                 
                 alert('图片删除成功');
@@ -206,7 +188,6 @@ function deleteImage(inputId, previewId, fieldName) {
         })
         .catch(error => {
             console.error('删除图片请求失败:', error);
-            console.error('具体错误信息:', error.message);
             alert('删除请求失败: ' + error.message);
             // 如果请求失败，恢复原来的内容
             if (inputElement && inputElement.dataset.originalValue) {
@@ -217,18 +198,13 @@ function deleteImage(inputId, previewId, fieldName) {
             }
         });
     } else {
-        console.log('非支持字段，直接清空UI');
         // 如果不是受支持的字段，直接清空UI
         if (inputElement) {
-            console.log('清空输入框前的值:', inputElement.value);
             inputElement.value = '';
-            console.log('清空输入框后的值:', inputElement.value);
         }
         
         if (previewElement) {
-            console.log('清空预览区域前的HTML:', previewElement.innerHTML);
             previewElement.innerHTML = '';
-            console.log('清空预览区域后的HTML:', previewElement.innerHTML);
         }
     }
 }
