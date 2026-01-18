@@ -48,26 +48,30 @@
                                             <div class="content">
                                                 <b class="yname">{$article['title']}</b><br>
                                                 <b>科室：</b>
-                                                {if isset($article['attributes'])}
-                                                    {var $attributes = json_decode($article['attributes'], true)}
-                                                    {if isset($attributes['department']) && $attributes['department']}
-                                                        {$attributes['department']}<br>
-                                                    {else}
-                                                        暂无科室信息<br>
-                                                    {/if}
+                                                {if isset($article['keshi']) && is_array($article['keshi'])}
+                                                    {foreach $article['keshi'] as $dept}
+                                                        {if is_array($dept) && isset($dept[2])}
+                                                            {$dept[2]}<br>
+                                                        {/if}
+                                                    {/foreach}
+                                                {elseif isset($article['keshi'])}
+                                                    {$article['keshi']}<br>
                                                 {else}
                                                     暂无科室信息<br>
                                                 {/if}
                                                 <b>职称：</b>
-                                                {if isset($article['attributes'])}
-                                                    {var $attributes = json_decode($article['attributes'], true)}
-                                                    {if isset($attributes['title']) && $attributes['title']}
-                                                        {$attributes['title']}<br>
-                                                    {else}
-                                                        暂无职称信息<br>
-                                                    {/if}
+                                                {var $title = isset($article['zhicheng']) ? $article['zhicheng'] : (isset($article['title_other']) ? $article['title_other'] : null)}
+                                                {if $title}
+                                                    {$title}<br>
                                                 {else}
                                                     暂无职称信息<br>
+                                                {/if}
+                                                <b>任职职务：</b>
+                                                {var $pos = isset($article['position']) ? $article['position'] : (isset($article['zhiwu']) ? $article['zhiwu'] : null)}
+                                                {if $pos}
+                                                    {$pos}<br>
+                                                {else}
+                                                    暂无任职职务信息<br>
                                                 {/if}
                                             </div>
                                         </div>

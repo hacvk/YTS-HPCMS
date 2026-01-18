@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Models\Content;
 use App\Services\DoctorService;
 use App\Services\SiteService;
+use App\Services\CategoryService;
 use Medoo\Medoo;
 
 /**
@@ -26,6 +27,7 @@ class CategoryController extends BaseController
         private readonly Content $contentModel,
         private readonly DoctorService $doctorService,
         private readonly SiteService $siteService,
+        private readonly CategoryService $categoryService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -39,6 +41,7 @@ class CategoryController extends BaseController
      */
     public function index(): void
     {
+        error_log('CategoryController::index() called');
         $slug = $this->get('slug', '');
 
         if (empty($slug)) {
@@ -47,11 +50,18 @@ class CategoryController extends BaseController
         }
 
         try {
+            error_log('Looking for slug: ' . $slug);
             // 获取栏目信息
             $category = $this->db->get('sys_category', '*', [
                 'slug' => $slug,
                 'is_hidden' => 0
             ]);
+            
+            if ($category) {
+                error_log('Category found: ' . print_r($category, true));
+            } else {
+                error_log('Category not found for slug: ' . $slug);
+            }
 
             if (!$category || !is_array($category)) {
                 $this->redirect('/');
@@ -74,7 +84,9 @@ class CategoryController extends BaseController
             $articles = $this->contentModel->getList($page, $limit, ['cid' => $categoryId]);
 
             // 判定模板：如果是 doctorlist.latte，调用 DoctorService 处理数据
+            error_log('About to resolve template for category: ' . ($category['name'] ?? 'unknown') . ', template field: ' . ($category['template'] ?? 'not set'));
             $listTemplate = $this->resolveListTemplate($category);
+            error_log('Resolved template: ' . $listTemplate);
             $filterData = [];
 
             $tplBase = basename($listTemplate);
@@ -99,6 +111,19 @@ class CategoryController extends BaseController
             // 使用 SiteService 构建当前栏目的子栏目数据
             $channelItems = $this->siteService->buildChannelItems($categoryId);
 
+            // 构建面包屑导航
+            $breadcrumbs = [];
+            if (isset($category['id'])) {
+                $path = $this->categoryService->getPath((int)$category['id']);
+                foreach ($path as $cat) {
+                    $breadcrumbs[] = [
+                        'title' => $cat['name'],
+                        'url' => '/c/' . $cat['slug']
+                    ];
+                }
+            }
+
+            error_log('Rendering template: ' . $listTemplate . ' for category: ' . ($category['name'] ?? 'unknown'));
             // 渲染模板
             $this->render($listTemplate, [
                 'title' => (string)($category['name'] ?? ''),
@@ -110,6 +135,7 @@ class CategoryController extends BaseController
                 'navItems' => $navItems,
                 'channelItems' => $channelItems,
                 'filterData' => $filterData,
+                'breadcrumbs' => $breadcrumbs,
             ]);
         } catch (\Throwable $e) {
             error_log('栏目列表页加载失败 ' . $e->getMessage());
@@ -141,7 +167,7 @@ class CategoryController extends BaseController
 
             // 构建完整路径
             $candidate = 'front/' . ltrim($tpl, '/\\');
-            $candidatePath = dirname(__DIR__, 2) . '/views/' . $candidate;
+            $candidatePath = dirname(__DIR__, 3) . '/views/' . $candidate;
             
             // 添加调试信息
             error_log('Template check - candidate: ' . $candidate);

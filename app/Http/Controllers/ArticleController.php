@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 use App\Models\Category;
 use App\Services\ContentService;
 use App\Services\SiteService;
+use App\Services\CategoryService;
+use App\Services\DoctorService;
 
 /**
  * 文章控制器
@@ -23,7 +25,9 @@ class ArticleController extends BaseController
     public function __construct(
         private readonly ContentService $contentService,
         private readonly Category $categoryModel,
-        private readonly SiteService $siteService
+        private readonly SiteService $siteService,
+        private readonly CategoryService $categoryService,
+        private readonly DoctorService $doctorService
     ) {
         parent::__construct();
     }
@@ -36,6 +40,7 @@ class ArticleController extends BaseController
      */
     public function index(): void
     {
+        error_log('ArticleController::index() called');
         $id = (int)$this->get('id', 0);
 
         // 检查 ID 合法性
@@ -74,12 +79,31 @@ class ArticleController extends BaseController
             // 获取栏目信息
             $category = $this->categoryModel->getById($categoryId);
             
+            // 如果是医生详情页，需要处理科室ID到科室名称的转换
+            $processedArticle = $article;
+            if ($category && ($category['type'] ?? '') === 'doctor') {
+                // 创建一个模拟的 articles 结构来处理单个文章
+                $mockArticles = [
+                    'list' => [$article],
+                    'total' => 1
+                ];
+                
+                // 使用 DoctorService 处理医生数据
+                $processedResult = $this->doctorService->processDoctorList($mockArticles);
+                
+                // 提取处理后的文章
+                $processedList = $processedResult['list'] ?? [];
+                if (!empty($processedList)) {
+                    $processedArticle = $processedList[0];
+                }
+            }
+            
             // 构建面包屑导航
             $breadcrumbs = $this->buildBreadcrumbs($category);
 
             $this->render($detailTemplate, [
-                'title' => $article['title'] ?? '',
-                'article' => $article,
+                'title' => $processedArticle['title'] ?? '',
+                'article' => $processedArticle,
                 'category' => $category,
                 'prevArticle' => $prevArticle,
                 'nextArticle' => $nextArticle,
@@ -104,38 +128,21 @@ class ArticleController extends BaseController
     {
         $breadcrumbs = [];
         
-        if (!$category) {
-            // 添加首页链接
-            $breadcrumbs[] = ['title' => '首页', 'url' => '/'];
-            return $breadcrumbs;
-        }
-        
-        // 递归获取父级栏目
-        $parentCategories = [];
-        $currentCat = $category;
-        
-        while ($currentCat) {
-            array_unshift($parentCategories, [
-                'title' => $currentCat['name'] ?? '',
-                'url' => '/c/' . ($currentCat['slug'] ?? '')
-            ]);
-            
-            $parentId = (int)($currentCat['parent_id'] ?? 0);
-            if ($parentId > 0) {
-                $currentCat = $this->categoryModel->getById($parentId);
-            } else {
-                $currentCat = null;
-            }
-        }
-        
         // 添加首页链接
         $breadcrumbs[] = ['title' => '首页', 'url' => '/'];
         
-        // 添加父级栏目链接
-        $breadcrumbs = array_merge($breadcrumbs, $parentCategories);
+        if (!$category || !isset($category['id'])) {
+            return $breadcrumbs;
+        }
         
-        // 添加当前文章标题（不带链接）
-        $breadcrumbs[] = ['title' => $category['name'] ?? '未知栏目', 'url' => ''];
+        // 使用 CategoryService 的 getPath 方法获取栏目路径
+        $path = $this->categoryService->getPath((int)$category['id']);
+        foreach ($path as $cat) {
+            $breadcrumbs[] = [
+                'title' => $cat['name'],
+                'url' => '/c/' . $cat['slug']
+            ];
+        }
         
         return $breadcrumbs;
     }
@@ -168,7 +175,7 @@ class ArticleController extends BaseController
 
             // 构建完整路径
             $candidate = 'front/' . ltrim($tpl, '/\\');
-            $candidatePath = dirname(__DIR__, 2) . '/views/' . $candidate;
+            $candidatePath = dirname(__DIR__, 3) . '/views/' . $candidate;
             
             // 添加调试信息
             error_log('Detail template check - candidate: ' . $candidate);
