@@ -81,6 +81,8 @@ class Content
                     'content.status',
                     'content.views',
                     'content.published_at',
+                    'content.is_top',
+                    'content.is_image_news',
                     'content.attributes', // 选择 attributes 字段用于 JSON 反序列化
                     'category.name(category_name)'
                 ],
@@ -143,6 +145,14 @@ class Content
             // 自动序列化 JSON 字段
             $data = $this->serializeJsonFields($data);
             
+            // 确保新字段存在，防止插入时出错
+            if (!isset($data['is_top'])) {
+                $data['is_top'] = 0;
+            }
+            if (!isset($data['is_image_news'])) {
+                $data['is_image_news'] = 0;
+            }
+            
             $result = $this->db->insert(self::TABLE, $data);
             
             // 检查是否有错误
@@ -191,6 +201,14 @@ class Content
             // 自动序列化 JSON 字段
             $data = $this->serializeJsonFields($data);
             
+            // 确保新字段存在，防止更新时出错
+            if (!isset($data['is_top'])) {
+                $data['is_top'] = 0;
+            }
+            if (!isset($data['is_image_news'])) {
+                $data['is_image_news'] = 0;
+            }
+            
             $this->db->update(self::TABLE, $data, ['id' => $id]);
             
             // 检查是否有错误
@@ -220,7 +238,22 @@ class Content
         try {
             $article = $this->db->get(
                 self::TABLE,
-                '*',
+                [
+                    'id',
+                    'category_id',
+                    'title',
+                    'cover_img',
+                    'summary',
+                    'content',
+                    'views',
+                    'status',
+                    'published_at',
+                    'created_at',
+                    'updated_at',
+                    'is_top',
+                    'is_image_news',
+                    'attributes'
+                ],
                 ['id' => $id]
             );
             
@@ -256,7 +289,22 @@ class Content
         try {
             $content = $this->db->get(
                 self::TABLE,
-                '*',
+                [
+                    'id',
+                    'category_id',
+                    'title',
+                    'cover_img',
+                    'summary',
+                    'content',
+                    'views',
+                    'status',
+                    'published_at',
+                    'created_at',
+                    'updated_at',
+                    'is_top',
+                    'is_image_news',
+                    'attributes'
+                ],
                 ['category_id' => $categoryId]
             );
             

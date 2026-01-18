@@ -55,6 +55,9 @@ class HomeController extends BaseController
         // 获取专家介绍（栏目ID=3 及其所有子栏目）
         $doctorItems = $this->getDoctorItems();
         
+        // 获取图片新闻（is_image_news=1）用于首页轮播展示
+        $imageNewsItems = $this->getImageNewsItems();
+        
         // 获取科室数据用于首页展示（parent_id=9的栏目及其子栏目文章）
         $departmentData = $this->getDepartmentDataWithArticles();
 
@@ -62,6 +65,7 @@ class HomeController extends BaseController
             'navItems' => $navItems,
             'bannerItems' => $this->bannerModel->getBanners(), // 轮播图
             'indexFastItems' => $this->bannerModel->getIndexFastItems(10), // 首页快捷方式
+            'newsSliderItems' => $imageNewsItems, // 图片新闻轮播
             'hospitalNewsItems' => $ywggList,
             'noticeItems' => $zbggList,
             'hospitalNewsMoreUrl' => '/c/yuanwu', // 院务公开栏目别名
@@ -202,5 +206,47 @@ class HomeController extends BaseController
         }
 
         return $doctorItems;
+    }
+    
+    /**
+     * 获取图片新闻用于首页轮播展示
+     *
+     * @return array<int, array<string, mixed>> 图片新闻列表
+     */
+    private function getImageNewsItems(): array
+    {
+        $imageNewsItems = [];
+
+        try {
+            $rows = $this->db->select('sys_content', [
+                'id',
+                'title',
+                'cover_img',
+                'summary',
+                'published_at'
+            ], [
+                'is_image_news' => 1,
+                'status' => 1,
+                'ORDER' => ['published_at' => 'DESC'],
+                'LIMIT' => 5
+            ]) ?: [];
+
+            foreach ($rows as $r) {
+                if (!is_array($r)) {
+                    continue;
+                }
+
+                $imageNewsItems[] = [
+                    'url' => '/article/' . (int)($r['id'] ?? 0),
+                    'pic' => (string)($r['cover_img'] ?? ''),
+                    'title' => (string)($r['title'] ?? ''),
+                ];
+            }
+        } catch (\Throwable $e) {
+            error_log('获取图片新闻失败: ' . $e->getMessage());
+            $imageNewsItems = [];
+        }
+
+        return $imageNewsItems;
     }
 }

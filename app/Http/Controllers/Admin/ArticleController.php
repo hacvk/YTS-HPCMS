@@ -173,6 +173,10 @@ class ArticleController extends AdminBaseController
                 $article['published_at_formatted'] = '';
             }
             
+            // 确保新字段存在
+            $article['is_top'] = $article['is_top'] ?? 0;
+            $article['is_image_news'] = $article['is_image_news'] ?? 0;
+            
             // 获取栏目树
             $categories = $this->categoryService->getTree();
             
@@ -233,6 +237,8 @@ class ArticleController extends AdminBaseController
             $content = Security::sanitizeHtml($this->post('content', '')); // 富文本内容，进行HTML净身
             $publishedAt = $this->post('published_at', '');
             $status = (int)$this->post('status', 1);
+            $isTop = (int)$this->post('is_top', 0);
+            $isImageNews = (int)$this->post('is_image_news', 0);
             
             // 验证必填字段
             if (empty($title)) {
@@ -278,7 +284,9 @@ class ArticleController extends AdminBaseController
                 'cover_img' => Security::clean($coverImg),
                 'summary' => Security::clean($summary),
                 'content' => $content, // 富文本内容已净身
-                'status' => $status
+                'status' => $status,
+                'is_top' => $isTop,
+                'is_image_news' => $isImageNews
             ];
             
             // 如果有发布时间，则设置（需要转换为正确的格式）

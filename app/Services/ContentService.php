@@ -63,7 +63,7 @@ class ContentService
             // 标准字段列表
             $tableFields = [
                 'id', 'category_id', 'title', 'cover_img', 'summary', 'content', 
-                'views', 'status', 'published_at', 'created_at', 'updated_at', 'attributes'
+                'views', 'status', 'published_at', 'created_at', 'updated_at', 'is_top', 'is_image_news', 'attributes'
             ];
             
             foreach ($data as $key => $value) {
