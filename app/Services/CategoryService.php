@@ -222,6 +222,45 @@ class CategoryService
         }
 
         // 准备数据
+        $banner = isset($data['banner']) ? trim((string)$data['banner']) : null;
+        // 验证并处理banner图片路径，确保文件实际存在
+        if (!empty($banner)) {
+            // 使用与上传逻辑一致的路径计算方式
+            // 修复路径计算逻辑
+            $root = dirname(dirname(__DIR__)); // 从 app/Services 开始
+            
+            // 确保我们找到的是正确的项目根目录
+            if (basename($root) === 'app') {
+                $root = dirname($root); // 上一级才是真正的项目根目录
+            }
+            $fullPath = $root . '/public' . $banner;
+            
+            // 记录调试信息
+            error_log("CategoryService Banner图片路径验证: \$banner = $banner");
+            error_log("CategoryService 项目根目录: " . $root);
+            error_log("CategoryService 文档根目录: " . ($_SERVER['DOCUMENT_ROOT'] ?? '未设置'));
+            error_log("CategoryService Banner完整路径: \$fullPath = $fullPath");
+            error_log("CategoryService 文件是否存在: " . (file_exists($fullPath) ? '是' : '否')); 
+            error_log("CategoryService public目录是否存在: " . (is_dir($root . '/public') ? '是' : '否'));
+            error_log("CategoryService uploads目录是否存在: " . (is_dir($root . '/public/uploads') ? '是' : '否'));
+            error_log("CategoryService images目录是否存在: " . (is_dir($root . '/public/uploads/images') ? '是' : '否'));
+            
+            if (!file_exists($fullPath)) {
+                // 如果文件不存在，清空banner字段
+                $banner = null;
+                
+                // 记录日志以便调试
+                $adminId = $_SESSION['admin_id'] ?? 0;
+                $adminName = $_SESSION['admin_username'] ?? 'unknown';
+                \App\Services\LogService::record(
+                    $adminId, 
+                    $adminName, 
+                    'error', 
+                    'CategoryService: 栏目保存时发现无效的Banner图片路径: ' . $banner . '，文件不存在于: ' . $fullPath
+                );
+            }
+        }
+        
         $saveData = [
             'parent_id' => (int)($data['parent_id'] ?? 0),
             'name' => trim($data['name']),
@@ -231,7 +270,7 @@ class CategoryService
             'detail_template' => isset($data['detail_template']) ? trim($data['detail_template']) : 'article.latte',
             'sort' => (int)($data['sort'] ?? 0),
             'is_hidden' => isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0,
-            'banner' => isset($data['banner']) ? trim((string)$data['banner']) : null,
+            'banner' => $banner,
             'update_time' => date('Y-m-d H:i:s')
         ];
 

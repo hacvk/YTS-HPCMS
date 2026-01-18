@@ -196,6 +196,43 @@ class CategoryController extends AdminBaseController
                 $this->errorJson('详情模板无效');
             }
 
+            // 验证并处理banner图片路径，确保文件实际存在
+            $finalBanner = $banner;
+            if (!empty($banner)) {
+                // 使用与上传逻辑一致的路径计算方式
+                // 修复路径计算逻辑
+                $root = dirname(dirname(dirname(__DIR__))); // 从 app/Http/Controllers/Admin 开始
+                
+                // 确保我们找到的是正确的项目根目录
+                if (basename($root) === 'app') {
+                    $root = dirname($root); // 上一级才是真正的项目根目录
+                }
+                $fullPath = $root . '/public' . $banner;
+                            
+                // 记录调试信息
+                error_log("Banner图片路径验证: \$banner = $banner");
+                error_log("项目根目录: " . $root);
+                error_log("文档根目录: " . ($_SERVER['DOCUMENT_ROOT'] ?? '未设置'));
+                error_log("Banner完整路径: \$fullPath = $fullPath");
+                error_log("文件是否存在: " . (file_exists($fullPath) ? '是' : '否')); 
+                error_log("public目录是否存在: " . (is_dir($root . '/public') ? '是' : '否'));
+                error_log("uploads目录是否存在: " . (is_dir($root . '/public/uploads') ? '是' : '否'));
+                error_log("images目录是否存在: " . (is_dir($root . '/public/uploads/images') ? '是' : '否'));
+                            
+                if (!file_exists($fullPath)) {
+                    // 如果文件不存在，清空banner字段
+                    $finalBanner = '';
+                                
+                    // 记录日志以便调试
+                    LogService::record(
+                        $this->getAdminId(), 
+                        $this->getAdminUsername(), 
+                        'error', 
+                        '栏目保存时发现无效的Banner图片路径: ' . $banner . '，文件不存在于: ' . $fullPath
+                    );
+                }
+            }
+            
             // 保存数据
             $categoryService = $this->categoryService;
             $categoryId = $categoryService->save([
@@ -206,7 +243,7 @@ class CategoryController extends AdminBaseController
                 'type' => $type,
                 'template' => $template,
                 'detail_template' => $detailTemplate,
-                'banner' => $banner,
+                'banner' => $finalBanner,
                 'sort' => $sort,
                 'is_hidden' => $isHidden,
             ]);

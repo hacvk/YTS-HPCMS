@@ -317,7 +317,7 @@ class File
                 self::TABLE,
                 [
                     'mime_type',
-                    'COUNT(*) as count',
+                    'COUNT(*)[as count]',
                     'SUM(size) as total_size'
                 ],
                 [

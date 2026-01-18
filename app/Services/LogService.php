@@ -94,19 +94,25 @@ class LogService
         ?int $line = null
     ): bool {
         try {
-            // 如果没有提供消息，则根据操作类型和目标自动生?
+            // 验证 action 参数不能为空
+            if (empty($action)) {
+                $action = 'unknown';
+            }
+                
+            // 如果没有提供消息，则根据操作类型和目标自动生成?
             if ($message === null) {
                 $message = self::generateMessage($action, $target);
             }
-
+    
             // 获取客户端IP和User-Agent
             $ip = self::getClientIp();
             $userAgent = self::getUserAgent();
-
+    
             // 构建日志数据
             $logData = [
                 'admin_id' => $adminId,
                 'admin_name' => $username,
+                'username' => $username,  // 保持与数据库表结构一致
                 'action' => $action,
                 'level' => $level,
                 'message' => $message,
@@ -229,7 +235,7 @@ class LogService
         return self::record(
             $adminId ?? 0,
             $username ?? 'system',
-            'create',
+            'create',  // 确保 action 不为空
             $target,
             $message,
             self::LEVEL_SUCCESS
@@ -262,7 +268,7 @@ class LogService
         return self::record(
             $adminId ?? 0,
             $username ?? 'system',
-            'update',
+            'update',  // 确保 action 不为空
             $target,
             $message,
             self::LEVEL_SUCCESS
@@ -295,7 +301,7 @@ class LogService
         return self::record(
             $adminId ?? 0,
             $username ?? 'system',
-            'delete',
+            'delete',  // 确保 action 不为空
             $target,
             $message,
             self::LEVEL_WARNING
@@ -476,9 +482,16 @@ class LogService
 
             $expireDate = date('Y-m-d H:i:s', strtotime("-{$days} days"));
 
-            return $db->delete(self::TABLE_NAME, [
+            $result = $db->delete(self::TABLE_NAME, [
                 'create_time[<]' => $expireDate,
             ]);
+            
+            // 检查删除操作是否成功并返回受影响的行数
+            if ($result !== null) {
+                return $result->rowCount();
+            }
+            
+            return 0;
         } catch (\Exception $e) {
             error_log('[LogService] 清理过期日志失败: ' . $e->getMessage());
             return 0;

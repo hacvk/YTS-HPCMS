@@ -73,19 +73,21 @@
                             <td style="word-break: break-word; white-space: nowrap;">{$log['admin_name']}</td>
                             <td style="word-break: break-word; white-space: nowrap;">
                                 {if $log['action'] == 'login'}
-                                <span class="badge badge-success">登录</span>
+                                <span class="badge badge-pill bg-success">登录</span>
                                 {elseif $log['action'] == 'logout'}
-                                <span class="badge badge-secondary">退出</span>
+                                <span class="badge badge-pill bg-dark text-white">退出</span>
                                 {elseif $log['action'] == 'create'}
-                                <span class="badge badge-primary">创建</span>
+                                <span class="badge badge-pill bg-primary">创建</span>
                                 {elseif $log['action'] == 'update'}
-                                <span class="badge badge-info">更新</span>
+                                <span class="badge badge-pill bg-info text-dark">更新</span>
                                 {elseif $log['action'] == 'delete'}
-                                <span class="badge badge-danger">删除</span>
+                                <span class="badge badge-pill bg-danger">删除</span>
                                 {elseif $log['action'] == 'error'}
-                                <span class="badge badge-warning">错误</span>
+                                <span class="badge badge-pill bg-warning text-dark">错误</span>
+                                {elseif $log['action'] === '' || $log['action'] === null}
+                                <span class="badge badge-pill bg-light text-dark">未知</span>
                                 {else}
-                                <span class="badge badge-secondary">{$log['action']}</span>
+                                <span class="badge badge-pill bg-secondary">{$log['action']}</span>
                                 {/if}
                             </td>
                             <td style="word-break: break-word; max-width: 200px;">

@@ -8,7 +8,7 @@ use Medoo\Medoo;
 
 /**
  * 数据库日志驱动（保留原有功能，用于兼容）
- * 注意：在高并发场景下，建议使�?FileLogDriver �?RedisLogDriver
+ * 注意：在高并发场景下，建议使�?FileLogDriver �?RedisLogDriver
  */
 class DatabaseLogDriver implements LogDriverInterface
 {
@@ -18,14 +18,14 @@ class DatabaseLogDriver implements LogDriverInterface
     private const TABLE_NAME = 'sys_log';
 
     /**
-     * 数据库实�?
+     * 数据库实�?
      */
     private readonly Medoo $db;
 
     /**
-     * 构造函�?
+     * 构造函�?
      *
-     * @param Medoo|null $db 数据库实例（如果为null，则使用 Database::get()�?
+     * @param Medoo|null $db 数据库实例（如果为null，则使用 Database::get()�?
      */
     public function __construct(?Medoo $db = null)
     {
@@ -42,9 +42,9 @@ class DatabaseLogDriver implements LogDriverInterface
     {
         try {
             $result = $this->db->insert(self::TABLE_NAME, $logData);
-            return $result !== false;
+            return $result !== null;
         } catch (\Exception $e) {
-            // 日志记录失败不应影响主流�?
+            // 日志记录失败不应影响主流�?
             error_log('[DatabaseLogDriver] 日志记录失败: ' . $e->getMessage());
             return false;
         }
@@ -54,7 +54,7 @@ class DatabaseLogDriver implements LogDriverInterface
      * 批量记录日志
      *
      * @param array<int, array<string, mixed>> $logDataList 日志数据列表
-     * @return int 成功记录的数�?
+     * @return int 成功记录的数�?
      */
     public function recordBatch(array $logDataList): int
     {
@@ -68,7 +68,7 @@ class DatabaseLogDriver implements LogDriverInterface
             $this->db->action(function ($db) use ($logDataList, &$successCount) {
                 foreach ($logDataList as $logData) {
                     $result = $db->insert(self::TABLE_NAME, $logData);
-                    if ($result !== false) {
+                    if ($result !== null) {
                         $successCount++;
                     }
                 }

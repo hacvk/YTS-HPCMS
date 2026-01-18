@@ -12,5 +12,8 @@ return [
         'developer' => '研昌技服',
         'developer_url' => 'https://lingxian.tech',
         'copyright' => '© ' . date('Y') . ' Yanchang Tech-Service. All rights reserved.',
+    ],
+    'log' => [
+        'driver' => 'database',  // 使用数据库驱动存储日志
     ]
 ];

@@ -146,7 +146,24 @@ class UploadController extends AdminBaseController
             $this->errorJson('仅支持jpg/jpeg/png/gif/webp');
         }
 
-        $root = dirname(__DIR__, 3);
+        // 修复路径计算逻辑 - 使用项目根目录的正确计算方法
+        $root = dirname(dirname(dirname(__DIR__))); // 等同于 dirname(__DIR__, 3)，但更明确
+        
+        // 如果路径计算不正确，使用一种更可靠的方法来确定项目根目录
+        // 从当前目录向上查找直到找到包含 'public' 目录的父目录
+        $currentPath = dirname(dirname(dirname(__DIR__))); // 从 app/Http/Controllers/Admin 开始
+        
+        // 确保我们找到的是正确的项目根目录
+        if (basename($currentPath) === 'app') {
+            $root = dirname($currentPath); // 上一级才是真正的项目根目录
+        }
+        
+        // 添加调试信息以确定实际路径
+        error_log('UploadController - 计算的项目根目录: ' . $root);
+        error_log('UploadController - 完整上传路径: ' . $root . '/public/uploads/images');
+        error_log('UploadController - 当前工作目录: ' . getcwd());
+        error_log('UploadController - __DIR__ 值: ' . __DIR__);
+        
         $dir = $root . '/public/uploads/images';
         if (!is_dir($dir)) {
             @mkdir($dir, 0777, true);
@@ -168,12 +185,29 @@ class UploadController extends AdminBaseController
 
         $filename = 'Categorybanner' . $next . '.' . $ext;
         $dest = $dir . '/' . $filename;
-
+        
+        // 记录上传调试信息
+        error_log('准备上传文件: ' . $dest);
+        error_log('临时文件路径: ' . ($uploadedFile['tmp_name'] ?? '未设置'));
+        error_log('文件大小: ' . ($uploadedFile['size'] ?? 0));
+        error_log('文件类型: ' . ($uploadedFile['type'] ?? '未设置'));
+        error_log('目录是否存在: ' . (is_dir($dir) ? '是' : '否'));
+        error_log('目录是否可写: ' . (is_writable($dir) ? '是' : '否'));
+        
         if (!move_uploaded_file((string)$uploadedFile['tmp_name'], $dest)) {
+            error_log('移动文件失败: 源文件=' . ($uploadedFile['tmp_name'] ?? '未设置') . ', 目标=' . $dest);
+            error_log('错误码: ' . ($uploadedFile['error'] ?? '未知'));
             $this->errorJson('上传失败：保存文件失败');
         }
-
+        
+        // 验证文件是否真正写入
+        if (!file_exists($dest)) {
+            error_log('上传后验证失败: 目标文件不存在 ' . $dest);
+            $this->errorJson('上传失败：文件未正确保存');
+        }
+        
         $url = '/uploads/images/' . $filename;
+        error_log('上传成功: ' . $url);
         $this->successJson('上传成功', ['url' => $url]);
     }
 

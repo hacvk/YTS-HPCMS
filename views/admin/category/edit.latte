@@ -141,6 +141,7 @@
                             <div class="mt-2 d-flex gap-2">
                                 <input type="file" id="bannerFile" accept="image/*" class="form-control">
                                 <button type="button" class="btn btn-outline-primary" onclick="uploadCategoryBanner()">上传</button>
+                                <button type="button" class="btn btn-outline-danger" onclick="deleteCategoryBanner()" {if empty($category['banner'] ?? '')}style="display:none;"{/if}>删除</button>
                             </div>
                             <div class="mt-2">
                                 <img id="bannerPreview" src="{$category['banner'] ?? ''}" style="max-width:100%;max-height:140px;{if empty($category['banner'] ?? '')}display:none;{/if}">
@@ -211,9 +212,9 @@ document.getElementById('name')?.addEventListener('input', function(e) {
 // 验证别名格式
 document.getElementById('slug')?.addEventListener('blur', function(e) {
     const value = e.target.value;
-    if (value && !/^[a-z0-9-]+$/.test(value)) {
+    if (value && !/^[a-z0-9\-]+$/.test(value)) {
         alert('别名只能包含小写字母、数字和横杠');
-        e.target.value = value.replace(/[^a-z0-9-]/g, '');
+        e.target.value = value.replace(/[^a-z0-9\-]/g, '');
     }
 });
 
@@ -221,6 +222,7 @@ async function uploadCategoryBanner() {
     const fileInput = document.getElementById('bannerFile');
     const urlInput = document.getElementById('banner');
     const preview = document.getElementById('bannerPreview');
+    const deleteBtn = document.querySelector('button[onclick="deleteCategoryBanner()"]');
 
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
         alert('请选择要上传的图片');
@@ -248,10 +250,53 @@ async function uploadCategoryBanner() {
             preview.src = url;
             preview.style.display = url ? '' : 'none';
         }
+        if (deleteBtn) {
+            deleteBtn.style.display = url ? '' : 'none';
+        }
         alert('上传成功');
     } catch (e) {
         console.error('上传失败:', e);
         alert('上传失败');
+    }
+}
+
+async function deleteCategoryBanner() {
+    if (!confirm('确定要删除当前Banner图片吗？此操作不可恢复！')) {
+        return;
+    }
+    
+    const urlInput = document.getElementById('banner');
+    const preview = document.getElementById('bannerPreview');
+    const deleteBtn = document.querySelector('button[onclick="deleteCategoryBanner()"]');
+    
+    try {
+        const response = await fetch('/admin/upload/deleteCoverImage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'csrf_token=' + encodeURIComponent({$csrf_token}) + '&image_url=' + encodeURIComponent(urlInput.value)
+        });
+        
+        const data = await response.json();
+        
+        if (data.code === 0) {
+            if (urlInput) urlInput.value = '';
+            if (preview) {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
+            if (deleteBtn) {
+                deleteBtn.style.display = 'none';
+            }
+            alert('删除成功');
+        } else {
+            alert(data.message || '删除失败');
+        }
+    } catch (e) {
+        console.error('删除失败:', e);
+        alert('删除失败');
     }
 }
 
