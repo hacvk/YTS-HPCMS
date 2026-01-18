@@ -21,13 +21,30 @@ class BannerController extends AdminBaseController
     }
     
     /**
+     * 获取类型标签
+     * 
+     * @param string $type 类型
+     * @return string
+     */
+    private function getTypeLabel(string $type): string
+    {
+        return match($type) {
+            'indexFast' => '首页快捷方式',
+            'banner' => '轮播图',
+            default => '未知类型'
+        };
+    }
+    
+    /**
      * 列表
      */
     public function index(): void
     {
         $page  = (int)$this->get('page', 1);
         $limit = 20;
-        $data  = $this->bannerModel->getPage($page, $limit);
+        $type = $this->get('type', 'banner'); // 获取类型过滤参数，默认为 'banner'
+        
+        $data  = $this->bannerModel->getPageWithType($page, $limit, $type);
 
         $this->render('admin/banner/index', [
             'title' => 'Banner 管理',
@@ -35,6 +52,7 @@ class BannerController extends AdminBaseController
             'total' => $data['total'],
             'page'  => $page,
             'limit' => $limit,
+            'current_type' => $type,
         ]);
     }
 
@@ -45,9 +63,17 @@ class BannerController extends AdminBaseController
     {
         $id = (int)$this->get('id', 0);
         $banner = $id ? $this->bannerModel->getById($id) : null;
+        
+        // 如果是新增且指定了类型
+        $type = $this->get('type', '');
+        if (!$banner && !empty($type)) {
+            $banner = ['type' => $type];
+        }
+        
         $this->render('admin/banner/edit', [
             'title' => $id ? '编辑 Banner' : '新增 Banner',
             'banner' => $banner,
+            'type' => $type,
         ]);
     }
 
@@ -67,6 +93,7 @@ class BannerController extends AdminBaseController
             'url'  => trim($this->post('url','')),
             'sort' => (int)$this->post('sort',0),
             'status' => (int)$this->post('is_enabled',0),  // 前端用is_enabled，后端存 status
+            'type' => trim($this->post('type', 'banner')),  // 新增类型字段，默认为 'banner'
         ];
 
         if($data['title']===''||$data['image_path']===''){

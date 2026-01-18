@@ -107,15 +107,33 @@
                     </div>
                     <div class="fast-link">
                         <dl class="clearfix">
-                            {ifset $fastLinks}
-                                {foreach $fastLinks as $item}
+                            {ifset $indexFastItems}
+                                {if is_array($indexFastItems) && count($indexFastItems) > 0}
+                                    {foreach $indexFastItems as $item}
+                                        <dt>
+                                            <a href="{$item['url']}">
+                                                <div class="icon"><img src="{$item['image_path']}"></div>
+                                                <aside class="dot">{$item['title']}</aside>
+                                            </a>
+                                        </dt>
+                                    {/foreach}
+                                {else}
+                                    <!-- 当没有首页快捷方式数据时的占位内容 -->
                                     <dt>
-                                        <a href="{$item['url']}">
-                                            <div class="icon"><img src="{$item['icon']}"></div>
-                                            <aside class="dot">{$item['title']}</aside>
+                                        <a href="#">
+                                            <div class="icon"><img src="{asset('static/picture/fastlink-placeholder.jpg')}" alt="快捷方式占位图"></div>
+                                            <aside class="dot">暂无快捷方式</aside>
                                         </a>
                                     </dt>
-                                {/foreach}
+                                {/if}
+                            {else}
+                                <!-- 当没有indexFastItems变量时的占位内容 -->
+                                <dt>
+                                    <a href="#">
+                                        <div class="icon"><img src="{asset('static/picture/fastlink-placeholder.jpg')}" alt="快捷方式占位图"></div>
+                                        <aside class="dot">暂无快捷方式</aside>
+                                    </a>
+                                </dt>
                             {/ifset}
                         </dl>
                     </div>

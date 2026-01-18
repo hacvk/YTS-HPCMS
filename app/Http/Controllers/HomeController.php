@@ -60,7 +60,8 @@ class HomeController extends BaseController
 
         $data = [
             'navItems' => $navItems,
-            'bannerItems' => $this->bannerModel->getEnabled(),
+            'bannerItems' => $this->bannerModel->getBanners(), // 轮播图
+            'indexFastItems' => $this->bannerModel->getIndexFastItems(10), // 首页快捷方式
             'hospitalNewsItems' => $ywggList,
             'noticeItems' => $zbggList,
             'hospitalNewsMoreUrl' => '/c/yuanwu', // 院务公开栏目别名
