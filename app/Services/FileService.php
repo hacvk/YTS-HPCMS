@@ -397,8 +397,13 @@ class FileService
         $fileName = '';
 
         if ($module === 'setting') {
-            // Setting 模块：保存为 logo.{ext}（使用清理后的扩展名）
-            $fileName = 'images/logo.' . $fileExtension;
+            // Setting 模块：根据字段类型决定文件名
+            $fieldName = $options['field_name'] ?? 'logo';
+            if ($fieldName === 'site_favicon') {
+                $fileName = 'images/favicon.' . $fileExtension;
+            } else {
+                $fileName = 'images/logo.' . $fileExtension;
+            }
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         } elseif ($module === 'banner') {
             // Banner 模块：保存为 banner{随机数}.{ext}（使用清理后的扩展名）
@@ -605,6 +610,57 @@ class FileService
     }
 
     /**
+     * 清除内容表封面图片字段
+     * 
+     * @param string $imageUrl 要清除的图片URL
+     * @return bool 是否成功
+     */
+    public static function clearContentCoverImage(string $imageUrl): bool
+    {
+        try {
+            $db = \App\Core\Database::get();
+            $contentModel = new \App\Models\Content($db);
+            
+            // 查找使用该图片的所有内容记录
+            $contents = $db->select('sys_content', ['id'], ['cover_img' => $imageUrl]);
+            
+            foreach ($contents as $content) {
+                // 清除cover_img字段
+                $contentModel->update($content['id'], ['cover_img' => '']);
+            }
+            
+            return true;
+        } catch (\Exception $e) {
+            error_log('清除内容表封面图片字段失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 删除封面图片并更新数据库
+     * 
+     * @param string $imageUrl 图片URL
+     * @param int $adminId 管理员ID
+     * @param string $username 管理员用户名
+     * @param string $target 删除目标描述
+     * @return bool 是否成功
+     */
+    public static function deleteCoverImageWithDbUpdate(string $imageUrl, int $adminId, string $username, string $target = '封面图片'): bool
+    {
+        // 1. 删除物理文件
+        $deleteResult = self::deleteCoverImage($imageUrl, $adminId, $username, $target);
+        
+        if (!$deleteResult) {
+            return false;
+        }
+        
+        // 2. 清除数据库中的引用
+        $clearResult = self::clearContentCoverImage($imageUrl);
+        
+        return $clearResult;
+    }
+
+    /**
      * 删除封面图片（删除物理文件并记录日志）
      * 
      * @param string $imageUrl 图片URL（如: /uploads/images/2024/01/01/xxx.jpg）
@@ -726,5 +782,179 @@ class FileService
         ];
 
         return $messages[$errorCode] ?? '未知错误';
+    }
+
+    /**
+     * 处理WangEditor上传
+     * 对上传文件进行验证、处理并保存
+     * 
+     * @param array<string, mixed> $uploadedFile $_FILES['file'] 数组
+     * @param array<string, mixed> $options 上传选项
+     * @return array{success: bool, file_id?: int, path?: string, url?: string, message?: string}
+     */
+    public static function handleWangEditorUpload(array $uploadedFile, array $options = []): array
+    {
+        // 验证上传文件
+        $validation = self::validateUploadedFile($uploadedFile, $options);
+        if (!$validation['valid']) {
+            return [
+                'success' => false,
+                'message' => $validation['message'] ?? '文件验证失败'
+            ];
+        }
+
+        // 设置WangEditor特定的默认选项
+        $wangEditorOptions = array_merge([
+            'module' => 'wangeditor',
+            'file_usage' => 'content',
+            'is_primary' => false
+        ], $options);
+
+        // 使用通用的handleUpload方法处理
+        return self::handleUpload($uploadedFile, $wangEditorOptions);
+    }
+
+    /**
+     * 更新内容表封面图片
+     * 
+     * @param int $contentId 内容ID
+     * @param string $imageUrl 图片URL
+     * @return bool 更新是否成功
+     */
+    public static function updateContentCoverImage(int $contentId, string $imageUrl): bool
+    {
+        try {
+            $db = \App\Core\Database::get();
+            $contentModel = new \App\Models\Content($db);
+            
+            $result = $contentModel->update($contentId, ['cover_img' => $imageUrl]);
+            
+            return $result !== false;
+        } catch (\Exception $e) {
+            error_log('更新内容表封面图片失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 获取上传目录的物理路径
+     * 自动识别项目根目录，确保路径在 CLI 和 Web 模式下都正确
+     *
+     * @param string $subDir 子目录（如 'uploads/images'）
+     * @return string 完整物理路径
+     */
+    public static function getUploadDirectory(string $subDir = 'uploads/images'): string
+    {
+        // 从当前文件所在目录向上查找，直到找到包含 public 的目录
+        // app/Services/FileService.php -> app -> project_root
+        $root = dirname(__DIR__, 2);
+        
+        $dir = $root . '/public/' . ltrim($subDir, '/');
+        
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
+        
+        return $dir;
+    }
+
+    /**
+     * 计算下一个 Banner 文件名
+     * 格式：Categorybanner{N}.{ext}
+     *
+     * @param string $dir 目录路径
+     * @param string $extension 文件扩展名
+     * @return string 新文件名
+     */
+    public static function calculateNextBannerFilename(string $dir, string $extension): string
+    {
+        $max = 0;
+        $files = glob($dir . '/Categorybanner*.*') ?: [];
+        foreach ($files as $f) {
+            $base = basename($f);
+            if (preg_match('/^Categorybanner(\d+)\./i', $base, $m)) {
+                $n = (int)$m[1];
+                if ($n > $max) {
+                    $max = $n;
+                }
+            }
+        }
+        $next = $max + 1;
+        return 'Categorybanner' . $next . '.' . ltrim($extension, '.');
+    }
+
+    /**
+     * 处理栏目 Banner 上传
+     * 
+     * @param array $uploadedFile $_FILES['file']
+     * @return array{success: bool, url?: string, message?: string}
+     */
+    public static function handleCategoryBannerUpload(array $uploadedFile): array
+    {
+        try {
+            // 1. 验证基础上传
+            $errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($errorCode !== UPLOAD_ERR_OK) {
+                return ['success' => false, 'message' => self::getUploadErrorMessage($errorCode)];
+            }
+
+            // 2. 验证扩展名
+            $ext = strtolower(pathinfo((string)($uploadedFile['name'] ?? ''), PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            if ($ext === '' || !in_array($ext, $allowed, true)) {
+                return ['success' => false, 'message' => '仅支持jpg/jpeg/png/gif/webp'];
+            }
+
+            // 3. 获取并准备目录
+            $dir = self::getUploadDirectory('uploads/images');
+            
+            // 4. 计算文件名
+            $filename = self::calculateNextBannerFilename($dir, $ext);
+            $dest = $dir . '/' . $filename;
+
+            // 5. 移动文件
+            if (!move_uploaded_file((string)$uploadedFile['tmp_name'], $dest)) {
+                error_log("[FileService] 移动 CategoryBanner 失败: " . $dest);
+                return ['success' => false, 'message' => '上传失败：保存文件失败'];
+            }
+
+            // 6. 验证写入
+            if (!file_exists($dest)) {
+                return ['success' => false, 'message' => '上传失败：文件未正确保存'];
+            }
+
+            return [
+                'success' => true,
+                'url' => '/uploads/images/' . $filename
+            ];
+        } catch (\Exception $e) {
+            error_log("[FileService] handleCategoryBannerUpload 异常: " . $e->getMessage());
+            return ['success' => false, 'message' => '上传异常: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * 格式WangEditor响应
+     * 
+     * @param array{success: bool, file_id?: int, path?: string, url?: string, message?: string}|null $result 上传结果
+     * @param bool $success 是否成功
+     * @param string $message 错误消息
+     * @return string JSON响应字符串
+     */
+    public static function formatWangEditorResponse(array $result = null, bool $success = false, string $message = ''): string
+    {
+        if ($success && $result && isset($result['url'])) {
+            // WangEditor 4.x 期望的格式
+            return json_encode([
+                'errno' => 0,
+                'data' => [$result['url']]  // 图片URL数组
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            // 错误响应
+            return json_encode([
+                'errno' => 1,
+                'message' => $message ?: ($result['message'] ?? '上传失败')
+            ], JSON_UNESCAPED_UNICODE);
+        }
     }
 }

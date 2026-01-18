@@ -52,12 +52,9 @@ class FriendLinkController extends AdminBaseController
     {
         $this->requirePerm('admin:friendlink:save');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-        }
-
-        if (!Security::checkCsrfToken((string)$this->post('csrf_token', ''))) {
-            $this->errorJson('CSRF 校验失败');
+        // 验证POST请求和CSRF
+        if (!$this->validatePostAndCsrf()) {
+            return;
         }
 
         $id = (int)$this->post('id', 0);
@@ -103,12 +100,9 @@ class FriendLinkController extends AdminBaseController
     {
         $this->requirePerm('admin:friendlink:delete');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-        }
-
-        if (!Security::checkCsrfToken((string)$this->post('csrf_token', ''))) {
-            $this->errorJson('CSRF 校验失败');
+        // 验证POST请求和CSRF
+        if (!$this->validatePostAndCsrf()) {
+            return;
         }
 
         $id = (int)$this->post('id', 0);

@@ -61,13 +61,16 @@
                                 </button>
                             </div>
                         </div>
-                        {if isset($settings[$fieldKey]) && $settings[$fieldKey]}
-                        <div class="mt-2">
-                            <img src="{$settings[$fieldKey]}" width="200" class="img-thumbnail" id="preview_{$fieldKey}">
+                        <div class="mt-2" id="preview_{$fieldKey}">
+                            {if isset($settings[$fieldKey]) && $settings[$fieldKey]}
+                                <img src="{$settings[$fieldKey]}" width="200" class="img-thumbnail" style="margin-bottom: 10px;">
+                                <div class="mt-1">
+                                    <button type="button" class="btn btn-sm btn-danger" onclick="console.log('按钮被点击'); deleteImage('setting_{$fieldKey|noescape}', 'preview_{$fieldKey|noescape}', '{$fieldKey|noescape}')">
+                                        <i class="fas fa-trash"></i> 删除图片
+                                    </button>
+                                </div>
+                            {/if}
                         </div>
-                        {else}
-                        <div class="mt-2" id="preview_{$fieldKey}"></div>
-                        {/if}
                         
                         {elseif $field['type'] == 'email'}
                         <input 
@@ -126,6 +129,113 @@
 </div>
 
 <script>
+// 全局错误监听
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('全局JavaScript错误:', message, '文件:', source, '行号:', lineno, '列号:', colno, '错误对象:', error);
+};
+
+// 页面加载完成检查
+console.log('页面JavaScript开始加载');
+
+// 删除图片函数
+function deleteImage(inputId, previewId, fieldName) {
+    if (!confirm('确定要删除这张图片吗？')) {
+        return;
+    }
+    
+    console.log('deleteImage函数开始执行');
+    console.log('输入框ID:', inputId);
+    console.log('预览区域ID:', previewId);
+    console.log('字段名:', fieldName);
+    
+    const inputElement = document.getElementById(inputId);
+    const previewElement = document.getElementById(previewId);
+    
+    console.log('输入框元素:', inputElement);
+    console.log('预览区域元素:', previewElement);
+    
+    // 如果是网站Logo或网站图标，向服务器发送请求删除对应的文件
+    if (fieldName === 'site_logo' || fieldName === 'site_favicon') {
+        const csrfToken = document.getElementById('csrf_token')?.value || '';
+        
+        console.log('发送删除请求，字段名:', fieldName, 'CSRF Token:', csrfToken);
+        
+        // 发送AJAX请求通知服务器删除文件
+        const formData = new FormData();
+        formData.append('field_name', fieldName);
+        formData.append('csrf_token', csrfToken);
+        
+        fetch('/admin/setting/delete-image', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('删除请求响应状态:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('删除请求响应数据:', data);
+            if (data.code !== 0) {
+                console.error('删除服务器图片失败:', data.message);
+                alert('删除失败: ' + data.message);
+                // 如果删除失败，恢复原来的内容
+                if (inputElement && inputElement.dataset.originalValue) {
+                    inputElement.value = inputElement.dataset.originalValue;
+                }
+                if (previewElement && inputElement && inputElement.dataset.originalValue) {
+                    previewElement.innerHTML = '<img src="' + inputElement.dataset.originalValue + '" width="200" class="img-thumbnail" style="margin-bottom: 10px;">';
+                }
+            } else {
+                console.log('删除服务器图片成功');
+                console.log('开始清空UI');
+                // 仅在服务器成功删除后才真正清空UI
+                if (inputElement) {
+                    console.log('清空输入框前的值:', inputElement.value);
+                    inputElement.value = '';
+                    console.log('清空输入框后的值:', inputElement.value);
+                }
+                
+                if (previewElement) {
+                    console.log('清空预览区域前的HTML:', previewElement.innerHTML);
+                    previewElement.innerHTML = '';
+                    console.log('清空预览区域后的HTML:', previewElement.innerHTML);
+                }
+                
+                alert('图片删除成功');
+            }
+        })
+        .catch(error => {
+            console.error('删除图片请求失败:', error);
+            console.error('具体错误信息:', error.message);
+            alert('删除请求失败: ' + error.message);
+            // 如果请求失败，恢复原来的内容
+            if (inputElement && inputElement.dataset.originalValue) {
+                inputElement.value = inputElement.dataset.originalValue;
+            }
+            if (previewElement && inputElement && inputElement.dataset.originalValue) {
+                previewElement.innerHTML = '<img src="' + inputElement.dataset.originalValue + '" width="200" class="img-thumbnail" style="margin-bottom: 10px;">';
+            }
+        });
+    } else {
+        console.log('非支持字段，直接清空UI');
+        // 如果不是受支持的字段，直接清空UI
+        if (inputElement) {
+            console.log('清空输入框前的值:', inputElement.value);
+            inputElement.value = '';
+            console.log('清空输入框后的值:', inputElement.value);
+        }
+        
+        if (previewElement) {
+            console.log('清空预览区域前的HTML:', previewElement.innerHTML);
+            previewElement.innerHTML = '';
+            console.log('清空预览区域后的HTML:', previewElement.innerHTML);
+        }
+    }
+}
+
+// 确保deleteImage函数可用
+console.log('deleteImage函数已定义');
+
 // 图片选择函数
 function selectImage(inputId) {
     const input = document.createElement('input');
@@ -153,6 +263,7 @@ function selectImage(inputId) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('module', 'setting'); // 添加模块标识
+        formData.append('field_name', inputId.replace('setting_', '')); // 添加字段名标识
         
         // 获取 CSRF Token
         const csrfToken = document.getElementById('csrf_token')?.value || '';
@@ -183,7 +294,17 @@ function selectImage(inputId) {
                 const previewId = 'preview_' + inputId.replace('setting_', '');
                 const preview = document.getElementById(previewId);
                 if (preview) {
-                    preview.innerHTML = '<img src="' + data.data[0] + '" width="200" class="img-thumbnail">';
+                    // 添加时间戳参数以避免缓存
+                    const timestamp = new Date().getTime();
+                    const imageUrl = data.data[0] + '?t=' + timestamp;
+                    const fieldKey = inputId.replace('setting_', '');
+                    
+                    // 重新构建预览内容，包括图片和删除按钮
+                    preview.innerHTML = '<img src="' + imageUrl + '" width="200" class="img-thumbnail" style="margin-bottom: 10px;">' +
+                                      '<div class="mt-1">' +
+                                      '<button type="button" class="btn btn-sm btn-danger" onclick="deleteImage(\'setting_' + fieldKey + '\', \'preview_' + fieldKey + '\', \'' + fieldKey + '\')">' +
+                                      '<i class="fas fa-trash"></i> 删除图片</button>' +
+                                      '</div>';
                 }
             } else {
                 // 上传失败

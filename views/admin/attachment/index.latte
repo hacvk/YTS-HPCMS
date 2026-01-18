@@ -134,7 +134,7 @@
                             <td>{$file['id']}</td>
                             <td>
                                 {if isset($file['mime_type']) && strpos($file['mime_type'], 'image/') === 0}
-                                <img src="/{$file['path']}" width="60" height="60" class="img-thumbnail" style="object-fit: cover; cursor: pointer;" onclick="previewImage('/{$file['path']}')">
+                                <img src="/{$file['path']}" width="60" height="60" class="img-thumbnail" style="object-fit: cover; cursor: pointer;" onclick="previewImage(this.src)">
                                 {else}
                                 <div class="text-center" style="width: 60px; height: 60px; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
                                     <i class="bi bi-file-earmark" style="font-size: 24px; color: #999;"></i>

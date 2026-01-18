@@ -62,17 +62,9 @@ class ContactController extends AdminBaseController
      */
     public function save(): void
     {
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-        
         try {
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
                 return;
             }
             

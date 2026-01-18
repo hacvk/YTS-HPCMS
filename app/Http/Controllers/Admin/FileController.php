@@ -73,13 +73,12 @@ class FileController extends AdminBaseController
      */
     public function delete(): void
     {
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         try {
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
+                return;
+            }
+            
             // 从URL中获取ID参数
             $uri = $_SERVER['REQUEST_URI'] ?? '';
             preg_match('/\/admin\/file\/delete\/(\d+)/', $uri, $matches);
@@ -87,13 +86,6 @@ class FileController extends AdminBaseController
 
             if ((int)$id <= 0) {
                 $this->errorJson('文件ID无效');
-                return;
-            }
-
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
                 return;
             }
 
@@ -131,17 +123,9 @@ class FileController extends AdminBaseController
      */
     public function update(): void
     {
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         try {
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
                 return;
             }
 

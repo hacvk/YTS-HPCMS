@@ -115,14 +115,8 @@ class AdminController extends AdminBaseController
     {
         $this->requirePerm('admin:admin:save');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
-        $csrfToken = (string)$this->post('csrf_token', '');
-        if (!Security::checkCsrfToken($csrfToken)) {
-            $this->errorJson('CSRF Token验证失败');
+        // 验证POST请求和CSRF
+        if (!$this->validatePostAndCsrf()) {
             return;
         }
 
@@ -215,14 +209,8 @@ class AdminController extends AdminBaseController
     {
         $this->requirePerm('admin:admin:delete');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
-        $csrfToken = (string)$this->post('csrf_token', '');
-        if (!Security::checkCsrfToken($csrfToken)) {
-            $this->errorJson('CSRF Token验证失败');
+        // 验证POST请求和CSRF
+        if (!$this->validatePostAndCsrf()) {
             return;
         }
 

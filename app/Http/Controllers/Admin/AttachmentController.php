@@ -111,13 +111,12 @@ class AttachmentController extends AdminBaseController
     {
         $this->requirePerm('admin:attachment:delete');
 
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         try {
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
+                return;
+            }
+            
             // 从URL参数中获取ID
             $id = (int)$this->get('id', 0);
             
@@ -135,13 +134,6 @@ class AttachmentController extends AdminBaseController
 
             if ((int)$id <= 0) {
                 $this->errorJson('附件ID无效');
-                return;
-            }
-
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
                 return;
             }
 
@@ -200,17 +192,9 @@ class AttachmentController extends AdminBaseController
     {
         $this->requirePerm('admin:attachment:delete');
 
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         try {
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
                 return;
             }
 
@@ -281,17 +265,9 @@ class AttachmentController extends AdminBaseController
     {
         $this->requirePerm('admin:attachment:update');
 
-        // 只接受POST请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         try {
-            // 验证CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
                 return;
             }
 
@@ -319,7 +295,7 @@ class AttachmentController extends AdminBaseController
 
             // 如果有其他字段需要更新
             if ($sort > 0 || !empty($description)) {
-                $db = Database::get();
+                $db = \App\Core\Database::get();
                 $updateData = [];
                 if ($sort > 0) {
                     $updateData['sort'] = $sort;

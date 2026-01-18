@@ -211,17 +211,11 @@ class PageController extends AdminBaseController
     {
         $this->requirePerm('admin:page:save');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         $title = '';
 
         try {
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
                 return;
             }
 
@@ -308,25 +302,19 @@ class PageController extends AdminBaseController
     {
         $this->requirePerm('admin:page:delete');
 
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-            return;
-        }
-
         $id = 0;
         $pageTitle = '未知';
 
         try {
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
+                return;
+            }
+
             // id 优先来自 POST（Router 动态路由会注入 $_POST['id']）
             $id = (int)$this->post('id', 0);
             if ($id <= 0) {
                 $this->errorJson('单页ID无效');
-                return;
-            }
-
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token验证失败');
                 return;
             }
 

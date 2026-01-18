@@ -142,8 +142,9 @@ class Router
             'GET /admin/system/about' => ['Admin\\SystemController', 'about'],
 
             // Admin - setting
-            'GET /admin/setting' => ['Admin\\SettingController', 'index'],
-            'POST /admin/setting/save' => ['Admin\\SettingController', 'save'],
+            'GET /admin/setting' => ['Admin\SettingController', 'index'],
+            'POST /admin/setting/save' => ['Admin\SettingController', 'save'],
+            'POST /admin/setting/delete-image' => ['Admin\SettingController', 'deleteImage'],
 
             // Admin - contact
             'GET /admin/contact' => ['Admin\\ContactController', 'index'],

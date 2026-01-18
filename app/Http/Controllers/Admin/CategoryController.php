@@ -124,16 +124,10 @@ class CategoryController extends AdminBaseController
     {
         $this->requirePerm('admin:category:save');
 
-        // 只接受POST 请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-        }
-
         try {
-            // 验证 CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token 验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
+                return;
             }
 
             // 获取表单数据
@@ -268,16 +262,10 @@ class CategoryController extends AdminBaseController
     {
         $this->requirePerm('admin:category:delete');
 
-        // 只接受POST 请求
-        if (!$this->isPost()) {
-            $this->errorJson('请求方法错误');
-        }
-
         try {
-            // 验证 CSRF Token
-            $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
-                $this->errorJson('CSRF Token 验证失败');
+            // 验证POST请求和CSRF
+            if (!$this->validatePostAndCsrf()) {
+                return;
             }
 
             $id = (int)($this->post('id', 0));

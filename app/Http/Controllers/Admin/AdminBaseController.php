@@ -412,6 +412,124 @@ abstract class AdminBaseController extends BaseController
     }
     
     /**
+     * 统一验证POST请求和CSRF
+     *
+     * @param string $customMessage 自定义错误消息
+     * @return bool 验证结果
+     */
+    protected function validatePostAndCsrf(string $customMessage = '请求方法错误或CSRF验证失败'): bool
+    {
+        if (!$this->isPost()) {
+            $this->errorJson($customMessage);
+            return false;
+        }
+    
+        $csrfToken = $this->post('csrf_token', '');
+        if (!Security::checkCsrfToken($csrfToken)) {
+            $this->errorJson('CSRF Token验证失败');
+            return false;
+        }
+    
+        return true;
+    }
+    
+    /**
+     * 简化成功日志记录
+     *
+     * @param string $operation 操作描述
+     * @param string $details 详细信息
+     * @param int|null $userId 用户ID
+     * @param string|null $username 用户名
+     * @return void
+     */
+    protected function logSuccess(string $operation, string $details = '', int $userId = null, string $username = null): void
+    {
+        $userId = $userId ?? $this->getAdminId();
+        $username = $username ?? $this->getAdminUsername();
+    
+        \App\Services\LogService::record($userId, $username, 'success', $operation, $details);
+    }
+    
+    /**
+     * 简化错误日志记录
+     *
+     * @param string $operation 操作描述
+     * @param string $details 详细信息
+     * @param int|null $userId 用户ID
+     * @param string|null $username 用户名
+     * @return void
+     */
+    protected function logError(string $operation, string $details = '', int $userId = null, string $username = null): void
+    {
+        $userId = $userId ?? $this->getAdminId();
+        $username = $username ?? $this->getAdminUsername();
+    
+        \App\Services\LogService::record($userId, $username, 'error', $operation, $details);
+    }
+    
+    /**
+     * 统一清理请求数据
+     *
+     * @param array $data 待清理的数据
+     * @param array $options 清理选项
+     * @return array 清理后的数据
+     */
+    protected function sanitizeRequestData(array $data, array $options = []): array
+    {
+        $sanitizedData = [];
+            
+        foreach ($data as $key => $value) {
+            if (is_array($value)) {
+                $sanitizedData[$key] = $this->sanitizeRequestData($value, $options);
+            } elseif (is_string($value)) {
+                $sanitizedData[$key] = \App\Utils\StringSanitizer::sanitize($value, $options);
+            } else {
+                $sanitizedData[$key] = $value;
+            }
+        }
+            
+        return $sanitizedData;
+    }
+    
+    /**
+     * 统一响应处理
+     *
+     * @param string $message 响应消息
+     * @param mixed $data 响应数据
+     * @param int $code 响应代码
+     * @param string|null $redirect 重定向地址
+     * @return void
+     */
+    protected function jsonResponse(string $message = '操作成功', mixed $data = null, int $code = 0, string $redirect = null): void
+    {
+        $response = [
+            'code' => $code,
+            'message' => $message,
+            'data' => $data,
+            'timestamp' => time()
+        ];
+    
+        if ($redirect !== null) {
+            $response['redirect'] = $redirect;
+        }
+    
+        $this->json($response);
+    }
+    
+    /**
+     * 统一错误响应处理
+     *
+     * @param string $message 错误消息
+     * @param int $code 错误代码
+     * @param mixed $data 响应数据
+     * @return void
+     */
+    protected function errorResponse(string $message = '操作失败', int $code = 1, mixed $data = null): void
+    {
+        $this->jsonResponse($message, $data, $code);
+    }
+    
+    /**
      * 显示错误页面
      *
      * @param string $message 错误消息
