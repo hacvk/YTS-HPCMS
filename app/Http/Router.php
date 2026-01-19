@@ -15,8 +15,6 @@ class Router
     public function __construct(
         private readonly Container $container
     ) {
-        $this->uri = $this->parseUri();
-        $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
     }
 
     /**
@@ -57,7 +55,7 @@ class Router
 
         // 移除脚本名称（如 /index.php/xxx）
         $scriptName = dirname($_SERVER['SCRIPT_NAME'] ?? '/');
-        if ($scriptName !== '/' && strpos($uri, $scriptName) === 0) {
+        if ($scriptName !== '/' && str_starts_with($uri, $scriptName)) {
             $uri = substr($uri, strlen($scriptName));
         }
 
@@ -76,58 +74,91 @@ class Router
     public function dispatch(): void
     {
         try {
+            $this->uri = $this->parseUri();
+            $this->method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+            
             $route = $this->matchRoute();
             $this->executeRoute($route);
         } catch (RouterException $e) {
-            // 记录路由异常日志
-            LogService::error($e, 'route_not_found');
-            $this->handleNotFound();
-        } catch (\Throwable $e) {
-            // 记录全局异常日志
-            LogService::error($e, 'route_dispatch_error');
-
-            // 调试模式直接输出真实异常，避免所有错误都被伪装成 404
-            if (App::isDebug()) {
-                http_response_code(500);
-                $system = App::getConfig('system', []);
-                $copyright = $system['copyright'] ?? '';
-
-                echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Route Error</title>'
-                    . '<style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:20px;}h1{color:#e74c3c;}pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow:auto;}footer{margin-top:24px;padding-top:12px;border-top:1px solid #eee;color:#999;font-size:12px;text-align:center;}</style>'
-                    . '</head><body>'
-                    . '<h1>Route Dispatch Error</h1>'
-                    . '<p><b>URI:</b> ' . htmlspecialchars($this->uri) . '</p>'
-                    . '<p><b>Method:</b> ' . htmlspecialchars($this->method) . '</p>'
-                    . '<p><b>Exception:</b> ' . htmlspecialchars(get_class($e)) . '</p>'
-                    . '<p><b>Message:</b> ' . htmlspecialchars($e->getMessage()) . '</p>'
-                    . '<p><b>File:</b> ' . htmlspecialchars($e->getFile()) . ':' . (int)$e->getLine() . '</p>'
-                    . '<h2>Trace</h2><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>'
-                    . '<footer>' . $copyright . '</footer>'
-                    . '</body></html>';
-                exit;
+            // 检查是否为静态资源请求
+            if (str_contains($e->getMessage(), '静态资源请求')) {
+                // 静态资源请求，直接返回404，不记录日志
+                $this->handleStaticResourceNotFound();
+            } else {
+                // 路由未找到，记录日志
+                LogService::error($e, 'route_not_found');
+                $this->handleNotFound();
             }
-
-            $this->handleNotFound();
+        } catch (\Throwable $e) {
+            LogService::error($e, 'route_dispatch_error');
+            $this->handleDispatchError($e);
         }
     }
 
     /**
-     * 匹配路由
+     * 处理静态资源未找到
      *
-     * @return array{controller: string, action: string}
-     * @throws RouterException
+     * @return void
      */
-    private function matchRoute(): array
+    private function handleStaticResourceNotFound(): void
     {
-        $uri = $this->uri;
-        $method = $this->method;
+        http_response_code(404);
+        echo '<!DOCTYPE html>
+<html>
+<head>
+    <title>404 Not Found</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; text-align: center; }
+        h1 { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <h1>404</h1>
+    <p>资源未找到</p>
+</body>
+</html>';
+        exit;
+    }
 
-        /**
-         * 静态路由表（不再做任何自动推断）
-         * key: "METHOD /path"，例如 "GET /admin"
-         * value: [controller, action]
-         */
-        $routes = [
+    /**
+     * 处理调度错误
+     *
+     * @param \Throwable $e
+     * @return void
+     */
+    private function handleDispatchError(\Throwable $e): void
+    {
+        if (App::isDebug()) {
+            http_response_code(500);
+            $system = App::getConfig('system', []);
+            $copyright = $system['copyright'] ?? '';
+
+            echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Route Error</title>'
+                . '<style>body{font-family:Arial,sans-serif;max-width:1100px;margin:40px auto;padding:20px;}h1{color:#e74c3c;}pre{background:#f6f8fa;padding:12px;border-radius:6px;overflow:auto;}footer{margin-top:24px;padding-top:12px;border-top:1px solid #eee;color:#999;font-size:12px;text-align:center;}</style>'
+                . '</head><body>'
+                . '<h1>Route Dispatch Error</h1>'
+                . '<p><b>URI:</b> ' . htmlspecialchars($this->uri) . '</p>'
+                . '<p><b>Method:</b> ' . htmlspecialchars($this->method) . '</p>'
+                . '<p><b>Exception:</b> ' . htmlspecialchars(get_class($e)) . '</p>'
+                . '<p><b>Message:</b> ' . htmlspecialchars($e->getMessage()) . '</p>'
+                . '<p><b>File:</b> ' . htmlspecialchars($e->getFile()) . ':' . (int)$e->getLine() . '</p>'
+                . '<h2>Trace</h2><pre>' . htmlspecialchars($e->getTraceAsString()) . '</pre>'
+                . '<footer>' . $copyright . '</footer>'
+                . '</body></html>';
+            exit;
+        }
+
+        $this->handleNotFound();
+    }
+
+    /**
+     * 获取静态路由配置
+     *
+     * @return array<string, array{controller: string, action: string}>
+     */
+    private function getStaticRoutes(): array
+    {
+        return [
             // Front
             'GET /' => ['HomeController', 'index'],
 
@@ -222,174 +253,149 @@ class Router
             'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],
             'POST /admin/cache/clear-all' => ['Admin\\CacheController', 'clearAll'],
         ];
+    }
 
+    /**
+     * 匹配路由
+     *
+     * @return array{controller: string, action: string}
+     * @throws RouterException
+     */
+    private function matchRoute(): array
+    {
+        $uri = $this->uri;
+        $method = $this->method;
         $key = $method . ' ' . $uri;
-        if (isset($routes[$key])) {
-            [$controller, $action] = $routes[$key];
-            return [
-                'controller' => $controller,
-                'action' => $action,
-            ];
+
+        // 1. 检查是否为静态资源请求（直接返回404，由Web服务器处理）
+        if ($this->isStaticResourceRequest($uri)) {
+            throw new RouterException("静态资源请求: {$key}");
         }
-        
-        // 动态路由匹配
 
-        // Admin - article edit (GET /admin/article/edit/{id})
+        // 2. 尝试匹配静态路由
+        $staticRoutes = $this->getStaticRoutes();
+        if (isset($staticRoutes[$key])) {
+            [$controller, $action] = $staticRoutes[$key];
+            return ['controller' => $controller, 'action' => $action];
+        }
+
+        // 3. 尝试匹配动态路由
+        return $this->matchDynamicRoute($uri, $method);
+    }
+
+    /**
+     * 检查是否为静态资源请求
+     *
+     * @param string $uri
+     * @return bool
+     */
+    private function isStaticResourceRequest(string $uri): bool
+    {
+        // 检查是否为 .map 文件请求
+        if (str_ends_with($uri, '.map')) {
+            return true;
+        }
+
+        // 检查是否为其他静态资源（可选）
+        $staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.woff', '.woff2', '.ttf', '.eot'];
+        foreach ($staticExtensions as $ext) {
+            if (str_ends_with($uri, $ext)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * 匹配动态路由
+     *
+     * @param string $uri
+     * @param string $method
+     * @return array{controller: string, action: string}
+     * @throws RouterException
+     */
+    private function matchDynamicRoute(string $uri, string $method): array
+    {
+        // GET 请求的动态路由
         if ($method === 'GET') {
-            // Admin - page edit (GET /admin/page/edit/{categoryId})
-            if (preg_match('#^/admin/page/edit/([0-9]+)$#', $uri, $matches)) {
+            // Admin - page edit (GET /admin/page/edit/{id})
+            if (preg_match('#^/admin/page/edit/([0-9]+)/?$#', $uri, $matches)) {
                 $_GET['category_id'] = (int)$matches[1];
                 $_GET['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\PageController',
-                    'action' => 'edit',
-                ];
+                return ['controller' => 'Admin\\PageController', 'action' => 'edit'];
             }
 
-            if (preg_match('#^/admin/page/edit/([0-9]+)/$#', $uri, $matches)) {
-                $_GET['category_id'] = (int)$matches[1];
+            // Admin - article edit (GET /admin/article/edit/{id})
+            if (preg_match('#^/admin/article/edit/([0-9]+)/?$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\PageController',
-                    'action' => 'edit',
-                ];
+                return ['controller' => 'Admin\\ArticleController', 'action' => 'edit'];
             }
 
-            if (preg_match('#^/admin/article/edit/([0-9]+)$#', $uri, $matches)) {
-                $_GET['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\ArticleController',
-                    'action' => 'edit',
-                ];
-            }
-
-            if (preg_match('#^/admin/article/edit/([0-9]+)/$#', $uri, $matches)) {
-                $_GET['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\ArticleController',
-                    'action' => 'edit',
-                ];
-            }
-
-            // 动态路由匹配 - 处理文章详情页 (GET /article/{id})
-            // 匹配格式：/article/123，ID 必须为正整数
+            // Front - article detail (GET /article/{id})
             if (preg_match('#^/article/([1-9][0-9]*)$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'ArticleController',
-                    'action' => 'index',
-                ];
+                return ['controller' => 'ArticleController', 'action' => 'index'];
             }
-            
-            // 动态路由匹配 - 处理栏目列表页（带分页）(GET /c/{slug}/page/{page})
-            // 先匹配带分页的，避免被无分页的路由捕获
-            // 匹配格式：/c/yuanwu/page/2，slug 不能包含斜杠，page 必须为正整数
+
+            // Front - category list with pagination (GET /c/{slug}/page/{page})
             if (preg_match('#^/c/([^/]+)/page/([1-9][0-9]*)$#', $uri, $matches)) {
-                $slug = $matches[1];
-                $page = (int)$matches[2];
-                
-                $_GET['slug'] = $slug;
-                $_GET['page'] = $page;
-                
-                // 根据栏目类型决定使用哪个控制器
-                $db = \App\Core\Database::get();
-                $category = $db->get('sys_category', ['type'], [
-                    'slug' => $slug,
-                    'is_hidden' => 0
-                ]);
-                
-                if ($category && isset($category['type']) && $category['type'] === 'page') {
-                    return [
-                        'controller' => 'PageController',
-                        'action' => 'index',
-                    ];
-                } else {
-                    return [
-                        'controller' => 'CategoryController',
-                        'action' => 'index',
-                    ];
-                }
+                return $this->handleCategoryRoute($matches[1], (int)$matches[2]);
             }
-            
-            // 动态路由匹配 - 处理栏目列表页 (GET /c/{slug})
-            // 匹配格式：/c/yuanwu，slug 不能包含斜杠，且不能为空
+
+            // Front - category list (GET /c/{slug})
             if (preg_match('#^/c/([^/]+)$#', $uri, $matches)) {
                 $slug = $matches[1];
-                // 确保 slug 不为空且不包含特殊字符
                 if ($slug !== '' && !preg_match('#[<>"]#', $slug)) {
-                    $_GET['slug'] = $slug;
-                                
-                    // 根据栏目类型决定使用哪个控制器
-                    $db = \App\Core\Database::get();
-                    $category = $db->get('sys_category', ['type'], [
-                        'slug' => $slug,
-                        'is_hidden' => 0
-                    ]);
-                                
-                    if ($category && isset($category['type']) && $category['type'] === 'page') {
-                        return [
-                            'controller' => 'PageController',
-                            'action' => 'index',
-                        ];
-                    } else {
-                        return [
-                            'controller' => 'CategoryController',
-                            'action' => 'index',
-                        ];
-                    }
+                    return $this->handleCategoryRoute($slug);
                 }
             }
         }
 
-        // Admin - article delete (POST /admin/article/delete/{id})
+        // POST 请求的动态路由
         if ($method === 'POST') {
+            // Admin - article delete (POST /admin/article/delete/{id})
             if (preg_match('#^/admin/article/delete/([0-9]+)$#', $uri, $matches)) {
                 $_POST['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\ArticleController',
-                    'action' => 'delete',
-                ];
+                return ['controller' => 'Admin\\ArticleController', 'action' => 'delete'];
             }
 
-            // Admin - page edit (GET /admin/page/edit/{categoryId}) is handled below in GET section
             // Admin - page delete (POST /admin/page/delete/{id})
             if (preg_match('#^/admin/page/delete/([0-9]+)$#', $uri, $matches)) {
                 $_POST['id'] = (int)$matches[1];
-                return [
-                    'controller' => 'Admin\\PageController',
-                    'action' => 'delete',
-                ];
+                return ['controller' => 'Admin\\PageController', 'action' => 'delete'];
             }
         }
-        
-        throw new RouterException("路由未配置: {$key}");
+
+        throw new RouterException("路由未配置: {$method} {$uri}");
     }
 
     /**
-     * 格式化控制器名称
+     * 处理栏目路由
      *
-     * @param string $name 控制器名称
-     * @return string
+     * @param string $slug
+     * @param int|null $page
+     * @return array{controller: string, action: string}
      */
-    private function formatControllerName(string $name): string
+    private function handleCategoryRoute(string $slug, ?int $page = null): array
     {
-        // 转换为 PascalCase
-        return str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', strtolower($name))));
-    }
+        if ($page !== null) {
+            $_GET['page'] = $page;
+        }
+        $_GET['slug'] = $slug;
 
-    /**
-     * 格式化动作名称
-     *
-     * @param string $name 动作名称
-     * @return string
-     */
-    private function formatActionName(string $name): string
-    {
-        // 转换为 camelCase
-        $name = str_replace(['-', '_'], ' ', strtolower($name));
-        $name = lcfirst(str_replace(' ', '', ucwords($name)));
-        
-        return $name ?: 'index';
+        // 根据栏目类型决定使用哪个控制器
+        $db = \App\Core\Database::get();
+        $category = $db->get('sys_category', ['type'], [
+            'slug' => $slug,
+            'is_hidden' => 0
+        ]);
+
+        $controller = ($category && isset($category['type']) && $category['type'] === 'page')
+            ? 'PageController'
+            : 'CategoryController';
+
+        return ['controller' => $controller, 'action' => 'index'];
     }
 
     /**
@@ -404,19 +410,16 @@ class Router
         $controllerName = $this->controllerNamespace . $route['controller'];
         $actionName = $route['action'];
 
-        // 检查控制器是否存在
         if (!class_exists($controllerName)) {
             throw new RouterException("控制器不存在: {$controllerName}");
         }
 
         $controller = $this->container->get($controllerName);
 
-        // 检查方法是否存在
         if (!method_exists($controller, $actionName)) {
             throw new RouterException("方法不存在: {$controllerName}::{$actionName}()");
         }
 
-        // 调用控制器方法
         $controller->$actionName();
     }
 
@@ -428,8 +431,28 @@ class Router
     private function handleNotFound(): void
     {
         http_response_code(404);
+        $this->recordNotFoundLog();
         
-        // 记录 404 警告日志
+        $isDebug = App::isDebug();
+        $uri = htmlspecialchars($this->uri, ENT_QUOTES, 'UTF-8');
+        $method = htmlspecialchars($this->method, ENT_QUOTES, 'UTF-8');
+        
+        if ($isDebug) {
+            echo $this->renderNotFoundDebugPage($uri, $method);
+        } else {
+            echo $this->renderNotFoundPage();
+        }
+        
+        exit;
+    }
+
+    /**
+     * 记录 404 日志
+     *
+     * @return void
+     */
+    private function recordNotFoundLog(): void
+    {
         try {
             LogService::record(
                 0,
@@ -440,13 +463,21 @@ class Router
                 LogService::LEVEL_WARNING
             );
         } catch (\Exception $e) {
-            // 日志记录失败不应影响 404 页面显示
             error_log('[Router] 记录404日志失败: ' . $e->getMessage());
         }
-        
-        // 开发模式显示详细错误，生产模式显示友好页面
-        if (App::isDebug()) {
-            echo '<!DOCTYPE html>
+    }
+
+    /**
+     * 渲染 404 调试页面
+     *
+     * @param string $uri
+     * @param string $method
+     * @return string
+     */
+    private function renderNotFoundDebugPage(string $uri, string $method): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
 <html>
 <head>
     <title>404 Not Found</title>
@@ -460,12 +491,22 @@ class Router
 <body>
     <h1>404 - 页面未找到</h1>
     <p>请求的 URI 不存在或无法访问。</p>
-    <p>URI: <code>' . htmlspecialchars($this->uri) . '</code></p>
-    <p>Method: <code>' . htmlspecialchars($this->method) . '</code></p>
+    <p>URI: <code>{$uri}</code></p>
+    <p>Method: <code>{$method}</code></p>
 </body>
-</html>';
-        } else {
-            echo '<!DOCTYPE html>
+</html>
+HTML;
+    }
+
+    /**
+     * 渲染 404 页面
+     *
+     * @return string
+     */
+    private function renderNotFoundPage(): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
 <html>
 <head>
     <title>404 Not Found</title>
@@ -478,10 +519,8 @@ class Router
     <h1>404</h1>
     <p>页面未找到</p>
 </body>
-</html>';
-        }
-        
-        exit;
+</html>
+HTML;
     }
 
     /**
@@ -511,8 +550,8 @@ class Router
      */
     public function isAjax(): bool
     {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+        return $requestedWith !== '' && strtolower($requestedWith) === 'xmlhttprequest';
     }
 
     /**
