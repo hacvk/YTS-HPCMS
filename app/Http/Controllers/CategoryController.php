@@ -84,9 +84,9 @@ class CategoryController extends BaseController
             $articles = $this->contentModel->getList($page, $limit, ['cid' => $categoryId]);
 
             // 判定模板：如果是 doctorlist.latte，调用 DoctorService 处理数据
-            error_log('About to resolve template for category: ' . ($category['name'] ?? 'unknown') . ', template field: ' . ($category['template'] ?? 'not set'));
+            error_log('CategoryController::index - About to resolve template for category: ' . ($category['name'] ?? 'unknown') . ', template field: ' . ($category['template'] ?? 'not set'));
             $listTemplate = $this->resolveListTemplate($category);
-            error_log('Resolved template: ' . $listTemplate);
+            error_log('CategoryController::index - Resolved template: ' . $listTemplate);
             $filterData = [];
 
             $tplBase = basename($listTemplate);
@@ -124,8 +124,9 @@ class CategoryController extends BaseController
             }
 
             error_log('Rendering template: ' . $listTemplate . ' for category: ' . ($category['name'] ?? 'unknown'));
-            // 渲染模板
-            $this->render($listTemplate, [
+            
+            // 根据模板类型决定是否获取子栏目数据
+            $templateData = [
                 'title' => (string)($category['name'] ?? ''),
                 'category' => $category,
                 'articles' => $articles,
@@ -136,7 +137,37 @@ class CategoryController extends BaseController
                 'channelItems' => $channelItems,
                 'filterData' => $filterData,
                 'breadcrumbs' => $breadcrumbs,
-            ]);
+            ];
+            
+            // 如果是 kslist 模板，则获取子栏目和对应的文章数据
+            if ($listTemplate === 'front/kslist') {
+                // 获取当前栏目的直接子栏目
+                $subCategories = $this->db->select('sys_category', [
+                    'id',
+                    'name',
+                    'slug'
+                ], [
+                    'parent_id' => $categoryId,
+                    'is_hidden' => 0,
+                    'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+                ]) ?: [];
+                
+                $subCategoryArticles = [];
+                
+                // 为每个子栏目获取文章列表
+                foreach ($subCategories as $subCat) {
+                    $subArticles = $this->contentModel->getList(1, 12, [
+                        'cid' => $subCat['id']
+                    ]);
+                    $subCategoryArticles[$subCat['id']] = $subArticles['list'] ?? [];
+                }
+                
+                $templateData['subCategories'] = $subCategories;
+                $templateData['subCategoryArticles'] = $subCategoryArticles;
+            }
+            
+            // 渲染模板
+            $this->render($listTemplate, $templateData);
         } catch (\Throwable $e) {
             error_log('栏目列表页加载失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
@@ -153,27 +184,58 @@ class CategoryController extends BaseController
     private function resolveListTemplate(array $category): string
     {
         $listTemplate = 'front/list';
-
+    
         try {
             $tpl = trim((string)($category['template'] ?? ''));
+            error_log('CategoryController::resolveListTemplate - received template: ' . $tpl);
+            error_log('CategoryController::resolveListTemplate - category data: ' . print_r($category, true));
+            
             if ($tpl === '') {
+                error_log('CategoryController::resolveListTemplate - template is empty, using default');
                 return $listTemplate;
             }
-
+                
+            // 验证允许的模板列表
+            $allowedTemplates = [
+                'list',
+                'list.latte',
+                'doctorlist',
+                'doctorlist.latte',
+                'kslist',
+                'kslist.latte'
+            ];
+            
+            error_log('CategoryController::resolveListTemplate - checking if template is allowed: ' . $tpl);
+            error_log('CategoryController::resolveListTemplate - allowed templates: ' . print_r($allowedTemplates, true));
+            
+            if (!in_array($tpl, $allowedTemplates, true)) {
+                error_log('CategoryController::resolveListTemplate - 模板无效: ' . $tpl);
+                error_log('CategoryController::resolveListTemplate - returning default template: ' . $listTemplate);
+                return $listTemplate; // 返回默认模板
+            }
+            error_log('CategoryController::resolveListTemplate - template is valid: ' . $tpl);
+    
             // 确保模板文件扩展名
+            error_log('CategoryController::resolveListTemplate - before ends_with check: ' . $tpl);
             if (!str_ends_with($tpl, '.latte')) {
                 $tpl .= '.latte';
+                error_log('CategoryController::resolveListTemplate - added .latte extension, now: ' . $tpl);
+            } else {
+                error_log('CategoryController::resolveListTemplate - already has .latte extension');
             }
-
+    
             // 构建完整路径
+            error_log('CategoryController::resolveListTemplate - before adding .latte extension: ' . $tpl);
             $candidate = 'front/' . ltrim($tpl, '/\\');
+            error_log('CategoryController::resolveListTemplate - candidate template: ' . $candidate);
             $candidatePath = dirname(__DIR__, 3) . '/views/' . $candidate;
-            
+            error_log('CategoryController::resolveListTemplate - candidate path: ' . $candidatePath);
+                
             // 添加调试信息
             error_log('Template check - candidate: ' . $candidate);
             error_log('Template check - candidatePath: ' . $candidatePath);
             error_log('Template check - file exists: ' . (is_file($candidatePath) ? 'true' : 'false'));
-
+    
             // 检查文件是否存在
             if (is_file($candidatePath)) {
                 $listTemplate = $candidate;
@@ -182,7 +244,7 @@ class CategoryController extends BaseController
             error_log('解析列表模板失败: ' . $e->getMessage());
             // 忽略错误，使用默认模板
         }
-
+    
         return $listTemplate;
     }
 
