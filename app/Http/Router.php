@@ -282,12 +282,30 @@ class Router
             // 先匹配带分页的，避免被无分页的路由捕获
             // 匹配格式：/c/yuanwu/page/2，slug 不能包含斜杠，page 必须为正整数
             if (preg_match('#^/c/([^/]+)/page/([1-9][0-9]*)$#', $uri, $matches)) {
-                $_GET['slug'] = $matches[1];
-                $_GET['page'] = (int)$matches[2];
-                return [
-                    'controller' => 'CategoryController',
-                    'action' => 'index',
-                ];
+                $slug = $matches[1];
+                $page = (int)$matches[2];
+                
+                $_GET['slug'] = $slug;
+                $_GET['page'] = $page;
+                
+                // 根据栏目类型决定使用哪个控制器
+                $db = \App\Core\Database::get();
+                $category = $db->get('sys_category', ['type'], [
+                    'slug' => $slug,
+                    'is_hidden' => 0
+                ]);
+                
+                if ($category && isset($category['type']) && $category['type'] === 'page') {
+                    return [
+                        'controller' => 'PageController',
+                        'action' => 'index',
+                    ];
+                } else {
+                    return [
+                        'controller' => 'CategoryController',
+                        'action' => 'index',
+                    ];
+                }
             }
             
             // 动态路由匹配 - 处理栏目列表页 (GET /c/{slug})
@@ -295,12 +313,27 @@ class Router
             if (preg_match('#^/c/([^/]+)$#', $uri, $matches)) {
                 $slug = $matches[1];
                 // 确保 slug 不为空且不包含特殊字符
-                if ($slug !== '' && !preg_match('#[<>"\']#', $slug)) {
+                if ($slug !== '' && !preg_match('#[<>"]#', $slug)) {
                     $_GET['slug'] = $slug;
-                    return [
-                        'controller' => 'CategoryController',
-                        'action' => 'index',
-                    ];
+                                
+                    // 根据栏目类型决定使用哪个控制器
+                    $db = \App\Core\Database::get();
+                    $category = $db->get('sys_category', ['type'], [
+                        'slug' => $slug,
+                        'is_hidden' => 0
+                    ]);
+                                
+                    if ($category && isset($category['type']) && $category['type'] === 'page') {
+                        return [
+                            'controller' => 'PageController',
+                            'action' => 'index',
+                        ];
+                    } else {
+                        return [
+                            'controller' => 'CategoryController',
+                            'action' => 'index',
+                        ];
+                    }
                 }
             }
         }
