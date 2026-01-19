@@ -59,6 +59,11 @@ class Content
                 $conditions['content.category_id'] = (int)$where['cid'];
             }
             
+            // 处理多个栏目ID条件
+            if (isset($where['cids']) && is_array($where['cids']) && !empty($where['cids'])) {
+                $conditions['content.category_id'] = $where['cids'];
+            }
+            
             // 处理关键词搜索条件（使用别名）
             if (isset($where['keyword']) && !empty($where['keyword'])) {
                 $conditions['content.title[~]'] = $where['keyword'];
@@ -111,6 +116,11 @@ class Content
             if (isset($where['cid']) && $where['cid'] > 0) {
                 $countConditions['category_id'] = (int)$where['cid'];
             }
+            
+            // 处理多个栏目ID条件的计数
+            if (isset($where['cids']) && is_array($where['cids']) && !empty($where['cids'])) {
+                $countConditions['category_id'] = $where['cids'];
+            }
             if (isset($where['keyword']) && !empty($where['keyword'])) {
                 $countConditions['title[~]'] = $where['keyword'];
             }
@@ -142,6 +152,13 @@ class Content
     public function insert(array $data): int
     {
         try {
+            // 验证栏目是否允许添加文章（如果不是频道）
+            if (isset($data['category_id'])) {
+                if (!$this->validateCategoryForArticle((int)$data['category_id'])) {
+                    throw new DatabaseOperationException('所选栏目已被设为频道，不允许直接添加文章，请添加子分类');
+                }
+            }
+            
             // 自动序列化 JSON 字段
             $data = $this->serializeJsonFields($data);
             
@@ -198,6 +215,13 @@ class Content
     public function update(int $id, array $data): void
     {
         try {
+            // 验证栏目是否允许添加文章（如果不是频道）
+            if (isset($data['category_id'])) {
+                if (!$this->validateCategoryForArticle((int)$data['category_id'])) {
+                    throw new DatabaseOperationException('所选栏目已被设为频道，不允许直接添加文章，请添加子分类');
+                }
+            }
+            
             // 自动序列化 JSON 字段
             $data = $this->serializeJsonFields($data);
             
@@ -324,6 +348,47 @@ class Content
         } catch (\Exception $e) {
             error_log('根据栏目ID获取内容失败: ' . $e->getMessage());
             throw new RecordNotFoundException("根据栏目ID获取内容失败: " . $e->getMessage(), 0, $e);
+        }
+    }
+    
+    /**
+     * 验证栏目是否允许添加文章
+     * 如果栏目被设为频道，则不允许添加文章
+     *
+     * @param int $categoryId 栏目ID
+     * @return bool 如果允许添加文章返回true，否则返回false
+     */
+    public function validateCategoryForArticle(int $categoryId): bool
+    {
+        if ($categoryId <= 0) {
+            return false;
+        }
+        
+        // 检查栏目是否为频道
+        $category = $this->db->get('sys_category', ['is_channel'], ['id' => $categoryId]);
+        
+        if ($category) {
+            // 如果是频道，不允许添加文章
+            return $category['is_channel'] != 1;
+        }
+        
+        // 栏目不存在，默认允许（但这不应该发生）
+        return true;
+    }
+    
+    /**
+     * 统计文章数量
+     *
+     * @param array<string, mixed> $where 查询条件
+     * @return int
+     */
+    public function count(array $where = []): int
+    {
+        try {
+            return $this->db->count(self::TABLE, $where);
+        } catch (\Exception $e) {
+            error_log('统计文章数量失败: ' . $e->getMessage());
+            return 0;
         }
     }
     

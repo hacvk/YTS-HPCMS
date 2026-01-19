@@ -81,7 +81,29 @@ class CategoryController extends BaseController
             }
             $limit = 10; // 每页显示10篇文章
 
-            $articles = $this->contentModel->getList($page, $limit, ['cid' => $categoryId]);
+            // 检查当前栏目是否为频道
+            $currentCategory = $this->db->get('sys_category', ['id', 'parent_id', 'name', 'slug', 'type', 'template', 'detail_template', 'sort', 'is_hidden', 'is_channel', 'banner', 'create_time', 'update_time'], ['id' => $categoryId]);
+            $isChannel = !empty($currentCategory) && $currentCategory['is_channel'] == 1;
+
+            // 如果当前栏目是频道，则获取所有子分类的文章
+            if ($isChannel) {
+                // 获取当前栏目的所有子分类ID
+                $subCategoryIds = $this->categoryService->getAllChildrenIds($categoryId);
+                
+                if (!empty($subCategoryIds)) {
+                    // 将当前栏目ID也加入到查询条件中（以防频道栏目本身也有文章）
+                    $allCategoryIds = array_merge([$categoryId], $subCategoryIds);
+                    
+                    // 获取所有子分类的文章列表
+                    $articles = $this->contentModel->getList($page, $limit, ['cids' => $allCategoryIds]);
+                } else {
+                    // 如果频道栏目没有子分类，返回空列表
+                    $articles = ['list' => [], 'total' => 0];
+                }
+            } else {
+                // 普通栏目：只获取当前栏目的文章
+                $articles = $this->contentModel->getList($page, $limit, ['cid' => $categoryId]);
+            }
 
             // 判定模板：如果是 doctorlist.latte，调用 DoctorService 处理数据
             error_log('CategoryController::index - About to resolve template for category: ' . ($category['name'] ?? 'unknown') . ', template field: ' . ($category['template'] ?? 'not set'));

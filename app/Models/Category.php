@@ -36,7 +36,6 @@ class Category
     public function getAll(array $conditions = [], array|string $order = ['sort' => 'ASC', 'id' => 'ASC']): array
     {
         try {
-            // 使用 Medoo select 方法
             $result = $this->db->select(self::TABLE, '*', array_merge($conditions, [
                 'ORDER' => $order
             ]));
@@ -57,7 +56,6 @@ class Category
     public function getById(int $id): ?array
     {
         try {
-            // 使用Medoo的get方法
             $result = $this->db->get(self::TABLE, '*', [
                 'id' => $id
             ]);
@@ -179,6 +177,26 @@ class Category
             return true;
         } catch (\Exception $e) {
             error_log('更新排序失败: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * 检查栏目是否为频道
+     *
+     * @param int $id 栏目ID
+     * @return bool 如果是频道返回true，否则返回false
+     */
+    public function isChannel(int $id): bool
+    {
+        try {
+            $result = $this->db->get(self::TABLE, 'is_channel', [
+                'id' => $id
+            ]);
+            
+            return $result === 1;
+        } catch (\Exception $e) {
+            error_log('检查栏目是否为频道失败: ' . $e->getMessage());
             return false;
         }
     }

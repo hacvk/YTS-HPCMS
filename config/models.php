@@ -20,19 +20,36 @@ return [
                 'type' => 'text',
                 'label' => '来源',
             ],
+            'is_channel' => [
+                'type' => 'checkbox',
+                'label' => '是否频道',
+                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
+            ],
         ],
     ],
     
     // 单页模型 (CategoryType::Page->value)
     'page' => [
         'name' => '单页',
-        'fields' => [],
+        'fields' => [
+            'is_channel' => [
+                'type' => 'checkbox',
+                'label' => '是否频道',
+                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
+            ],
+        ],
     ],
     
     // 图文模型 (CategoryType::Pic->value)
     'pic' => [
         'name' => '图文',
-        'fields' => [],
+        'fields' => [
+            'is_channel' => [
+                'type' => 'checkbox',
+                'label' => '是否频道',
+                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
+            ],
+        ],
     ],
     
     // 专家模型 (CategoryType::Doctor->value)
@@ -56,6 +73,11 @@ return [
             'shanchang' => [
                 'type' => 'textarea',
                 'label' => '擅长',
+            ],
+            'is_channel' => [
+                'type' => 'checkbox',
+                'label' => '是否频道',
+                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
             ],
         ],
     ],

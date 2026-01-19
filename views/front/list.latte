@@ -8,7 +8,7 @@
 </div>
 
 <div class="crumbs">
-    <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > {$category['name']} </div>
+    <div class="auto auto_1150"> <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&gt;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{else}首页 > {$category['name']}{/ifset} </div>
 </div>
 
 <div class="auto auto_1150">

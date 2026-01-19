@@ -236,13 +236,22 @@ class ArticleController extends AdminBaseController
                 'is_top' => (int)$this->post('is_top', 0),
                 'is_image_news' => (int)$this->post('is_image_news', 0),
             ];
-
+                    
+            // 验证目标栏目是否为频道
+            $categoryId = $data['category_id'];
+            if ($categoryId > 0) {
+                $category = $this->categoryModel->getById($categoryId);
+                if ($category && isset($category['is_channel']) && $category['is_channel'] == 1) {
+                    throw new \App\Core\Exception\ValidationException('所选栏目已被设为频道，不允许直接添加文章，请选择其他栏目或添加子分类');
+                }
+            }
+                    
             $allPostData = $_POST;
             $excludeFields = [
                 'id', 'category_id', 'title', 'cover_img', 'summary',
                 'content', 'status', 'published_at', 'is_top', 'is_image_news', 'csrf_token'
             ];
-
+                    
             foreach ($allPostData as $key => $value) {
                 if (!in_array($key, $excludeFields, true) && !is_array($value)) {
                     $data[$key] = $value;

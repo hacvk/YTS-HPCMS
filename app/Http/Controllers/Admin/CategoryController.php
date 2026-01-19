@@ -62,11 +62,27 @@ class CategoryController extends AdminBaseController
 
             $parentId = (int)($this->get('parent_id', 0));
 
+            // 准备新栏目的默认值
+            $newCategory = [
+                'id' => null,
+                'parent_id' => $parentId,
+                'name' => '',
+                'slug' => '',
+                'type' => 'article',
+                'template' => '',
+                'detail_template' => '',
+                'sort' => 0,
+                'is_hidden' => 0,
+                'is_shortcut' => 0,
+                'is_channel' => 0,
+                'banner' => '',
+            ];
+            
             $this->render('admin/category/edit', [
                 'title' => '添加栏目',
                 'csrf_token' => $csrfToken,
                 'categories' => $categories,
-                'category' => null,
+                'category' => $newCategory,
                 'parent_id' => $parentId,
             ]);
         } catch (\Exception $e) {
@@ -95,6 +111,13 @@ class CategoryController extends AdminBaseController
             if (!$category) {
                 $this->errorJson('栏目不存在');
             }
+
+            // 确保所有必要字段都有默认值
+            $category = array_merge([
+                'is_hidden' => 0,
+                'is_shortcut' => 0,
+                'is_channel' => 0,
+            ], $category);
 
             // 生成 CSRF Token
             $csrfToken = Security::generateCsrfToken();
@@ -137,8 +160,9 @@ class CategoryController extends AdminBaseController
             $typeInput = $this->post('type', 'article');
             $parentId = (int)($this->post('parent_id', 0));
             $sort = (int)($this->post('sort', 0));
-            $isHidden = (int)($this->post('is_hidden', 0));
-            $isShortcut = (int)($this->post('is_shortcut', 0));
+            $isHidden = (int)$this->post('is_hidden', 0);
+            $isShortcut = (int)$this->post('is_shortcut', 0);
+            $isChannel = (int)$this->post('is_channel', 0);
 
             $template = trim((string)$this->post('template', ''));
             $detailTemplate = trim((string)$this->post('detail_template', ''));
@@ -268,6 +292,7 @@ class CategoryController extends AdminBaseController
                 'sort' => $sort,
                 'is_hidden' => $isHidden,
                 'is_shortcut' => $isShortcut,
+                'is_channel' => $isChannel,
             ]);
 
             // 记录日志
