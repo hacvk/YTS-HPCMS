@@ -53,7 +53,13 @@
                                     {var $level = (int)($category['level'] ?? 0)}
                                     {var $indent = str_repeat('&nbsp;&nbsp;', $level)}
                                     {var $categoryType = $category['type'] ?? 'article'}
-                                    <option value="{$category['id']}" data-type="{$categoryType}" {if isset($article['category_id']) && $article['category_id'] == $category['id']}selected{/if}>
+                                    {var $selected = false}
+                                    {if isset($article['category_id']) && $article['category_id'] == $category['id']}
+                                        {var $selected = true}
+                                    {elseif isset($pre_cid) && $pre_cid > 0 && $category['id'] == $pre_cid}
+                                        {var $selected = true}
+                                    {/if}
+                                    <option value="{$category['id']}" data-type="{$categoryType}" {if $selected}selected{/if}>
                                         {$indent|noescape} - {$category['name']}
                                     </option>
                                     {if isset($category['children']) && count($category['children']) > 0}
@@ -61,7 +67,13 @@
                                     {var $childLevel = (int)($child['level'] ?? 0)}
                                     {var $childIndent = str_repeat('&nbsp;&nbsp;', $childLevel)}
                                     {var $childType = $child['type'] ?? 'article'}
-                                    <option value="{$child['id']}" data-type="{$childType}" {if isset($article['category_id']) && $article['category_id'] == $child['id']}selected{/if}>
+                                    {var $childSelected = false}
+                                    {if isset($article['category_id']) && $article['category_id'] == $child['id']}
+                                        {var $childSelected = true}
+                                    {elseif isset($pre_cid) && $pre_cid > 0 && $child['id'] == $pre_cid}
+                                        {var $childSelected = true}
+                                    {/if}
+                                    <option value="{$child['id']}" data-type="{$childType}" {if $childSelected}selected{/if}>
                                         {$childIndent|noescape} - {$child['name']}
                                     </option>
                                     {/foreach}
@@ -709,8 +721,11 @@
         if (categorySelect) {
             categorySelect.addEventListener('change', loadExtendFields);
             
-            // 页面加载时，如果是编辑模式且有选中的栏目，自动加载扩展字段
-            if (articleData && articleData.category_id) {
+            // 页面加载时，如果是编辑模式且有选中的栏目，或者添加模式通过 pre_cid 预选了栏目，自动加载扩展字段
+            const shouldLoadExtendFields = (articleData && articleData.category_id) || 
+                                          (categorySelect.selectedIndex > 0 && categorySelect.options[categorySelect.selectedIndex].value);
+            
+            if (shouldLoadExtendFields) {
                 // 延迟执行，确保DOM已完全加载
                 setTimeout(loadExtendFields, 100);
             }

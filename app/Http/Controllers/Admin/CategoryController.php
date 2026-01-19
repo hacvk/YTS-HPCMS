@@ -138,6 +138,7 @@ class CategoryController extends AdminBaseController
             $parentId = (int)($this->post('parent_id', 0));
             $sort = (int)($this->post('sort', 0));
             $isHidden = (int)($this->post('is_hidden', 0));
+            $isShortcut = (int)($this->post('is_shortcut', 0));
 
             $template = trim((string)$this->post('template', ''));
             $detailTemplate = trim((string)$this->post('detail_template', ''));
@@ -266,6 +267,7 @@ class CategoryController extends AdminBaseController
                 'banner' => $finalBanner,
                 'sort' => $sort,
                 'is_hidden' => $isHidden,
+                'is_shortcut' => $isShortcut,
             ]);
 
             // 记录日志

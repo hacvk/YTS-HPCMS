@@ -105,6 +105,9 @@ class ArticleController extends AdminBaseController
         try {
             error_log('开始加载添加文章页面..');
             
+            // 获取 URL 中的 cid 参数（快捷导航传入的栏目ID）
+            $preCid = (int)($this->get('cid', 0));
+            
             // 获取栏目树
             error_log('获取栏目树..');
             $categories = $this->categoryService->getTree();
@@ -117,7 +120,8 @@ class ArticleController extends AdminBaseController
                 'action' => '/admin/article/save',
                 'article' => [],
                 'article_json' => 'null',
-                'categories' => $categories
+                'categories' => $categories,
+                'pre_cid' => $preCid
             ]);
             error_log('添加文章页面加载成功');
         } catch (\Exception $e) {
@@ -251,7 +255,13 @@ class ArticleController extends AdminBaseController
                 $this->getAdminUsername()
             );
 
-            $this->successJson('保存成功', null, '/admin/article');
+            // 如果保存的数据中包含 category_id，跳转时带上 cid 参数
+            $redirectUrl = '/admin/article';
+            if (isset($data['category_id']) && $data['category_id'] > 0) {
+                $redirectUrl .= '?cid=' . (int)$data['category_id'];
+            }
+
+            $this->successJson('保存成功', null, $redirectUrl);
         } catch (\App\Core\Exception\ValidationException $e) {
             $this->errorJson($e->getMessage());
         } catch (\App\Core\Exception\DatabaseOperationException $e) {

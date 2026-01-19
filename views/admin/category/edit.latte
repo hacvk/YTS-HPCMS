@@ -161,6 +161,26 @@
                             </div>
                         </div>
                         
+                        <!-- 是否快捷导航 -->
+                        <div class="mb-3">
+                            <label class="form-label">是否快捷导航</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="is_shortcut_0" name="is_shortcut" value="0"
+                                           {if !isset($category) || (isset($category['is_shortcut']) && $category['is_shortcut'] == 0)}checked{/if}>
+                                    <label class="form-check-label" for="is_shortcut_0">否</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio"
+                                           id="is_shortcut_1" name="is_shortcut" value="1"
+                                           {if isset($category) && $category['is_shortcut'] == 1}checked{/if}>
+                                    <label class="form-check-label" for="is_shortcut_1">是</label>
+                                </div>
+                            </div>
+                            <div class="form-text">设置为快捷导航后，该栏目将出现在左侧菜单的"内容管理"下方</div>
+                        </div>
+                        
                         <!-- 操作按钮 -->
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">

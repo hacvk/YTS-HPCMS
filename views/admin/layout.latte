@@ -365,7 +365,7 @@
                         </li>
                     {else}
                         <li class="sidebar-nav-item">
-                            <a href="{$item['route']}" class="sidebar-nav-link {if isset($current_uri) && str_starts_with($current_uri, $item['route'])}active{/if}">
+                            <a href="{$item['route']}" class="sidebar-nav-link {if (isset($current_uri) && str_starts_with($current_uri, $item['route'])) || (isset($item['is_active']) && $item['is_active'])}active{/if}">
                                 <i class="bi bi-{$item['icon']}"></i>
                                 <span>{$item['title']}</span>
                             </a>

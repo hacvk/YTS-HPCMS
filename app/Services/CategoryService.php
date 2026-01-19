@@ -270,6 +270,7 @@ class CategoryService
             'detail_template' => isset($data['detail_template']) ? trim($data['detail_template']) : 'article.latte',
             'sort' => (int)($data['sort'] ?? 0),
             'is_hidden' => isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0,
+            'is_shortcut' => isset($data['is_shortcut']) ? (int)$data['is_shortcut'] : 0,
             'banner' => $banner,
             'update_time' => date('Y-m-d H:i:s')
         ];

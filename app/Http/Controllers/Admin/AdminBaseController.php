@@ -86,11 +86,85 @@ abstract class AdminBaseController extends BaseController
 
         if (file_exists($menuFile)) {
             $menu = require $menuFile;
-            
-            // 根据管理员权限过滤菜单
-            $this->menu = $this->filterMenuByPerm($menu);
         } else {
-            $this->menu = [];
+            $menu = [];
+        }
+        
+        // 动态加载快捷导航栏目
+        $this->loadShortcutCategories($menu);
+        
+        // 根据管理员权限过滤菜单
+        $this->menu = $this->filterMenuByPerm($menu);
+    }
+    
+    /**
+     * 加载快捷导航栏目并创建"快捷内容管理"菜单组
+     *
+     * @param array<string, mixed> $menu 菜单数组（引用传递）
+     * @return void
+     */
+    private function loadShortcutCategories(array &$menu): void
+    {
+        try {
+            $db = Database::get();
+            
+            // 查询所有 is_shortcut = 1 且 is_hidden = 0 的栏目
+            $shortcutCategories = $db->select('sys_category', [
+                'id',
+                'name',
+                'slug'
+            ], [
+                'is_shortcut' => 1,
+                'is_hidden' => 0,
+                'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+            ]) ?: [];
+            
+            // 构建快捷栏目的子菜单项
+            $shortcutChildren = [];
+            
+            // 添加单页管理到快捷内容管理组
+            $shortcutChildren[] = [
+                'title' => '单页管理',
+                'route' => '/admin/page',
+                'perm' => 'admin:page:view'
+            ];
+            
+            // 添加快捷导航栏目
+            foreach ($shortcutCategories as $category) {
+                $shortcutChildren[] = [
+                    'title' => $category['name'],
+                    'route' => '/admin/article?cid=' . (int)$category['id'],
+                    'perm' => 'admin:article:view'
+                ];
+            }
+            
+            // 创建"快捷内容管理"菜单组，插入到"快捷导航"之后，"内容管理"之前
+            $shortcutMenu = [
+                'title' => '快捷内容管理',
+                'icon' => 'lightning',
+                'children' => $shortcutChildren,
+                'is_shortcut' => true, // 标识为快捷导航组
+                'should_expand' => true // 默认展开
+            ];
+            
+            // 查找"快捷导航"菜单项的位置，在其后插入
+            $insertIndex = -1;
+            foreach ($menu as $index => $item) {
+                if (isset($item['title']) && $item['title'] === '快捷导航') {
+                    $insertIndex = $index + 1;
+                    break;
+                }
+            }
+            
+            // 如果找到了位置，在指定位置插入；否则追加到末尾
+            if ($insertIndex > 0 && $insertIndex < count($menu)) {
+                array_splice($menu, $insertIndex, 0, [$shortcutMenu]);
+            } else {
+                $menu[] = $shortcutMenu;
+            }
+        } catch (\Throwable $e) {
+            // 静默失败，不影响菜单加载
+            error_log('加载快捷导航栏目失败: ' . $e->getMessage());
         }
     }
     
@@ -345,7 +419,15 @@ abstract class AdminBaseController extends BaseController
      */
     private function processMenu(array $menu, string $currentUri): array
     {
+        // 如果是首页（控制台），确保控制台菜单项被标记为active
+        $isDashboard = ($currentUri === '/admin/dashboard' || $currentUri === '/admin' || $currentUri === '/admin/');
+        
         foreach ($menu as &$item) {
+            // 处理控制台菜单项：如果是首页，标记为active
+            if (isset($item['route']) && $item['route'] === '/admin/dashboard' && $isDashboard) {
+                $item['is_active'] = true;
+            }
+            
             if (isset($item['children']) && is_array($item['children'])) {
                 // 检查是否有子菜单项匹配当前路由
                 $hasActiveChild = false;
@@ -356,8 +438,8 @@ abstract class AdminBaseController extends BaseController
                     }
                 }
                 
-                // 如果有激活的子菜单，或者本身就是快捷导航，则标记为展开
-                if ($hasActiveChild || isset($item['is_shortcut'])) {
+                // 如果有激活的子菜单，或者本身就是快捷导航，或者明确设置了 should_expand，则标记为展开
+                if ($hasActiveChild || isset($item['is_shortcut']) || (isset($item['should_expand']) && $item['should_expand'])) {
                     $item['should_expand'] = true;
                 } else {
                     $item['should_expand'] = false;
