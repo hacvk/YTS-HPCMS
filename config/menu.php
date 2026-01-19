@@ -23,7 +23,7 @@ return [
         'children' => [
             ['title' => '栏目管理', 'route' => '/admin/category', 'perm' => 'admin:category:view'],
             ['title' => '文章管理', 'route' => '/admin/article', 'perm' => 'admin:article:view'],
-            ['title' => '专家管理', 'route' => '/admin/doctor', 'perm' => 'admin:doctor:view'], // 后续开发
+            
         ]
     ],
     [
