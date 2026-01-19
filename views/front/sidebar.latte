@@ -3,11 +3,20 @@
     <div class="tit"><i class="wap-open"></i><b>栏目导航</b></div>
     <ul class="ul">
         {ifset $sidebarItems}
-            {foreach $sidebarItems as $item}
-                <li pagename="{$item['name']}">
-                    <a href="{$item['url']}">{$item['name']}</a>
-                </li>
-            {/foreach}
+            {if count($sidebarItems) > 0}
+                {foreach $sidebarItems as $item}
+                    <li pagename="{$item['name']}">
+                        <a href="{$item['url']}">{$item['name']}</a>
+                    </li>
+                {/foreach}
+            {else}
+                <!-- 如果没有子栏目，则显示当前顶级栏目本身 -->
+                {ifset $category}
+                    <li pagename="{$category['name']}">
+                        <a href="/c/{$category['slug']}">{$category['name']}</a>
+                    </li>
+                {/ifset}
+            {/if}
         {/ifset}
     </ul>
 </div>

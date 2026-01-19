@@ -648,11 +648,65 @@ a:hover { color: #0068b7; }
 .Form .word dd { float: none; width: auto; padding-left: 0; }
 }
 .pagelist{ text-align:center; padding-top:20px; margin-right:20px;}
+/* 旧的分页样式 */
 .pagelist li{display:inline-block;border:solid 1px #ccc;margin-right:2px;}
-.pagelist li{*display:inline;}
+.pagelist li{display:inline;}
 .pagelist a{display:inline-block;padding:4px 12px;color:#666;background:#eee;text-decoration:none;}
-.pagelist li a:hover{background:#ccc}
-.pagelist li.on a{background:#ccc}
+.pagelist li a:hover{background:#ccc;}
+.pagelist li.on a{background:#ccc;}
+
+/* 新的分页样式 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    padding: 20px 0;
+}
+
+.pagination a,
+.pagination span {
+    display: inline-block;
+    padding: 8px 15px;
+    margin: 0 3px;
+    text-decoration: none;
+    border: 1px solid #ddd;
+    color: #333;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.pagination a:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.pagination .current {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+    font-weight: bold;
+}
+
+.pagination .prev,
+.pagination .next {
+    background-color: #f8f9fa;
+    color: #333;
+}
+
+.pagination .prev:hover,
+.pagination .next:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+.pagination .ellipsis {
+    padding: 8px 5px;
+    border: none;
+    background: none;
+    color: #999;
+}
 /*左侧边导航*/
 .menubox_l{
     width: 253px;

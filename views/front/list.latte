@@ -40,10 +40,20 @@
         {ifset $totalPages}
           <div class="pagination">
             {if $currentPage > 1}
-              <a href="/c/{$category['slug']}/page/{=$currentPage - 1}" class="prev">上一页</a>
+              <a href="/c/{$category['slug']}/page/{=$currentPage - 1}" class="prev">&laquo; 上一页</a>
             {/if}
             
-            {for $i = 1; $i <= $totalPages; $i++}
+            {var $startPage = max(1, $currentPage - 2)}
+            {var $endPage = min($totalPages, $currentPage + 2)}
+            
+            {if $startPage > 1}
+              <a href="/c/{$category['slug']}/page/1">1</a>
+              {if $startPage > 2}
+                <span class="ellipsis">...</span>
+              {/if}
+            {/if}
+            
+            {for $i = $startPage; $i <= $endPage; $i++}
               {if $i == $currentPage}
                 <span class="current">{$i}</span>
               {else}
@@ -51,8 +61,15 @@
               {/if}
             {/for}
             
+            {if $endPage < $totalPages}
+              {if $endPage < $totalPages - 1}
+                <span class="ellipsis">...</span>
+              {/if}
+              <a href="/c/{$category['slug']}/page/{$totalPages}">{$totalPages}</a>
+            {/if}
+            
             {if $currentPage < $totalPages}
-              <a href="/c/{$category['slug']}/page/{=$currentPage + 1}" class="next">下一页</a>
+              <a href="/c/{$category['slug']}/page/{=$currentPage + 1}" class="next">下一页 &raquo;</a>
             {/if}
           </div>
         {/ifset}
