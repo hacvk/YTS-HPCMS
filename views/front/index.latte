@@ -224,10 +224,12 @@
                                         <div class="txt ytable-cell">
                                             <h3 class="dot">
                                                 <a href="{$a['url']}">{$a['name']}</a>
-                                                <span>{$a['dept'] ?? ''}</span>
+                                                {var $d = $a['dept'] ?? ''}
+                                                {if is_string($d)}{var $d = json_decode($d, true)}{/if}
+                                                <span>{if is_array($d)}{$d[2] ?? ($d[0] ?? '')}{else}{$d}{/if}</span>
                                             </h3>
                                             <aside>{$a['title'] ?? ''}</aside>
-                                            <div class="word"><p>{$a['desc'] ?? ''}</p></div>
+                                            <div class="word"><p>{$a['desc'] ?? $a['summary'] ?? $a['shanchang'] ?? ''}</p></div>
                                         </div>
                                     </div>
                                 </li>
