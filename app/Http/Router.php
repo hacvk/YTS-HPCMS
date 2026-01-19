@@ -96,6 +96,17 @@ class Router
     }
 
     /**
+     * 检查是否为 AJAX 请求
+     *
+     * @return bool
+     */
+    private function isAjaxRequest(): bool
+    {
+        $requestedWith = $_SERVER['HTTP_X_REQUESTED_WITH'] ?? '';
+        return $requestedWith !== '' && strtolower($requestedWith) === 'xmlhttprequest';
+    }
+
+    /**
      * 处理静态资源未找到
      *
      * @return void
@@ -128,6 +139,18 @@ class Router
      */
     private function handleDispatchError(\Throwable $e): void
     {
+        // 检查是否为 AJAX 请求
+        if ($this->isAjaxRequest()) {
+            http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode([
+                'code' => 1,
+                'message' => '服务器内部错误',
+                'error' => App::isDebug() ? $e->getMessage() : '请稍后重试'
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
         if (App::isDebug()) {
             http_response_code(500);
             $system = App::getConfig('system', []);

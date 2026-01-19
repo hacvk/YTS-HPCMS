@@ -174,8 +174,63 @@
 
             <button type="submit" class="btn-submit">登 录</button>
             <script>
+                // 点击验证码图片刷新
                 document.getElementById('captchaImg').addEventListener('click', function () {
                     this.src = '/admin/login/captcha?rand=' + Date.now();
+                });
+                
+                // 登录失败时自动刷新验证码
+                document.querySelector('form').addEventListener('submit', function (e) {
+                    // 阻止默认提交，使用 AJAX
+                    e.preventDefault();
+                    
+                    const formData = new FormData(this);
+                    const captchaImg = document.getElementById('captchaImg');
+                    const submitBtn = document.querySelector('.btn-submit');
+                    
+                    // 禁用提交按钮，防止重复提交
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = '登录中...';
+                    
+                    fetch(this.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        // 检查响应状态
+                        if (!response.ok) {
+                            throw new Error('网络错误: ' + response.status);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (data.code !== 0) {
+                            // 登录失败，刷新验证码
+                            captchaImg.src = '/admin/login/captcha?rand=' + Date.now();
+                            // 清空验证码输入框
+                            document.getElementById('captcha').value = '';
+                            // 显示错误提示
+                            alert(data.message);
+                        } else {
+                            // 登录成功，跳转
+                            if (data.url) {
+                                window.location.href = data.url;
+                            } else {
+                                window.location.href = '/admin/dashboard';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('登录失败:', error);
+                        captchaImg.src = '/admin/login/captcha?rand=' + Date.now();
+                        document.getElementById('captcha').value = '';
+                        alert('登录失败：' + error.message);
+                    })
+                    .finally(() => {
+                        // 恢复提交按钮
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '登 录';
+                    });
                 });
             </script>
         </form>

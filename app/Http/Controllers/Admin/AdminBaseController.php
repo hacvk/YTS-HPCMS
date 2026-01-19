@@ -7,6 +7,7 @@ use App\Http\Controllers\BaseController;
 use App\Core\App;
 use App\Core\Database;
 use App\Core\Security;
+use App\Services\SessionService;
 
 /**
  * 后台控制器基类
@@ -54,23 +55,53 @@ abstract class AdminBaseController extends BaseController
      */
     private function checkLogin(): void
     {
-        $adminId = $_SESSION['admin_id'] ?? null;
-
+        // 检查管理员 ID（这是登录的唯一标识）
+        $adminId = SessionService::get('admin_id');
+        
+        // 如果没有管理员 ID，说明未登录
         if ($adminId === null || !is_numeric($adminId)) {
             $this->redirect('/admin');
         }
 
         // 验证 Session 中的其他必要数据
-        if (!isset($_SESSION['admin_username']) || !isset($_SESSION['admin_login_time'])) {
+        if (!SessionService::has('admin_username') || !SessionService::has('admin_login_time')) {
+            SessionService::destroy();
             $this->redirect('/admin');
         }
 
         // 检查登录是否过期（24小时）
-        $loginTime = $_SESSION['admin_login_time'] ?? 0;
+        $loginTime = SessionService::get('admin_login_time', 0);
         if (time() - $loginTime > 86400) {
-            // 清空 Session
-            session_unset();
-            session_destroy();
+            // 安全地销毁 Session
+            SessionService::destroy();
+            $this->redirect('/admin');
+        }
+    }
+
+    /**
+     * 获取当前登录管理员信息
+     *
+     * @return void
+     */
+    private function loadAdminInfo(): void
+    {
+        $adminId = SessionService::get('admin_id');
+
+        if ($adminId === null) {
+            return;
+        }
+
+        $db = Database::get();
+        $this->admin = $db->get('sys_admin', [
+            'id',
+            'username',
+            'name',
+            'status',
+        ], ['id' => $adminId]);
+
+        if (!$this->admin) {
+            // 管理员不存在，清除 Session 并跳转
+            SessionService::destroy();
             $this->redirect('/admin');
         }
     }
@@ -96,11 +127,227 @@ abstract class AdminBaseController extends BaseController
         // 根据管理员权限过滤菜单
         $this->menu = $this->filterMenuByPerm($menu);
     }
-    
+
+    /**
+     * 注入全局视图数据
+     *
+     * @return void
+     */
+    private function injectViewData(): void
+    {
+        $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
+        
+        // 处理菜单，标记需要展开的父级菜单
+        $processedMenu = $this->processMenu($this->menu, $currentUri);
+        
+        $this->assign('menu', $processedMenu);
+        $this->assign('user', $this->admin);
+        $this->assign('current_uri', $currentUri);
+        $this->assign('csrf_token', Security::generateCsrfToken());
+
+        // 注入系统信息（用于后台页面关于等展示）
+        $this->assign('system', App::getConfig('system', []));
+    }
+
+    /**
+     * 检查是否有权限
+     *
+     * @param string $perm 权限标识
+     * @return bool
+     */
+    protected function hasPerm(string $perm): bool
+    {
+        if (empty($perm)) {
+            return true;
+        }
+
+        // 暂时返回 true，等添加 role_id 字段后再完善
+        // TODO: 实现完整的权限检查逻辑
+        return true;
+    }
+
+    /**
+     * 验证权限（无权限则跳转）
+     *
+     * @param string $perm 权限标识
+     * @return void
+     */
+    protected function requirePerm(string $perm): void
+    {
+        if (!$this->hasPerm($perm)) {
+            $this->error('无权限访问');
+        }
+    }
+
+    /**
+     * 获取当前登录管理员ID
+     *
+     * @return int
+     */
+    protected function getAdminId(): int
+    {
+        return (int)SessionService::get('admin_id', 0);
+    }
+
+    /**
+     * 获取当前登录管理员用户名
+     *
+     * @return string
+     */
+    protected function getAdminUsername(): string
+    {
+        return SessionService::get('admin_username', '');
+    }
+
+    /**
+     * 获取当前登录管理员姓名
+     *
+     * @return string
+     */
+    protected function getAdminName(): string
+    {
+        return SessionService::get('admin_name', '');
+    }
+
+    /**
+     * 返回成功响应
+     *
+     * @param string $message 消息
+     * @param string|null $url 跳转URL
+     * @return void
+     */
+    protected function success(string $message, ?string $url = null): void
+    {
+        if ($this->isAjax()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'code' => 0,
+                'message' => $message,
+                'url' => $url ?? ''
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            if ($url) {
+                $this->redirect($url);
+            } else {
+                echo '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>提示</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5; }
+        .box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        h2 { color: #28a745; margin-bottom: 20px; }
+        p { color: #666; }
+        a { color: #007bff; text-decoration: none; margin-top: 20px; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>成功：' . htmlspecialchars($message) . '</h2>';
+                if ($url) {
+                    echo '<p>正在跳转...</p>
+        <script>setTimeout(function() { window.location.href = "' . htmlspecialchars($url) . '"; }, 1000);</script>';
+                }
+                echo '</div>
+</body>
+</html>';
+            }
+        }
+        exit;
+    }
+
+    /**
+     * 返回错误响应
+     *
+     * @param string $message 错误消息
+     * @return void
+     */
+    protected function error(string $message): void
+    {
+        if ($this->isAjax()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'code' => 1,
+                'message' => $message
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            echo '<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>错误</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5; }
+        .box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        h2 { color: #dc3545; margin-bottom: 20px; }
+        a { color: #007bff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>错误：' . htmlspecialchars($message) . '</h2>
+        <p><a href="javascript:history.back()">返回</a></p>
+    </div>
+</body>
+</html>';
+        }
+        exit;
+    }
+
+    /**
+     * 页面跳转
+     *
+     * @param string $url 目标URL
+     * @param int $statusCode HTTP状态码
+     * @return void
+     */
+    protected function redirect(string $url, int $statusCode = 302): void
+    {
+        header("Location: {$url}", true, $statusCode);
+        exit;
+    }
+
+    /**
+     * 记录操作日志
+     *
+     * @param string $message 日志消息
+     * @param string $action 操作类型
+     * @return void
+     */
+    protected function log(string $message, string $action = ''): void
+    {
+        try {
+            $db = Database::get();
+            $db->insert('sys_log', [
+                'admin_id' => $this->getAdminId(),
+                'admin_name' => $this->getAdminName(),
+                'action' => $action,
+                'message' => $message,
+                'ip' => SessionService::getClientIp(),
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                'create_time' => date('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            // 日志记录失败不影响主流程
+            error_log('日志记录失败: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * 获取客户端IP
+     *
+     * @return string
+     */
+    protected function getClientIp(): string
+    {
+        return SessionService::getClientIp();
+    }
+
     /**
      * 加载快捷导航栏目并创建"快捷内容管理"菜单组
      *
-     * @param array<string, mixed> $menu 菜单数组（引用传递）
+     * @param array &$menu 菜单数组（引用传递）
      * @return void
      */
     private function loadShortcutCategories(array &$menu): void
@@ -138,7 +385,7 @@ abstract class AdminBaseController extends BaseController
                 ];
             }
             
-            // 创建"快捷内容管理"菜单组，插入到"快捷导航"之后，"内容管理"之前
+            // 创建"快捷内容管理"菜单组
             $shortcutMenu = [
                 'title' => '快捷内容管理',
                 'icon' => 'lightning',
@@ -155,258 +402,53 @@ abstract class AdminBaseController extends BaseController
                 }
             }
             
-            // 如果找到了位置，在指定位置插入；否则追加到末尾
-            if ($insertIndex > 0 && $insertIndex < count($menu)) {
+            // 如果找到"快捷导航"，在其后插入；否则插入到开头
+            if ($insertIndex > 0) {
                 array_splice($menu, $insertIndex, 0, [$shortcutMenu]);
             } else {
-                $menu[] = $shortcutMenu;
+                array_unshift($menu, $shortcutMenu);
             }
-        } catch (\Throwable $e) {
-            // 静默失败，不影响菜单加载
-            error_log('加载快捷导航栏目失败: ' . $e->getMessage());
+            
+        } catch (\Exception $e) {
+            // 加载快捷菜单失败不影响主流程
+            error_log('加载快捷菜单失败: ' . $e->getMessage());
         }
-    }
-    
-    /**
-     * 获取当前管理员角色ID列表
-     *
-     * @return array<int, int>
-     */
-    protected function getAdminRoleIds(): array
-    {
-        $adminId = (int)($this->admin['id'] ?? 0);
-        if ($adminId <= 0) {
-            return [];
-        }
-
-        try {
-            $db = Database::get();
-            $rows = $db->select('sys_admin_role', ['role_id'], [
-                'admin_id' => $adminId,
-            ]);
-
-            $ids = [];
-            foreach ($rows as $row) {
-                $ids[] = (int)($row['role_id'] ?? 0);
-            }
-
-            $ids = array_values(array_unique(array_filter($ids, fn($v) => $v > 0)));
-            sort($ids);
-            return $ids;
-        } catch (\Throwable $e) {
-            return [];
-        }
-    }
-
-    /**
-     * 是否超级管理员（拥有 role_id=1）
-     */
-    protected function isSuperAdmin(): bool
-    {
-        return in_array(1, $this->getAdminRoleIds(), true);
-    }
-
-    /**
-     * 获取当前管理员权限key 列表
-     *
-     * @return array<int, string>
-     */
-    protected function getAdminPermKeys(): array
-    {
-        if ($this->isSuperAdmin()) {
-            return ['admin:*'];
-        }
-
-        $roleIds = $this->getAdminRoleIds();
-        if (count($roleIds) === 0) {
-            return [];
-        }
-
-        try {
-            $db = Database::get();
-
-            $rows = $db->select('sys_role_permission', [
-                '[>]sys_permission' => ['permission_id' => 'id']
-            ], [
-                'sys_permission.perm_key',
-            ], [
-                'sys_role_permission.role_id' => $roleIds,
-            ]);
-
-            $keys = [];
-            foreach ($rows as $row) {
-                $k = (string)($row['perm_key'] ?? '');
-                if ($k !== '') {
-                    $keys[] = $k;
-                }
-            }
-
-            $keys = array_values(array_unique($keys));
-            sort($keys);
-            return $keys;
-        } catch (\Throwable $e) {
-            return [];
-        }
-    }
-
-    /**
-     * 判断是否拥有权限（支持 admin:* 通配符）
-     */
-    protected function hasPerm(string $permKey): bool
-    {
-        if ($permKey === '') {
-            return true;
-        }
-
-        if ($this->isSuperAdmin()) {
-            return true;
-        }
-
-        $keys = $this->getAdminPermKeys();
-        if (in_array('admin:*', $keys, true)) {
-            return true;
-        }
-
-        return in_array($permKey, $keys, true);
-    }
-
-    /**
-     * 权限不足时终止请求
-     */
-    protected function requirePerm(string $permKey): void
-    {
-        if ($this->hasPerm($permKey)) {
-            return;
-        }
-
-        if ($this->isAjax()) {
-            $this->errorJson('无权限');
-        }
-
-        $this->error('无权限');
     }
 
     /**
      * 根据管理员权限过滤菜单
      *
-     * @param array<string, mixed> $menu
-     * @return array<string, mixed>
+     * @param array $menu 菜单数组
+     * @return array 过滤后的菜单
      */
     private function filterMenuByPerm(array $menu): array
     {
         $filtered = [];
 
         foreach ($menu as $item) {
-            if (isset($item['is_shortcut']) && $item['is_shortcut'] === true) {
-                $filteredChildren = [];
-                if (isset($item['children']) && is_array($item['children'])) {
-                    foreach ($item['children'] as $child) {
-                        $childPerm = (string)($child['perm'] ?? '');
-                        if ($childPerm === '' || $this->hasPerm($childPerm)) {
-                            $filteredChildren[] = $child;
-                        }
-                    }
-                }
-
-                if (count($filteredChildren) > 0) {
-                    $item['children'] = $filteredChildren;
-                    $filtered[] = $item;
-                }
-                continue;
+            // 确保有 title 字段（兼容旧代码）
+            if (!isset($item['title']) && isset($item['name'])) {
+                $item['title'] = $item['name'];
             }
 
-            $itemPerm = (string)($item['perm'] ?? '');
-
+            // 检查是否有子菜单
             if (isset($item['children']) && is_array($item['children'])) {
-                $filteredChildren = [];
-                foreach ($item['children'] as $child) {
-                    $childPerm = (string)($child['perm'] ?? '');
-                    if ($childPerm === '' || $this->hasPerm($childPerm)) {
-                        $filteredChildren[] = $child;
-                    }
+                $item['children'] = $this->filterMenuByPerm($item['children']);
+                
+                // 如果子菜单为空，跳过此菜单项
+                if (empty($item['children'])) {
+                    continue;
                 }
-
-                if (count($filteredChildren) > 0) {
-                    $item['children'] = $filteredChildren;
-                    $filtered[] = $item;
-                }
-                continue;
             }
 
+            // 检查权限
+            $itemPerm = $item['perm'] ?? '';
             if ($itemPerm === '' || $this->hasPerm($itemPerm)) {
                 $filtered[] = $item;
             }
         }
 
         return $filtered;
-    }
-
-    /**
-     * 加载当前管理员信息
-     *
-     * @return void
-     */
-    private function loadAdminInfo(): void
-    {
-        try {
-            $adminId = (int)($_SESSION['admin_id'] ?? 0);
-
-            if ($adminId > 0) {
-                $db = Database::get();
-
-                $this->admin = $db->get('sys_admin', [
-                    'id',
-                    'username',
-                    'name',
-                    'avatar',
-                    'email',
-                    'phone',
-                    'status',
-                    'last_login_time',
-                    'last_login_ip',
-                    'login_count',
-                ], [
-                    'id' => $adminId,
-                    'status' => 1
-                ]);
-
-                // 如果管理员不存在或状态异常，清除 Session
-                if (!$this->admin) {
-                    session_unset();
-                    session_destroy();
-                    $this->redirect('/admin');
-                }
-            }
-        } catch (\Exception $e) {
-            // 数据库查询失败，但不影响流程
-            error_log('加载管理员信息失败 ' . $e->getMessage());
-            $this->admin = [
-                'id' => $_SESSION['admin_id'] ?? 0,
-                'username' => $_SESSION['admin_username'] ?? '',
-                'name' => $_SESSION['admin_name'] ?? '',
-            ];
-        }
-    }
-
-    /**
-     * 注入全局视图数据
-     *
-     * @return void
-     */
-    private function injectViewData(): void
-    {
-        $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
-        
-        // 处理菜单，标记需要展开的父级菜单
-        $processedMenu = $this->processMenu($this->menu, $currentUri);
-        
-        $this->assign('menu', $processedMenu);
-        $this->assign('user', $this->admin);
-        $this->assign('current_uri', $currentUri);
-        $this->assign('csrf_token', Security::generateCsrfToken());
-
-        // 注入系统信息（用于后台页面关于等展示）
-        $this->assign('system', App::getConfig('system', []));
     }
 
     /**
@@ -444,360 +486,67 @@ abstract class AdminBaseController extends BaseController
                 parse_str($currentQuery, $currentParams);
                 
                 foreach ($item['children'] as $child) {
-                    if (isset($child['route'])) {
-                        // 完全匹配优先级最高
-                        if ($currentUri === $child['route']) {
-                            $exactMatch = true;
-                            break;
-                        }
-                        
-                        // 分析子菜单项的路径和参数
-                        $childPath = parse_url($child['route'], PHP_URL_PATH) ?: '';
-                        $childQuery = parse_url($child['route'], PHP_URL_QUERY) ?: '';
-                        parse_str($childQuery, $childParams);
-                        
-                        // 尝试匹配带相同查询参数的路由（参数精确匹配）
-                        if ($currentPath === $childPath && !empty($childParams)) {
-                            $paramsMatch = true;
-                            // 检查当前URI的参数是否包含了子菜单项的所有参数
-                            foreach ($childParams as $key => $value) {
-                                if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
-                                    $paramsMatch = false;
-                                    break;
-                                }
-                            }
-                            
-                            if ($paramsMatch) {
-                                $routeParamsMatch = true;
-                                break;
-                            }
-                        }
-                        
-                        // 特殊处理：如果当前路径是编辑/添加路径，尝试匹配基础路径
-                        // 例如：当前是 /admin/article/add?cid=5，菜单项是 /admin/article?cid=5
-                        if (!$routeParamsMatch && $currentPath !== $childPath) {
-                            // 检查是否是编辑/添加操作的基础路径匹配
-                            $baseCurrentPath = preg_replace('/\/(add|edit|save|delete)$/', '', $currentPath);
-                            if ($baseCurrentPath === $childPath && !empty($childParams)) {
-                                // 再次检查参数是否匹配
-                                $paramsMatch = true;
-                                foreach ($childParams as $key => $value) {
-                                    if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
-                                        $paramsMatch = false;
-                                        break;
-                                    }
-                                }
-                                
-                                if ($paramsMatch) {
-                                    $routeParamsMatch = true;
-                                    break;
-                                }
-                            }
-                        }
-                        
-                        // 前缀匹配（用于编辑、添加等页面）
-                        if (!$routeParamsMatch && str_starts_with($currentUri, $child['route'])) {
-                            $partialMatch = true;
-                        }
+                    if (!isset($child['route'])) {
+                        continue;
+                    }
+                    
+                    $childRoute = $child['route'];
+                    $childPath = parse_url($childRoute, PHP_URL_PATH) ?: '';
+                    $childQuery = parse_url($childRoute, PHP_URL_QUERY) ?: '';
+                    parse_str($childQuery, $childParams);
+                    
+                    // 完全匹配
+                    if ($childRoute === $currentUri) {
+                        $exactMatch = true;
+                        break;
+                    }
+                    
+                    // 路由参数匹配（路径相同，参数也相同）
+                    if ($childPath === $currentPath && $childParams === $currentParams) {
+                        $routeParamsMatch = true;
+                        continue;
+                    }
+                    
+                    // 前缀匹配（路径前缀匹配）
+                    if ($childPath !== '' && str_starts_with($currentPath, $childPath)) {
+                        $partialMatch = true;
                     }
                 }
                 
+                // 确定是否需要展开此菜单
                 if ($exactMatch || $routeParamsMatch || $partialMatch) {
-                    // 确定匹配优先级：完全匹配 > 路由参数匹配 > 前缀匹配
-                    $currentPriority = $exactMatch ? 3 : ($routeParamsMatch ? 2 : 1);
-                    
-                    // 如果之前没找到匹配项，直接设置
-                    if ($targetIndex === null) {
-                        $targetIndex = $index;
-                    } else {
-                        // 检查是否当前项是快捷菜单，而之前的不是
-                        $isCurrentShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
-                        $isPreviousShortcut = isset($menu[$targetIndex]['is_shortcut']) && $menu[$targetIndex]['is_shortcut'];
-                        
-                        // 如果当前是快捷菜单而之前的不是，则更新（快捷菜单优先级更高）
-                        if ($isCurrentShortcut && !$isPreviousShortcut) {
-                            $targetIndex = $index;
-                        }
-                        // 如果都不是快捷菜单或都是快捷菜单，比较匹配优先级
-                        elseif (!$isCurrentShortcut && !$isPreviousShortcut) {
-                            // 获取之前目标的匹配类型
-                            $prevExactMatch = false;
-                            $prevRouteMatch = false;
-                            $prevPartialMatch = false;
+                    $targetIndex = $index;
+                    break;
+                }
+            }
+        }
+        
+        // 第二步：标记激活状态
+        if ($targetIndex !== null) {
+            $menu[$targetIndex]['is_active'] = true;
+            $menu[$targetIndex]['is_open'] = true;
+            
+            // 标记子菜单激活状态
+            if (isset($menu[$targetIndex]['children'])) {
+                foreach ($menu[$targetIndex]['children'] as &$child) {
+                    if (isset($child['route'])) {
+                        // 精确匹配
+                        if ($child['route'] === $currentUri) {
+                            $child['is_active'] = true;
+                        } else {
+                            // 检查是否为前缀匹配
+                            $childPath = parse_url($child['route'], PHP_URL_PATH) ?: '';
+                            $currentPath = parse_url($currentUri, PHP_URL_PATH) ?: '';
                             
-                            foreach ($menu[$targetIndex]['children'] as $prevChild) {
-                                if (isset($prevChild['route'])) {
-                                    if ($currentUri === $prevChild['route']) {
-                                        $prevExactMatch = true;
-                                        break;
-                                    }
-                                    
-                                    $prevPath = parse_url($prevChild['route'], PHP_URL_PATH) ?: '';
-                                    $prevQuery = parse_url($prevChild['route'], PHP_URL_QUERY) ?: '';
-                                    parse_str($prevQuery, $prevParams);
-                                    
-                                    // 参数精确匹配检查
-                                    if ($currentPath === $prevPath && !empty($prevParams)) {
-                                        $paramsMatch = true;
-                                        foreach ($prevParams as $key => $value) {
-                                            if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
-                                                $paramsMatch = false;
-                                                break;
-                                            }
-                                        }
-                                        
-                                        if ($paramsMatch) {
-                                            $prevRouteMatch = true;
-                                            break;
-                                        }
-                                    }
-                                    
-                                    // 基础路径匹配检查
-                                    if (!$prevRouteMatch && $currentPath !== $prevPath) {
-                                        $baseCurrentPath = preg_replace('/\/(add|edit|save|delete)$/', '', $currentPath);
-                                        if ($baseCurrentPath === $prevPath && !empty($prevParams)) {
-                                            $paramsMatch = true;
-                                            foreach ($prevParams as $key => $value) {
-                                                if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
-                                                    $paramsMatch = false;
-                                                    break;
-                                                }
-                                            }
-                                            
-                                            if ($paramsMatch) {
-                                                $prevRouteMatch = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (!$prevRouteMatch && str_starts_with($currentUri, $prevChild['route'])) {
-                                        $prevPartialMatch = true;
-                                    }
-                                }
-                            }
-                            
-                            $prevPriority = $prevExactMatch ? 3 : ($prevRouteMatch ? 2 : 1);
-                            
-                            // 如果当前匹配优先级更高，则更新
-                            if ($currentPriority > $prevPriority) {
-                                $targetIndex = $index;
+                            if ($childPath !== '' && str_starts_with($currentPath, $childPath)) {
+                                $child['is_active'] = true;
                             }
                         }
-                        // 如果当前不是快捷菜单而之前是，则保持不变
                     }
                 }
             }
         }
         
-        // 第二步：应用状态
-        foreach ($menu as $index => &$item) {
-            if ($index === $targetIndex) {
-                $item['should_expand'] = true;
-            } else {
-                $item['should_expand'] = false;
-            }
-        }
-        unset($item);
-        
         return $menu;
-    }
-
-    /**
-     * 获取当前管理员ID
-     *
-     * @return int
-     */
-    protected function getAdminId(): int
-    {
-        return (int)($this->admin['id'] ?? 0);
-    }
-
-    /**
-     * 获取当前管理员用户名
-     *
-     * @return string
-     */
-    protected function getAdminUsername(): string
-    {
-        return $this->admin['username'] ?? '';
-    }
-
-    /**
-     * 获取当前管理员姓名
-     *
-     * @return string
-     */
-    protected function getAdminName(): string
-    {
-        return $this->admin['name'] ?? '';
-    }
-
-    /**
-     * 检查当前页面是否激活
-     *
-     * @param string $route 路由
-     * @return bool
-     */
-    protected function isActive(string $route): bool
-    {
-        $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
-        return str_starts_with($currentUri, $route);
-    }
-    
-    /**
-     * 统一验证POST请求和CSRF
-     *
-     * @param string $customMessage 自定义错误消息
-     * @return bool 验证结果
-     */
-    protected function validatePostAndCsrf(string $customMessage = '请求方法错误或CSRF验证失败'): bool
-    {
-        if (!$this->isPost()) {
-            $this->errorJson($customMessage);
-            return false;
-        }
-    
-        $csrfToken = $this->post('csrf_token', '');
-        if (!Security::checkCsrfToken($csrfToken)) {
-            $this->errorJson('CSRF Token验证失败');
-            return false;
-        }
-    
-        return true;
-    }
-    
-    /**
-     * 简化成功日志记录
-     *
-     * @param string $operation 操作描述
-     * @param string $details 详细信息
-     * @param int|null $userId 用户ID
-     * @param string|null $username 用户名
-     * @return void
-     */
-    protected function logSuccess(string $operation, string $details = '', int $userId = null, string $username = null): void
-    {
-        $userId = $userId ?? $this->getAdminId();
-        $username = $username ?? $this->getAdminUsername();
-    
-        \App\Services\LogService::record($userId, $username, 'success', $operation, $details);
-    }
-    
-    /**
-     * 简化错误日志记录
-     *
-     * @param string $operation 操作描述
-     * @param string $details 详细信息
-     * @param int|null $userId 用户ID
-     * @param string|null $username 用户名
-     * @return void
-     */
-    protected function logError(string $operation, string $details = '', int $userId = null, string $username = null): void
-    {
-        $userId = $userId ?? $this->getAdminId();
-        $username = $username ?? $this->getAdminUsername();
-    
-        \App\Services\LogService::record($userId, $username, 'error', $operation, $details);
-    }
-    
-    /**
-     * 统一清理请求数据
-     *
-     * @param array $data 待清理的数据
-     * @param array $options 清理选项
-     * @return array 清理后的数据
-     */
-    protected function sanitizeRequestData(array $data, array $options = []): array
-    {
-        $sanitizedData = [];
-            
-        foreach ($data as $key => $value) {
-            if (is_array($value)) {
-                $sanitizedData[$key] = $this->sanitizeRequestData($value, $options);
-            } elseif (is_string($value)) {
-                $sanitizedData[$key] = \App\Utils\StringSanitizer::sanitize($value, $options);
-            } else {
-                $sanitizedData[$key] = $value;
-            }
-        }
-            
-        return $sanitizedData;
-    }
-    
-    /**
-     * 统一响应处理
-     *
-     * @param string $message 响应消息
-     * @param mixed $data 响应数据
-     * @param int $code 响应代码
-     * @param string|null $redirect 重定向地址
-     * @return void
-     */
-    protected function jsonResponse(string $message = '操作成功', mixed $data = null, int $code = 0, string $redirect = null): void
-    {
-        $response = [
-            'code' => $code,
-            'message' => $message,
-            'data' => $data,
-            'timestamp' => time()
-        ];
-    
-        if ($redirect !== null) {
-            $response['redirect'] = $redirect;
-        }
-    
-        $this->json($response);
-    }
-    
-    /**
-     * 统一错误响应处理
-     *
-     * @param string $message 错误消息
-     * @param int $code 错误代码
-     * @param mixed $data 响应数据
-     * @return void
-     */
-    protected function errorResponse(string $message = '操作失败', int $code = 1, mixed $data = null): void
-    {
-        $this->jsonResponse($message, $data, $code);
-    }
-    
-    /**
-     * 显示错误页面
-     *
-     * @param string $message 错误消息
-     * @return void
-     */
-    protected function error(string $message): void
-    {
-        if ($this->isAjax()) {
-            header('Content-Type: application/json');
-            echo json_encode([
-                'code' => 1,
-                'message' => $message
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            echo '<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>错误</title>
-    <style>
-        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5; }
-        .box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
-        h2 { color: #dc3545; margin-bottom: 20px; }
-        a { color: #007bff; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h2>错误：' . htmlspecialchars($message) . '</h2>
-        <p><a href="javascript:history.back()">返回</a></p>
-    </div>
-</body>
-</html>';
-        }
-        exit;
     }
 }

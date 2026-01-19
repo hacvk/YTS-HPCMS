@@ -17,10 +17,8 @@ require_once APP_ROOT . '/app/Core/Autoloader.php';
 $autoloader = new App\Core\Autoloader();
 $autoloader->register();
 
-// 开启 Session
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+// 初始化 Session（使用安全配置）
+App\Services\SessionService::init();
 
 // 引入配置文件
 $config = require APP_ROOT . '/config.php';
