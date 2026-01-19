@@ -83,7 +83,7 @@ class HomeController extends BaseController
             'hospitalNewsMoreUrl' => '/c/yuanwu', // 院务公开栏目别名
             'noticeMoreUrl' => '/c/zhaobiao', // 招标信息栏目别名
             'doctorItems' => $doctorItems,
-            'channelItems' => [], // 首页不需要特定的频道项目
+            'sidebarItems' => [], // 首页不需要特定的侧边栏项目
             'departmentTabs' => $departmentData['tabs'],
             'departmentGroups' => $departmentData['groups'],
         ];

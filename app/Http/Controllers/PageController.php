@@ -107,9 +107,10 @@ class PageController extends BaseController
             }
             
             // 验证模板文件是否存在，如果不存在则使用默认模板
-            $templatePath = dirname(__DIR__, 3) . '/views/' . $configuredTemplate . '.latte';
+            // 前台模板统一在 views/front/ 目录下
+            $templatePath = dirname(__DIR__, 3) . '/views/front/' . $configuredTemplate . '.latte';
             if (file_exists($templatePath)) {
-                $template = $configuredTemplate;
+                $template = 'front/' . $configuredTemplate;
             } else {
                 // 如果配置的模板不存在，使用默认的单页模板
                 $template = 'front/page';
@@ -133,6 +134,9 @@ class PageController extends BaseController
                 }
             }
 
+            // 构建侧边栏数据
+            $sidebarItems = $this->buildSidebarItems($category);
+            
             // 渲染模板
             $this->render($template, [
                 'title' => (string)($category['name'] ?? ''),
@@ -140,11 +144,90 @@ class PageController extends BaseController
                 'page' => $pageContent,
                 'navItems' => $navItems,
                 'breadcrumbs' => $breadcrumbs,
+                'sidebarItems' => $sidebarItems,
             ]);
         } catch (\Throwable $e) {
             error_log('单页显示失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             $this->redirect('/');
+        }
+    }
+    
+    /**
+     * 构建侧边栏菜单项
+     *
+     * @param array $currentCategory 当前栏目
+     * @return array
+     */
+    private function buildSidebarItems(array $currentCategory): array
+    {
+        $categoryId = (int)($currentCategory['id'] ?? 0);
+        
+        if ($categoryId <= 0) {
+            return [];
+        }
+        
+        try {
+            // 获取当前栏目的父级ID
+            $parentId = (int)($currentCategory['parent_id'] ?? 0);
+            
+            // 如果当前栏目是顶级栏目（parent_id为0或自身），则显示其子栏目
+            if ($parentId <= 0) {
+                // 获取当前栏目的子栏目 - 简化查询，移除 COUNT
+                $subCategories = $this->db->select('sys_category', [
+                    'id',
+                    'name',
+                    'slug',
+                    'parent_id',
+                    'type'
+                ], [
+                    'parent_id' => $categoryId,
+                    'is_hidden' => 0,
+                    'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+                ]);
+                
+                // 构建子栏目菜单项
+                $items = [];
+                foreach ($subCategories as $subCategory) {
+                    $items[] = [
+                        'id' => $subCategory['id'],
+                        'name' => $subCategory['name'],
+                        'url' => '/c/' . $subCategory['slug'],
+                        'type' => $subCategory['type']
+                    ];
+                }
+                
+                return $items;
+            } else {
+                // 如果当前栏目是子栏目，则显示同父级的其他栏目 - 简化查询
+                $siblingCategories = $this->db->select('sys_category', [
+                    'id',
+                    'name',
+                    'slug',
+                    'parent_id',
+                    'type'
+                ], [
+                    'parent_id' => $parentId,
+                    'is_hidden' => 0,
+                    'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+                ]);
+                
+                // 构建同级栏目菜单项
+                $items = [];
+                foreach ($siblingCategories as $siblingCategory) {
+                    $items[] = [
+                        'id' => $siblingCategory['id'],
+                        'name' => $siblingCategory['name'],
+                        'url' => '/c/' . $siblingCategory['slug'],
+                        'type' => $siblingCategory['type']
+                    ];
+                }
+                
+                return $items;
+            }
+        } catch (\Throwable $e) {
+            error_log('构建侧边栏菜单失败: ' . $e->getMessage());
+            return [];
         }
     }
 }

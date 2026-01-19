@@ -70,8 +70,8 @@ class ArticleController extends BaseController
             // 使用 SiteService 获取导航数据
             $navItems = $this->siteService->buildNav();
 
-            // 使用 SiteService 获取当前文章所属栏目的子栏目数据
-            $channelItems = $this->siteService->buildChannelItems($categoryId);
+            // 构建侧边栏数据
+            $sidebarItems = $this->buildSidebarItemsForArticle($categoryId);
 
             // 读取栏目详情模板（detail_template）并渲染
             $detailTemplate = $this->resolveDetailTemplate($categoryId);
@@ -107,7 +107,7 @@ class ArticleController extends BaseController
                 'category' => $category,
                 'prevArticle' => $prevArticle,
                 'nextArticle' => $nextArticle,
-                'channelItems' => $channelItems,
+                'sidebarItems' => $sidebarItems,
                 'navItems' => $navItems,
                 'breadcrumbs' => $breadcrumbs,
             ]);
@@ -192,5 +192,90 @@ class ArticleController extends BaseController
         }
 
         return $detailTemplate;
+    }
+    
+    /**
+     * 构建文章页侧边栏菜单项
+     *
+     * @param int $categoryId 文章所属栏目ID
+     * @return array
+     */
+    private function buildSidebarItemsForArticle(int $categoryId): array
+    {
+        if ($categoryId <= 0) {
+            return [];
+        }
+        
+        try {
+            // 获取当前栏目的信息
+            $currentCategory = $this->categoryModel->getById($categoryId);
+            
+            if (!$currentCategory) {
+                return [];
+            }
+            
+            // 获取当前栏目的父级ID
+            $parentId = (int)($currentCategory['parent_id'] ?? 0);
+            
+            // 如果当前栏目是顶级栏目（parent_id为0或自身），则显示其子栏目
+            if ($parentId <= 0) {
+                // 获取当前栏目的子栏目 - 简化查询
+                $db = \App\Core\Database::get();
+                $subCategories = $db->select('sys_category', [
+                    'id',
+                    'name',
+                    'slug',
+                    'parent_id',
+                    'type'
+                ], [
+                    'parent_id' => $categoryId,
+                    'is_hidden' => 0,
+                    'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+                ]);
+                
+                // 构建子栏目菜单项
+                $items = [];
+                foreach ($subCategories as $subCategory) {
+                    $items[] = [
+                        'id' => $subCategory['id'],
+                        'name' => $subCategory['name'],
+                        'url' => '/c/' . $subCategory['slug'],
+                        'type' => $subCategory['type']
+                    ];
+                }
+                
+                return $items;
+            } else {
+                // 如果当前栏目是子栏目，则显示同父级的其他栏目 - 简化查询
+                $db = \App\Core\Database::get();
+                $siblingCategories = $db->select('sys_category', [
+                    'id',
+                    'name',
+                    'slug',
+                    'parent_id',
+                    'type'
+                ], [
+                    'parent_id' => $parentId,
+                    'is_hidden' => 0,
+                    'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+                ]);
+                
+                // 构建同级栏目菜单项
+                $items = [];
+                foreach ($siblingCategories as $siblingCategory) {
+                    $items[] = [
+                        'id' => $siblingCategory['id'],
+                        'name' => $siblingCategory['name'],
+                        'url' => '/c/' . $siblingCategory['slug'],
+                        'type' => $siblingCategory['type']
+                    ];
+                }
+                
+                return $items;
+            }
+        } catch (\Throwable $e) {
+            error_log('构建文章页侧边栏菜单失败: ' . $e->getMessage());
+            return [];
+        }
     }
 }
