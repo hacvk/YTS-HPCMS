@@ -143,8 +143,7 @@ abstract class AdminBaseController extends BaseController
                 'title' => '快捷内容管理',
                 'icon' => 'lightning',
                 'children' => $shortcutChildren,
-                'is_shortcut' => true, // 标识为快捷导航组
-                'should_expand' => true // 默认展开
+                'is_shortcut' => true // 标识为快捷导航组
             ];
             
             // 查找"快捷导航"菜单项的位置，在其后插入
@@ -422,12 +421,17 @@ abstract class AdminBaseController extends BaseController
         // 如果是首页（控制台），确保控制台菜单项被标记为active
         $isDashboard = ($currentUri === '/admin/dashboard' || $currentUri === '/admin' || $currentUri === '/admin/');
         
+        // 遍历菜单，为控制台项设置激活状态
         foreach ($menu as &$item) {
-            // 处理控制台菜单项：如果是首页，标记为active
             if (isset($item['route']) && $item['route'] === '/admin/dashboard' && $isDashboard) {
                 $item['is_active'] = true;
             }
-            
+        }
+        unset($item);
+        
+        // 第一步：寻找最佳匹配项（Best Match）
+        $targetIndex = null;
+        foreach ($menu as $index => $item) {
             if (isset($item['children']) && is_array($item['children'])) {
                 // 检查是否有子菜单项匹配当前路由
                 $hasActiveChild = false;
@@ -438,12 +442,21 @@ abstract class AdminBaseController extends BaseController
                     }
                 }
                 
-                // 如果有激活的子菜单，或者本身就是快捷导航，或者明确设置了 should_expand，则标记为展开
-                if ($hasActiveChild || isset($item['is_shortcut']) || (isset($item['should_expand']) && $item['should_expand'])) {
-                    $item['should_expand'] = true;
-                } else {
-                    $item['should_expand'] = false;
+                if ($hasActiveChild) {
+                    // 如果之前没找到匹配项，或者之前找到的不是快捷菜单而当前这个是，则更新目标
+                    if ($targetIndex === null || (!isset($menu[$targetIndex]['is_shortcut']) && isset($item['is_shortcut']) && $item['is_shortcut'])) {
+                        $targetIndex = $index;
+                    }
                 }
+            }
+        }
+        
+        // 第二步：应用状态
+        foreach ($menu as $index => &$item) {
+            if ($index === $targetIndex) {
+                $item['should_expand'] = true;
+            } else {
+                $item['should_expand'] = false;
             }
         }
         unset($item);

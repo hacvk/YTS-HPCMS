@@ -211,7 +211,6 @@
         }
 
         .sidebar-nav-shortcut .sidebar-nav-link {
-            background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
@@ -350,9 +349,9 @@
                                 <i class="bi bi-folder"></i>
                                 {/if}
                                 <span>{$item['title']}</span>
-                                <i class="bi {if isset($item['is_shortcut']) || (isset($item['should_expand']) && $item['should_expand'])}bi-chevron-up{else}bi-chevron-down{/if} ms-auto sidebar-nav-arrow"></i>
+                                <i class="bi {if isset($item['should_expand']) && $item['should_expand']}bi-chevron-up{else}bi-chevron-down{/if} ms-auto sidebar-nav-arrow"></i>
                             </a>
-                            <ul class="sidebar-submenu collapse {if isset($item['is_shortcut']) || (isset($item['should_expand']) && $item['should_expand'])}show{/if}">
+                            <ul class="sidebar-submenu collapse {if isset($item['should_expand']) && $item['should_expand']} show{/if}">
                                 {foreach $item['children'] as $child}
                                     <li class="sidebar-nav-item">
                                         <a href="{$child['route']}" class="sidebar-nav-link {if isset($current_uri) && str_starts_with($current_uri, $child['route'])}active{/if}">
@@ -425,24 +424,28 @@
                             
                             // 可选：手风琴效果（一次只展开一个菜单组）
                             // 如果启用，先收起其他所有菜单组
-                            // const enableAccordion = true; // 设置为 false 可禁用互斥逻辑
-                            // if (enableAccordion && isExpanding) {
-                            //     document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
-                            //         if (otherSubmenu !== submenu) {
-                            //             otherSubmenu.classList.remove('show');
-                            //             const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
-                            //             if (otherNavItem) {
-                            //                 const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
-                            //                 const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
-                            //                 if (otherArrow) {
-                            //                     otherArrow.style.transform = 'rotate(0deg)';
-                            //                     otherArrow.classList.remove('bi-chevron-up');
-                            //                     otherArrow.classList.add('bi-chevron-down');
-                            //                 }
-                            //             }
-                            //         }
-                            //     });
-                            // }
+                            const enableAccordion = true; // 设置为 false 可禁用互斥逻辑
+                            if (enableAccordion && isExpanding) {
+                                document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
+                                    if (otherSubmenu !== submenu) {
+                                        otherSubmenu.classList.remove('show');
+                                        const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
+                                        if (otherNavItem) {
+                                            const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
+                                            const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
+                                            // 移除其他菜单组的 active 类
+                                            if (otherToggle) {
+                                                otherToggle.classList.remove('active');
+                                            }
+                                            if (otherArrow) {
+                                                otherArrow.style.transform = 'rotate(0deg)';
+                                                otherArrow.classList.remove('bi-chevron-up');
+                                                otherArrow.classList.add('bi-chevron-down');
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                             
                             // 切换子菜单的显示状态
                             submenu.classList.toggle('show');
