@@ -151,14 +151,15 @@ class Router
             'POST /admin/contact/save' => ['Admin\\ContactController', 'save'],
 
             // Admin - category
-            'GET /admin/category' => ['Admin\\CategoryController', 'index'],
-            'GET /admin/category/edit' => ['Admin\\CategoryController', 'edit'],
-            'POST /admin/category/save' => ['Admin\\CategoryController', 'save'],
-            'POST /admin/category/delete' => ['Admin\\CategoryController', 'delete'],
-            'GET /admin/category/getModelFields' => ['Admin\\CategoryController', 'getModelFields'],
-            'GET /admin/category/tree' => ['Admin\\CategoryController', 'tree'],
-            'GET /admin/category/getCategoryOptions' => ['Admin\\CategoryController', 'getCategoryOptions'],
-            'GET /admin/category/getContentOptions' => ['Admin\\CategoryController', 'getContentOptions'],
+            'GET /admin/category' => ['Admin\CategoryController', 'index'],
+            'GET /admin/category/add' => ['Admin\CategoryController', 'add'],
+            'GET /admin/category/edit' => ['Admin\CategoryController', 'edit'],
+            'POST /admin/category/save' => ['Admin\CategoryController', 'save'],
+            'POST /admin/category/delete' => ['Admin\CategoryController', 'delete'],
+            'GET /admin/category/getModelFields' => ['Admin\CategoryController', 'getModelFields'],
+            'GET /admin/category/tree' => ['Admin\CategoryController', 'tree'],
+            'GET /admin/category/getCategoryOptions' => ['Admin\CategoryController', 'getCategoryOptions'],
+            'GET /admin/category/getContentOptions' => ['Admin\CategoryController', 'getContentOptions'],
 
             // Admin - page
             'GET /admin/page' => ['Admin\\PageController', 'index'],
