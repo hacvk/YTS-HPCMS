@@ -265,4 +265,120 @@ class UploadController extends AdminBaseController
             $this->errorJson('删除失败: ' . $e->getMessage());
         }
     }
+
+    /**
+     * 图片裁剪接口
+     * 
+     * 支持两种模式：
+     * 1. 固定尺寸模式：根据配置的 targetWidth/targetHeight 强制输出指定尺寸
+     * 2. 自由尺寸模式：直接裁剪，不进行缩放
+     * 
+     * @return void
+     */
+    public function crop(): void
+    {
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+            return;
+        }
+
+        if (!$this->validatePostAndCsrf()) {
+            return;
+        }
+
+        try {
+            $sourceUrl = $this->post('source_url', '');
+            $x = (int)$this->post('x', 0);
+            $y = (int)$this->post('y', 0);
+            $width = (int)$this->post('width', 0);
+            $height = (int)$this->post('height', 0);
+            $targetWidth = (int)$this->post('target_width', 0) ?: null;
+            $targetHeight = (int)$this->post('target_height', 0) ?: null;
+
+            if (empty($sourceUrl)) {
+                $this->errorJson('请选择要裁剪的图片');
+                return;
+            }
+
+            if ($width <= 0 || $height <= 0) {
+                $this->errorJson('请设置裁剪区域');
+                return;
+            }
+
+            $result = FileService::cropImage(
+                $sourceUrl,
+                $x,
+                $y,
+                $width,
+                $height,
+                $targetWidth,
+                $targetHeight
+            );
+
+            if ($result['success']) {
+                $this->successJson('裁剪成功', ['url' => $result['url']]);
+            } else {
+                $this->errorJson($result['message'] ?? '裁剪失败');
+            }
+        } catch (\Exception $e) {
+            error_log('图片裁剪失败: ' . $e->getMessage());
+            $this->errorJson('裁剪异常: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Base64 图片上传并裁剪接口
+     * 
+     * @return void
+     */
+    public function uploadCrop(): void
+    {
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+            return;
+        }
+
+        if (!$this->validatePostAndCsrf()) {
+            return;
+        }
+
+        try {
+            $base64Data = $this->post('image_data', '');
+            $x = (int)$this->post('x', 0);
+            $y = (int)$this->post('y', 0);
+            $width = (int)$this->post('width', 0);
+            $height = (int)$this->post('height', 0);
+            $targetWidth = (int)$this->post('target_width', 0) ?: null;
+            $targetHeight = (int)$this->post('target_height', 0) ?: null;
+
+            if (empty($base64Data)) {
+                $this->errorJson('请上传图片');
+                return;
+            }
+
+            if ($width <= 0 || $height <= 0) {
+                $this->errorJson('请设置裁剪区域');
+                return;
+            }
+
+            $result = FileService::uploadAndCropBase64Image(
+                $base64Data,
+                $x,
+                $y,
+                $width,
+                $height,
+                $targetWidth,
+                $targetHeight
+            );
+
+            if ($result['success']) {
+                $this->successJson('上传并裁剪成功', ['url' => $result['url']]);
+            } else {
+                $this->errorJson($result['message'] ?? '上传裁剪失败');
+            }
+        } catch (\Exception $e) {
+            error_log('图片上传裁剪失败: ' . $e->getMessage());
+            $this->errorJson('上传裁剪异常: ' . $e->getMessage());
+        }
+    }
 }

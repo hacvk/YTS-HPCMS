@@ -51,7 +51,7 @@ return [
             ],
         ],
     ],
-    
+
     // 专家模型 (CategoryType::Doctor->value)
     'doctor' => [
         'name' => '专家',
@@ -67,12 +67,20 @@ return [
             'keshi' => [
                 'type' => 'select',
                 'label' => '所属科室',
-                'lookup_category' => 9, // 特殊标记：表示选项来自 栏目ID=9 的所有文章
-                'options' => [] // 默认为空，由控制器动态填充
+                'lookup_category' => 9,
+                'options' => []
             ],
             'shanchang' => [
                 'type' => 'textarea',
                 'label' => '擅长',
+            ],
+            'avatar' => [
+                'type' => 'image_crop',
+                'label' => '专家照片',
+                'width' => 150,
+                'height' => 210,
+                'locked_aspect_ratio' => true,
+                'help' => '建议尺寸：150×210像素'
             ],
             'is_channel' => [
                 'type' => 'checkbox',

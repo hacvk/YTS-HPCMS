@@ -199,6 +199,8 @@ class Router
             'POST /admin/upload/upload' => ['Admin\\UploadController', 'upload'],
             'POST /admin/upload/categoryBanner' => ['Admin\\UploadController', 'categoryBanner'],
             'POST /admin/upload/deleteCoverImage' => ['Admin\\UploadController', 'deleteCoverImage'],
+            'POST /admin/upload/crop' => ['Admin\\UploadController', 'crop'],
+            'POST /admin/upload/uploadCrop' => ['Admin\\UploadController', 'uploadCrop'],
 
             // Admin - admin user
             'GET /admin/admin' => ['Admin\\AdminController', 'index'],

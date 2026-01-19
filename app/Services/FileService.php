@@ -934,27 +934,290 @@ class FileService
     }
 
     /**
-     * 格式WangEditor响应
+     * 图片裁剪
      * 
-     * @param array{success: bool, file_id?: int, path?: string, url?: string, message?: string}|null $result 上传结果
-     * @param bool $success 是否成功
-     * @param string $message 错误消息
-     * @return string JSON响应字符串
+     * 根据提供的坐标和尺寸裁剪图片，支持固定尺寸和自由尺寸两种模式
+     * 
+     * @param string $sourceImagePath 源图片路径（可以是完整路径或相对路径）
+     * @param int $x 裁剪区域左上角 x 坐标
+     * @param int $y 裁剪区域左上角 y 坐标
+     * @param int $width 裁剪区域宽度
+     * @param int $height 裁剪区域高度
+     * @param int|null $targetWidth 目标宽度（可选，为 null 则使用裁剪区域宽度）
+     * @param int|null $targetHeight 目标高度（可选，为 null 则使用裁剪区域高度）
+     * @return array{success: bool, url?: string, message?: string}
      */
-    public static function formatWangEditorResponse(array $result = null, bool $success = false, string $message = ''): string
-    {
-        if ($success && $result && isset($result['url'])) {
-            // WangEditor 4.x 期望的格式
-            return json_encode([
-                'errno' => 0,
-                'data' => [$result['url']]  // 图片URL数组
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            // 错误响应
-            return json_encode([
-                'errno' => 1,
-                'message' => $message ?: ($result['message'] ?? '上传失败')
-            ], JSON_UNESCAPED_UNICODE);
+    public static function cropImage(
+        string $sourceImagePath, 
+        int $x, 
+        int $y, 
+        int $width, 
+        int $height,
+        ?int $targetWidth = null,
+        ?int $targetHeight = null
+    ): array {
+        try {
+            // 解析源图片路径
+            $sourcePath = self::resolveFullPath($sourceImagePath);
+            if (!file_exists($sourcePath)) {
+                return ['success' => false, 'message' => '源图片不存在'];
+            }
+
+            // 获取图片信息
+            $imageInfo = @getimagesize($sourcePath);
+            if ($imageInfo === false) {
+                return ['success' => false, 'message' => '无法读取图片信息'];
+            }
+
+            $sourceWidth = $imageInfo[0];
+            $sourceHeight = $imageInfo[1];
+            $imageType = $imageInfo[2];
+
+            // 验证裁剪坐标和尺寸
+            if ($x < 0 || $y < 0 || $width <= 0 || $height <= 0) {
+                return ['success' => false, 'message' => '无效的裁剪参数'];
+            }
+
+            if ($x + $width > $sourceWidth || $y + $height > $sourceHeight) {
+                return ['success' => false, 'message' => '裁剪区域超出图片范围'];
+            }
+
+            // 创建源图片资源
+            $sourceImage = self::createImageFromFile($sourcePath, $imageType);
+            if ($sourceImage === false) {
+                return ['success' => false, 'message' => '无法创建图片资源'];
+            }
+
+            // 目标尺寸
+            $dstWidth = $targetWidth ?? $width;
+            $dstHeight = $targetHeight ?? $height;
+
+            // 创建目标图片资源
+            $dstImage = imagecreatetruecolor($dstWidth, $dstHeight);
+            if ($dstImage === false) {
+                imagedestroy($sourceImage);
+                return ['success' => false, 'message' => '无法创建目标图片'];
+            }
+
+            // 处理 PNG 和 GIF 的透明背景
+            if ($imageType === IMAGETYPE_PNG) {
+                imagealphablending($dstImage, false);
+                imagesavealpha($dstImage, true);
+                $transparent = imagecolorallocatealpha($dstImage, 0, 0, 0, 127);
+                imagefill($dstImage, 0, 0, $transparent);
+            } elseif ($imageType === IMAGETYPE_GIF) {
+                $transparentIndex = imagecolortransparent($sourceImage);
+                if ($transparentIndex >= 0) {
+                    $transparentColor = imagecolorsforindex($sourceImage, $transparentIndex);
+                    $transparentNew = imagecolorallocate(
+                        $dstImage, 
+                        $transparentColor['red'], 
+                        $transparentColor['green'], 
+                        $transparentColor['blue']
+                    );
+                    imagefill($dstImage, 0, 0, $transparentNew);
+                    imagecolortransparent($dstImage, $transparentNew);
+                }
+            }
+
+            // 执行裁剪和缩放
+            $resizeOk = imagecopyresampled(
+                $dstImage, 
+                $sourceImage, 
+                0,            // 目标 x
+                0,            // 目标 y
+                $x,           // 源 x
+                $y,           // 源 y
+                $dstWidth,    // 目标宽度
+                $dstHeight,   // 目标高度
+                $width,       // 源宽度
+                $height       // 源高度
+            );
+
+            imagedestroy($sourceImage);
+
+            if (!$resizeOk) {
+                imagedestroy($dstImage);
+                return ['success' => false, 'message' => '裁剪失败'];
+            }
+
+            // 生成新文件名
+            $fileHash = hash_file('sha256', $sourcePath);
+            $extension = self::getExtensionFromImageType($imageType);
+            $newFileName = 'crop_' . $fileHash . '_' . $dstWidth . 'x' . $dstHeight . '.' . $extension;
+            
+            // 保存目录
+            $saveDir = self::getUploadDirectory('uploads/images/crop');
+            $savePath = $saveDir . '/' . $newFileName;
+
+            // 保存图片
+            $saveOk = self::saveImageToFile($dstImage, $savePath, $imageType);
+            imagedestroy($dstImage);
+
+            if (!$saveOk) {
+                return ['success' => false, 'message' => '保存裁剪图片失败'];
+            }
+
+            // 返回相对路径
+            $relativePath = 'uploads/images/crop/' . $newFileName;
+            return [
+                'success' => true,
+                'url' => '/' . $relativePath
+            ];
+        } catch (\Exception $e) {
+            error_log('[FileService] cropImage 异常: ' . $e->getMessage());
+            return ['success' => false, 'message' => '裁剪异常: ' . $e->getMessage()];
         }
+    }
+
+    /**
+     * 从图片类型获取扩展名
+     * 
+     * @param int $imageType 图片类型常量
+     * @return string
+     */
+    private static function getExtensionFromImageType(int $imageType): string
+    {
+        return match ($imageType) {
+            IMAGETYPE_JPEG => 'jpg',
+            IMAGETYPE_PNG => 'png',
+            IMAGETYPE_GIF => 'gif',
+            IMAGETYPE_WEBP => 'webp',
+            default => 'jpg',
+        };
+    }
+
+    /**
+     * 根据文件创建图片资源
+     * 
+     * @param string $filePath 文件路径
+     * @param int $imageType 图片类型
+     * @return \GdImage|false
+     */
+    private static function createImageFromFile(string $filePath, int $imageType): \GdImage|false
+    {
+        return match ($imageType) {
+            IMAGETYPE_JPEG => imagecreatefromjpeg($filePath),
+            IMAGETYPE_PNG => imagecreatefrompng($filePath),
+            IMAGETYPE_GIF => imagecreatefromgif($filePath),
+            IMAGETYPE_WEBP => imagecreatefromwebp($filePath),
+            default => false,
+        };
+    }
+
+    /**
+     * 保存图片资源到文件
+     * 
+     * @param \GdImage $image 图片资源
+     * @param string $filePath 保存路径
+     * @param int $imageType 图片类型
+     * @return bool
+     */
+    private static function saveImageToFile(\GdImage $image, string $filePath, int $imageType): bool
+    {
+        return match ($imageType) {
+            IMAGETYPE_JPEG => imagejpeg($image, $filePath, 90),
+            IMAGETYPE_PNG => imagepng($image, $filePath, 9),
+            IMAGETYPE_GIF => imagegif($image, $filePath),
+            IMAGETYPE_WEBP => imagewebp($image, $filePath, 90),
+            default => false,
+        };
+    }
+
+    /**
+     * 解析图片完整路径
+     * 
+     * @param string $imagePath 图片路径
+     * @return string
+     */
+    private static function resolveFullPath(string $imagePath): string
+    {
+        $publicDir = dirname(__DIR__, 2) . '/public';
+        
+        // 如果是绝对路径（以 / 开头或 Windows 绝对路径格式）
+        if (str_starts_with($imagePath, '/') || strpos($imagePath, ':') !== false) {
+            // 如果是网站根目录下的绝对路径（以 / 开头）
+            if (str_starts_with($imagePath, '/')) {
+                return $publicDir . $imagePath;
+            }
+            // 否则是 Windows 系统的绝对路径（如 C:\...）
+            return $imagePath;
+        }
+        
+        // 如果已经是完整路径
+        if (file_exists($imagePath)) {
+            return $imagePath;
+        }
+        
+        // 相对路径
+        return $publicDir . '/' . ltrim($imagePath, '/');
+    }
+
+    /**
+     * 处理 Base64 图片上传并裁剪
+     * 
+     * @param string $base64Data Base64 数据
+     * @param int $x 裁剪区域左上角 x 坐标
+     * @param int $y 裁剪区域左上角 y 坐标
+     * @param int $width 裁剪区域宽度
+     * @param int $height 裁剪区域高度
+     * @param int|null $targetWidth 目标宽度
+     * @param int|null $targetHeight 目标高度
+     * @return array{success: bool, url?: string, message?: string}
+     */
+    public static function uploadAndCropBase64Image(
+        string $base64Data,
+        int $x,
+        int $y,
+        int $width,
+        int $height,
+        ?int $targetWidth = null,
+        ?int $targetHeight = null
+    ): array {
+        // 解析 Base64 数据
+        if (!str_starts_with($base64Data, 'data:image/')) {
+            return ['success' => false, 'message' => '无效的图片数据'];
+        }
+
+        $matches = [];
+        if (!preg_match('/data:image\/(\w+);base64,(.+)/', $base64Data, $matches)) {
+            return ['success' => false, 'message' => '无效的 Base64 图片格式'];
+        }
+
+        $extension = strtolower($matches[1]);
+        $base64Content = $matches[2];
+
+        // 验证扩展名
+        $allowedExtensions = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
+        if (!in_array($extension, $allowedExtensions, true)) {
+            return ['success' => false, 'message' => '不支持的图片格式'];
+        }
+
+        // 解码 Base64
+        $imageData = base64_decode($base64Content);
+        if ($imageData === false) {
+            return ['success' => false, 'message' => 'Base64 解码失败'];
+        }
+
+        // 验证图片数据
+        $tempPath = sys_get_temp_dir() . '/upload_' . uniqid() . '.' . $extension;
+        if (file_put_contents($tempPath, $imageData) === false) {
+            return ['success' => false, 'message' => '临时文件创建失败'];
+        }
+
+        // 验证是否为有效图片
+        $imageInfo = @getimagesize($tempPath);
+        if ($imageInfo === false) {
+            @unlink($tempPath);
+            return ['success' => false, 'message' => '无效的图片数据'];
+        }
+
+        // 将临时文件作为源图片进行裁剪 - 临时文件路径已经是完整路径，不需要通过 resolveFullPath 处理
+        $result = self::cropImage($tempPath, $x, $y, $width, $height, $targetWidth, $targetHeight);
+
+        // 删除临时文件
+        @unlink($tempPath);
+
+        return $result;
     }
 }

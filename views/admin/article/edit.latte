@@ -101,15 +101,18 @@
                                     <input type="text" class="form-control" id="cover_img" name="cover_img" value="{if isset($article['cover_img'])}{$article['cover_img']}{/if}" placeholder="请输入图片URL">
                                     <div class="input-group-append">
                                         <button type="button" class="btn btn-outline-secondary" onclick="selectImage()">选择图片</button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()">裁剪上传</button>
                                     </div>
                                 </div>
                                 {if isset($article['cover_img']) && $article['cover_img']}
-                                <div class="mt-2">
+                                <div class="mt-2" id="cover_img_preview">
                                     <img src="{$article['cover_img']}" width="200" class="img-thumbnail">
                                     <div class="mt-2">
                                         <button type="button" class="btn btn-danger btn-sm" onclick="deleteCoverImage()">删除封面图</button>
                                     </div>
                                 </div>
+                                {else}
+                                <div class="mt-2" id="cover_img_preview"></div>
                                 {/if}
                             </div>
                         </div>
@@ -155,10 +158,8 @@
                     <h5>文章内容 <span class="text-danger">*</span></h5>
                     <hr>
                     <div id="toolbar"></div>
-                    <div id="editor" style="min-height: 500px;">
-                        {if isset($article['content']) && $article['content']}{$article['content']|noescape}{/if}
-                    </div>
-                    <textarea id="content" name="content" style="display: none;"></textarea>
+                    <div id="editor" style="min-height: 500px;"></div>
+                    <textarea id="content" name="content" style="display: none;">{if isset($article['content'])}{$article['content']|noescape}{/if}</textarea>
                 </div>
                 
                 <!-- 扩展字段区域 -->
@@ -169,6 +170,9 @@
                         <!-- 动态生成的扩展字段将插入到这里 -->
                     </div>
                 </div>
+                
+                <!-- 文章数据JSON，用于扩展字段加载 -->
+                <input type="hidden" id="article_json" value="{if isset($article_json)}{$article_json}{else}null{/if}">
                 
                 <!-- 表单按钮 -->
                 <div class="form-group">
@@ -184,553 +188,123 @@
     </div>
 </div>
 
+
+
+<!-- 图片裁剪模态框 -->
+<div class="modal fade" id="cropperModal" tabindex="-1" role="dialog" aria-labelledby="cropperModalLabel" aria-hidden="true" style="z-index: 20000;">
+    <div class="modal-dialog modal-lg" role="document" style="z-index: 20001;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cropperModalLabel">裁剪图片</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-9 text-center" style="background-color: #333;">
+                        <div class="img-container" style="width: 100%; max-height: 70vh; overflow: hidden;">
+                            <img id="cropperImage" src="" style="max-width: 100%; display: block;">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="preview-lg mb-3" style="width: 150px; height: 210px; border: 1px solid #ddd; background: #f8f8f8; overflow: hidden; position: relative;"></div>
+                        
+                        <div class="form-group">
+                            <label>预设比例</label>
+                            <select class="form-control form-control-sm" id="aspectRatioSelect">
+                                <option value="0">自由比例</option>
+                                <option value="0.7143">150×210 (专家)</option>
+                                <option value="1.7778">16×9 横图</option>
+                                <option value="0.5625">9×16 竖图</option>
+                                <option value="1">1×1 正方形</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>目标尺寸</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="targetWidth" placeholder="宽" value="150">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="targetHeight" placeholder="高" value="210">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="d-flex align-items-center">
+                                <input type="checkbox" id="lockAspectRatio" checked> 
+                                <span class="ml-2">锁定比例</span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>缩放操作</label>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary" onclick="zoomCropper(-0.1)" title="缩小">
+                                    <i class="fas fa-minus"></i> 缩小
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="zoomCropper(0.1)" title="放大">
+                                    <i class="fas fa-plus"></i> 放大
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="rotateCropper(-90)" title="左旋">
+                                    <i class="fas fa-undo"></i> 左旋
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="rotateCropper(90)" title="右旋">
+                                    <i class="fas fa-redo"></i> 右旋
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetCropper()" title="重置">
+                                    <i class="fas fa-sync-alt"></i> 重置
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info py-2 small">
+                            <strong>操作提示：</strong><br>
+                            • 滚轮缩放图片<br>
+                            • 拖拽移动位置<br>
+                            • 拖拽裁剪框调整大小
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCropModal()">取消</button>
+                <button type="button" class="btn btn-primary" id="cropConfirmBtn">确认裁剪</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 扩大裁剪模态框宽度，高度自适应 */
+    #cropperModal .modal-dialog { max-width: 60vw; }
+    #cropperModal .img-container { width:100%; height:70vh; max-height:70vh; }
+    #cropperModal .img-container img { width:auto; height:100%; max-height:100%; object-fit:contain; }
+</style>
+
 <!-- WangEditor 富文本编辑器 CSS -->
+<style>
+    /* 修复编辑器层级过高的问题 */
+    .w-e-toolbar { z-index: 1000 !important; }
+    .w-e-text-container { z-index: 900 !important; }
+    /* 确保模态框背景也在正确层级 */
+    .modal-backdrop { z-index: 19999 !important; }
+</style>
 <link rel="stylesheet" href="/static/wangeditor/cdn/wangEditor.min.css">
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="/static/cropperjs/cropper.min.css">
+
 <!-- WangEditor 富文本编辑器 JS -->
-<script>
-// 动态加载 wangEditor
-(function() {
-    // 网站根目录是 /public，所以静态资源路径应该是 /static/...
-    const wangEditorPath = '/static/wangeditor/cdn/wangEditor.min.js';
-    
-    // 使用本地文件
-    const script = document.createElement('script');
-    script.src = wangEditorPath;
-    script.onload = initEditor;
-    script.onerror = function() {
-        console.error('本地 wangEditor 文件加载失败');
-        alert('编辑器加载失败，请刷新页面重试');
-    };
-    document.head.appendChild(script);
-    
-    function initEditor() {
-        // 等待 wangEditor 加载完成
-        if (typeof wangEditor === 'undefined' && typeof E === 'undefined') {
-            setTimeout(initEditor, 100);
-            return;
-        }
-        
-        // wangeditor 4.x 版本的 API
-        const E = window.wangEditor || window.E;
-        if (!E) {
-            console.error('wangEditor 未正确加载');
-            return;
-        }
-        
-        // 从DOM中获取CSRF Token
-        const csrfTokenElement = document.getElementById('csrf_token');
-        const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
-        
-        // 获取编辑器容器的初始HTML内容
-        const editorContainer = document.getElementById('editor');
-        const initialHtml = editorContainer ? editorContainer.innerHTML.trim() : '';
-        
-        // 清空编辑器容器（移除模板内容）
-        if (editorContainer) {
-            editorContainer.innerHTML = '';
-        }
-        
-        // wangeditor 4.x 版本：创建编辑器实例
-        // 参数：toolbar容器, editor容器
-        const editor = new E('#toolbar', '#editor');
-        
-        // 配置编辑器
-        editor.config.placeholder = '请输入文章内容...';
-        
-        // 配置图片上传
-        editor.config.uploadImgServer = '/admin/upload/upload';
-        editor.config.uploadImgMaxSize = 2 * 1024 * 1024; // 2M
-        editor.config.uploadImgMaxLength = 10; // 一次最多上传10张图片
-        editor.config.uploadImgTimeout = 30000; // 30秒超时
-        editor.config.uploadFileName = 'file';
-        editor.config.uploadImgParams = {
-            csrf_token: csrfToken,
-            module: 'article'
-        };
-        
-        // 如果编辑时已有内容，设置初始内容
-        if (initialHtml) {
-            editor.config.onchange = function(html) {
-                // 内容变化时的回调
-            };
-        }
-        
-        // 创建编辑器
-        editor.create();
-        
-        // 如果编辑时已有内容，设置内容
-        if (initialHtml) {
-            editor.txt.html(initialHtml);
-        }
-        
-        // 表单提交处理（使用 AJAX 提交，支持自动跳转）
-        const form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                e.preventDefault(); // 阻止默认提交
-                
-                try {
-                    // 同步编辑器内容到隐藏的textarea
-                    const content = editor.txt.html();
-                    const contentTextarea = document.getElementById('content');
-                    if (contentTextarea) {
-                        contentTextarea.value = content || '';
-                    } else {
-                        console.error('找不到 content textarea 元素');
-                    }
-                    
-                    // 创建 FormData
-                    const formData = new FormData(form);
-                    
-                    // 显示提交中状态
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    const originalText = submitBtn ? submitBtn.innerHTML : '';
-                    if (submitBtn) {
-                        submitBtn.disabled = true;
-                        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 保存中...';
-                    }
-                    
-                    // 发送 AJAX 请求
-                    fetch(form.action, {
-                        method: 'POST',
-                        body: formData
-                    })
-                    .then(function(response) {
-                        return response.json();
-                    })
-                    .then(function(data) {
-                        if (data.code === 0) {
-                            // 保存成功，显示提示并跳转
-                            if (data.message) {
-                                alert(data.message);
-                            }
-                            // 跳转到指定URL或文章列表
-                            window.location.href = data.url || '/admin/article';
-                        } else {
-                            // 保存失败，显示错误信息
-                            alert(data.message || '保存失败');
-                            if (submitBtn) {
-                                submitBtn.disabled = false;
-                                submitBtn.innerHTML = originalText;
-                            }
-                        }
-                    })
-                    .catch(function(error) {
-                        console.error('保存失败:', error);
-                        alert('保存失败，请重试');
-                        if (submitBtn) {
-                            submitBtn.disabled = false;
-                            submitBtn.innerHTML = originalText;
-                        }
-                    });
-                } catch (error) {
-                    console.error('表单提交错误:', error);
-                    alert('提交失败: ' + error.message);
-                    const submitBtn = form.querySelector('button[type="submit"]');
-                    if (submitBtn) {
-                        submitBtn.disabled = false;
-                    }
-                }
-            });
-        }
-        
-        // 图片选择函数（用于封面图片上传）
-        window.selectImage = function() {
-            // 创建文件输入元素
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.style.display = 'none';
-            
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                // 验证文件类型
-                if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/)) {
-                    alert('请选择图片文件（jpg、png、gif、webp）');
-                    return;
-                }
-                
-                // 验证文件大小（最大 5MB）
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('图片大小不能超过 5MB');
-                    return;
-                }
-                
-                // 创建 FormData
-                const formData = new FormData();
-                formData.append('file', file);
-                const csrfToken = document.getElementById('csrf_token')?.value || '';
-                formData.append('csrf_token', csrfToken);
-                formData.append('module', 'article');
-                
-                // 如果是编辑模式，添加更新内容表的参数
-                const articleId = document.querySelector('input[name="id"]');
-                if (articleId && articleId.value) {
-                    formData.append('update_table', 'sys_content');
-                    formData.append('update_field', 'cover_img');
-                    formData.append('update_id', articleId.value);
-                }
-                
-                // 显示上传中提示
-                const coverImgInput = document.getElementById('cover_img');
-                const originalValue = coverImgInput.value;
-                coverImgInput.value = '上传中...';
-                coverImgInput.disabled = true;
-                
-                // 上传文件
-                fetch('/admin/upload/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    coverImgInput.disabled = false;
-                    if (data.errno === 0 && data.data && data.data.length > 0) {
-                        // 上传成功，设置图片URL
-                        coverImgInput.value = data.data[0];
-                        // 显示预览
-                        const preview = coverImgInput.parentElement.nextElementSibling;
-                        if (preview && preview.classList.contains('mt-2')) {
-                            preview.innerHTML = '<img src="' + data.data[0] + '" width="200" class="img-thumbnail">';
-                        } else {
-                            const previewDiv = document.createElement('div');
-                            previewDiv.className = 'mt-2';
-                            previewDiv.innerHTML = '<img src="' + data.data[0] + '" width="200" class="img-thumbnail">';
-                            coverImgInput.parentElement.parentElement.appendChild(previewDiv);
-                        }
-                    } else {
-                        // 上传失败
-                        coverImgInput.value = originalValue;
-                        alert(data.message || '上传失败');
-                    }
-                })
-                .catch(error => {
-                    coverImgInput.disabled = false;
-                    coverImgInput.value = originalValue;
-                    console.error('上传错误:', error);
-                    alert('上传失败，请重试');
-                });
-            };
-            
-            // 触发文件选择
-            document.body.appendChild(input);
-            input.click();
-            document.body.removeChild(input);
-        };
-
-        // 删除封面图片函数
-        window.deleteCoverImage = function() {
-            if (!confirm('确定要删除当前封面图片吗？此操作不可撤销！')) {
-                return;
-            }
-
-            const coverImgInput = document.getElementById('cover_img');
-            const imageUrl = coverImgInput.value;
-            if (!imageUrl) {
-                alert('没有可删除的封面图片');
-                return;
-            }
-
-            // 显示删除中状态
-            const deleteBtn = event.target;
-            const originalText = deleteBtn.innerHTML;
-            deleteBtn.disabled = true;
-            deleteBtn.innerHTML = '删除中...';
-
-            // 准备删除请求数据
-            const formData = new FormData();
-            formData.append('image_url', imageUrl);
-            const csrfToken = document.getElementById('csrf_token')?.value || '';
-            formData.append('csrf_token', csrfToken);
-
-            // 发送删除请求
-            fetch('/admin/upload/deleteCoverImage', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
-                if (data.code === 0) {
-                    // 删除成功，清空封面图片输入框和预览
-                    coverImgInput.value = '';
-                    const preview = coverImgInput.parentElement.nextElementSibling;
-                    if (preview && preview.classList.contains('mt-2')) {
-                        preview.innerHTML = '';
-                    }
-                    alert(data.message || '封面图片删除成功');
-                } else {
-                    // 删除失败
-                    alert(data.message || '封面图片删除失败');
-                }
-            })
-            .catch(error => {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
-                console.error('删除错误:', error);
-                alert('封面图片删除失败，请重试');
-            });
-        };
-        
-        // 动态加载扩展字段（根据栏目类型）
-        const categorySelect = document.getElementById('category_id');
-        const extendFieldsContainer = document.getElementById('extend-fields');
-        const articleData = {if isset($article_json)}{$article_json|noescape}{else}null{/if};
-        
-        // 加载扩展字段的函数
-        function loadExtendFields() {
-            if (!categorySelect || !extendFieldsContainer) {
-                return;
-            }
-            
-            const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-            if (!selectedOption || !selectedOption.value) {
-                extendFieldsContainer.innerHTML = '';
-                return;
-            }
-            
-            const categoryType = selectedOption.getAttribute('data-type') || 'article';
-            
-            // 调用后端接口获取字段配置
-            fetch('/admin/category/getModelFields?type=' + encodeURIComponent(categoryType))
-                .then(function(response) {
-                    return response.json();
-                })
-                .then(function(data) {
-                    if (data.code === 0 && data.data && Object.keys(data.data).length > 0) {
-                        // 清空容器
-                        extendFieldsContainer.innerHTML = '';
-                        
-                        // 生成字段HTML
-                        const fields = data.data;
-                        const fieldPromises = [];
-                        
-                        for (const fieldName in fields) {
-                            if (fields.hasOwnProperty(fieldName)) {
-                                const field = fields[fieldName];
-                                
-                                // 如果字段有lookup_category属性，需要先获取选项
-                                if (field.lookup_category) {
-                                    fieldPromises.push(
-                                        loadCategoryOptions(field.lookup_category).then(function(options) {
-                                            field.options = options;
-                                            const result = {};
-                                            result.fieldName = fieldName;
-                                            result.field = field;
-                                            return result;
-                                        })
-                                    );
-                                } else {
-                                    const result = {};
-                                    result.fieldName = fieldName;
-                                    result.field = field;
-                                    fieldPromises.push(Promise.resolve(result));
-                                }
-                            }
-                        }
-                        
-                        // 等待所有字段准备就绪
-                        Promise.all(fieldPromises).then(function(fieldList) {
-                            for (let i = 0; i < fieldList.length; i++) {
-                                const item = fieldList[i];
-                                const fieldHtml = generateFieldHtml(item.fieldName, item.field);
-                                extendFieldsContainer.innerHTML += fieldHtml;
-                            }
-                            
-                            // 如果是编辑模式，填充已有数据
-                            if (articleData) {
-                                fillExtendFields(articleData);
-                            }
-                        });
-                    } else {
-                        extendFieldsContainer.innerHTML = '';
-                    }
-                })
-                .catch(function(error) {
-                    console.error('加载扩展字段失败:', error);
-                    extendFieldsContainer.innerHTML = '';
-                });
-        }
-        
-        // 加载栏目选项
-        function loadCategoryOptions(parentId) {
-            return fetch('/admin/category/getContentOptions?category_id=' + encodeURIComponent(parentId))
-                .then(function(response) {
-                    return response.json();
-                })
-                .then(function(data) {
-                    if (data.code === 0 && data.data) {
-                        return data.data;
-                    }
-                    return {};
-                })
-                .catch(function(error) {
-                    console.error('加载栏目选项失败:', error);
-                    return {};
-                });
-        }
-        
-        // 生成字段HTML
-        function generateFieldHtml(fieldName, field) {
-            const label = field.label || fieldName;
-            const type = field.type || 'text';
-            const value = articleData && articleData[fieldName] ? articleData[fieldName] : '';
-            
-            let html = '<div class="form-group mb-3">';
-            html += '<label for="extend_' + fieldName + '">' + label + '</label>';
-            
-            switch (type) {
-                case 'textarea':
-                    html += '<textarea class="form-control" id="extend_' + fieldName + '" name="' + fieldName + '" rows="3">' + (value || '') + '</textarea>';
-                    break;
-                case 'select':
-                    html += '<select class="form-control" id="extend_' + fieldName + '" name="' + fieldName + '">';
-                    html += '<option value="">请选择</option>';
-                    if (field.options && typeof field.options === 'object' && Object.keys(field.options).length > 0) {
-                        for (const optValue in field.options) {
-                            if (field.options.hasOwnProperty(optValue)) {
-                                const optLabel = field.options[optValue];
-                                const selected = (value == optValue) ? ' selected' : '';
-                                html += '<option value="' + optValue + '"' + selected + '>' + optLabel + '</option>';
-                            }
-                        }
-                    }
-                    html += '</select>';
-                    break;
-                case 'image':
-                    html += '<div class="input-group">';
-                    html += '<input type="text" class="form-control" id="extend_' + fieldName + '" name="' + fieldName + '" value="' + (value || '') + '" placeholder="请输入图片URL">';
-                    html += '<div class="input-group-append">';
-                    html += '<button type="button" class="btn btn-outline-secondary" onclick="selectExtendImage(\'extend_' + fieldName + '\')">选择图片</button>';
-                    html += '</div>';
-                    html += '</div>';
-                    if (value) {
-                        html += '<div class="mt-2">';
-                        html += '<img src="' + value + '" width="200" class="img-thumbnail" id="extend_' + fieldName + '_preview">';
-                        html += '</div>';
-                    } else {
-                        html += '<div class="mt-2" id="extend_' + fieldName + '_preview"></div>';
-                    }
-                    break;
-                case 'editor':
-                    // 编辑器类型暂时使用textarea，后续可以集成富文本编辑器
-                    html += '<textarea class="form-control" id="extend_' + fieldName + '" name="' + fieldName + '" rows="5">' + (value || '') + '</textarea>';
-                    break;
-                default: // text
-                    html += '<input type="text" class="form-control" id="extend_' + fieldName + '" name="' + fieldName + '" value="' + (value || '') + '" placeholder="请输入' + label + '">';
-                    break;
-            }
-            
-            html += '</div>';
-            return html;
-        }
-        
-        // 填充扩展字段数据（编辑模式）
-        function fillExtendFields(data) {
-            if (!data) return;
-            
-            // 遍历所有扩展字段输入框并填充值
-            const inputs = extendFieldsContainer.querySelectorAll('input, textarea, select');
-            inputs.forEach(function(input) {
-                const fieldName = input.name;
-                if (data.hasOwnProperty(fieldName)) {
-                    if (input.tagName === 'SELECT') {
-                        input.value = data[fieldName];
-                    } else {
-                        input.value = data[fieldName] || '';
-                    }
-                }
-            });
-        }
-        
-        // 选择扩展字段图片的函数
-        window.selectExtendImage = function(inputId) {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'image/*';
-            input.style.display = 'none';
-            
-            input.onchange = function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                
-                if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/)) {
-                    alert('请选择图片文件（jpg、png、gif、webp）');
-                    return;
-                }
-                
-                if (file.size > 5 * 1024 * 1024) {
-                    alert('图片大小不能超过 5MB');
-                    return;
-                }
-                
-                const formData = new FormData();
-                formData.append('file', file);
-                const csrfToken = document.getElementById('csrf_token')?.value || '';
-                
-                // 如果是编辑模式，添加更新内容表的参数
-                const articleId = document.querySelector('input[name="id"]');
-                if (articleId && articleId.value) {
-                    formData.append('update_table', 'sys_content');
-                    formData.append('update_field', 'cover_img');
-                    formData.append('update_id', articleId.value);
-                }
-                formData.append('csrf_token', csrfToken);
-                
-                const targetInput = document.getElementById(inputId);
-                const originalValue = targetInput.value;
-                targetInput.value = '上传中...';
-                targetInput.disabled = true;
-                
-                fetch('/admin/upload/upload', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    targetInput.disabled = false;
-                    if (data.errno === 0 && data.data && data.data.length > 0) {
-                        targetInput.value = data.data[0];
-                        const previewId = inputId + '_preview';
-                        const preview = document.getElementById(previewId);
-                        if (preview) {
-                            preview.innerHTML = '<img src="' + data.data[0] + '" width="200" class="img-thumbnail">';
-                        }
-                    } else {
-                        targetInput.value = originalValue;
-                        alert(data.message || '上传失败');
-                    }
-                })
-                .catch(error => {
-                    targetInput.disabled = false;
-                    targetInput.value = originalValue;
-                    console.error('上传错误:', error);
-                    alert('上传失败，请重试');
-                });
-            };
-            
-            document.body.appendChild(input);
-            input.click();
-            document.body.removeChild(input);
-        };
-        
-        // 监听栏目变化
-        if (categorySelect) {
-            categorySelect.addEventListener('change', loadExtendFields);
-            
-            // 页面加载时，如果是编辑模式且有选中的栏目，或者添加模式通过 pre_cid 预选了栏目，自动加载扩展字段
-            const shouldLoadExtendFields = (articleData && articleData.category_id) || 
-                                          (categorySelect.selectedIndex > 0 && categorySelect.options[categorySelect.selectedIndex].value);
-            
-            if (shouldLoadExtendFields) {
-                // 延迟执行，确保DOM已完全加载
-                setTimeout(loadExtendFields, 100);
-            }
-        }
-    }
-})();
-</script>
+<script src="/static/wangeditor/cdn/wangEditor.min.js"></script>
+<!-- Cropper.js JS -->
+<script src="/static/cropperjs/cropper.min.js"></script>
+<!-- Image Crop JS -->
+<script src="/static/js/image-crop.js"></script>
+<!-- 文章编辑器功能 -->
+<script src="/static/js/admin/article-editor.js"></script>
+<!-- 扩展字段功能 -->
+<script src="/static/js/admin/extend-fields.js"></script>
 {/block}
