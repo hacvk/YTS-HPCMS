@@ -20,11 +20,7 @@ return [
                 'type' => 'text',
                 'label' => '来源',
             ],
-            'is_channel' => [
-                'type' => 'checkbox',
-                'label' => '是否频道',
-                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
-            ],
+
         ],
     ],
     
@@ -32,11 +28,7 @@ return [
     'page' => [
         'name' => '单页',
         'fields' => [
-            'is_channel' => [
-                'type' => 'checkbox',
-                'label' => '是否频道',
-                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
-            ],
+
         ],
     ],
     
@@ -44,11 +36,7 @@ return [
     'pic' => [
         'name' => '图文',
         'fields' => [
-            'is_channel' => [
-                'type' => 'checkbox',
-                'label' => '是否频道',
-                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
-            ],
+
         ],
     ],
 
@@ -74,19 +62,7 @@ return [
                 'type' => 'textarea',
                 'label' => '擅长',
             ],
-            'avatar' => [
-                'type' => 'image_crop',
-                'label' => '专家照片',
-                'width' => 150,
-                'height' => 210,
-                'locked_aspect_ratio' => true,
-                'help' => '建议尺寸：150×210像素'
-            ],
-            'is_channel' => [
-                'type' => 'checkbox',
-                'label' => '是否频道',
-                'help' => '勾选后此栏目将作为频道，不允许直接添加文章，只能添加子分类',
-            ],
+
         ],
     ],
 ];
