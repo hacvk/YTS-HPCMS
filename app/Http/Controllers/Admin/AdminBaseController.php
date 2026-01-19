@@ -486,66 +486,161 @@ abstract class AdminBaseController extends BaseController
                 parse_str($currentQuery, $currentParams);
                 
                 foreach ($item['children'] as $child) {
-                    if (!isset($child['route'])) {
-                        continue;
-                    }
-                    
-                    $childRoute = $child['route'];
-                    $childPath = parse_url($childRoute, PHP_URL_PATH) ?: '';
-                    $childQuery = parse_url($childRoute, PHP_URL_QUERY) ?: '';
-                    parse_str($childQuery, $childParams);
-                    
-                    // 完全匹配
-                    if ($childRoute === $currentUri) {
-                        $exactMatch = true;
-                        break;
-                    }
-                    
-                    // 路由参数匹配（路径相同，参数也相同）
-                    if ($childPath === $currentPath && $childParams === $currentParams) {
-                        $routeParamsMatch = true;
-                        continue;
-                    }
-                    
-                    // 前缀匹配（路径前缀匹配）
-                    if ($childPath !== '' && str_starts_with($currentPath, $childPath)) {
-                        $partialMatch = true;
+                    if (isset($child['route'])) {
+                        // 完全匹配优先级最高
+                        if ($currentUri === $child['route']) {
+                            $exactMatch = true;
+                            break;
+                        }
+                        
+                        // 分析子菜单项的路径和参数
+                        $childPath = parse_url($child['route'], PHP_URL_PATH) ?: '';
+                        $childQuery = parse_url($child['route'], PHP_URL_QUERY) ?: '';
+                        parse_str($childQuery, $childParams);
+                        
+                        // 尝试匹配带相同查询参数的路由（参数精确匹配）
+                        if ($currentPath === $childPath && !empty($childParams)) {
+                            $paramsMatch = true;
+                            // 检查当前URI的参数是否包含了子菜单项的所有参数
+                            foreach ($childParams as $key => $value) {
+                                if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
+                                    $paramsMatch = false;
+                                    break;
+                                }
+                            }
+                            
+                            if ($paramsMatch) {
+                                $routeParamsMatch = true;
+                                break;
+                            }
+                        }
+                        
+                        // 特殊处理：如果当前路径是编辑/添加路径，尝试匹配基础路径
+                        // 例如：当前是 /admin/article/add?cid=5，菜单项是 /admin/article?cid=5
+                        if (!$routeParamsMatch && $currentPath !== $childPath) {
+                            // 检查是否是编辑/添加操作的基础路径匹配
+                            $baseCurrentPath = preg_replace('/\/(add|edit|save|delete)$/', '', $currentPath);
+                            if ($baseCurrentPath === $childPath && !empty($childParams)) {
+                                // 再次检查参数是否匹配
+                                $paramsMatch = true;
+                                foreach ($childParams as $key => $value) {
+                                    if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
+                                        $paramsMatch = false;
+                                        break;
+                                    }
+                                }
+                                
+                                if ($paramsMatch) {
+                                    $routeParamsMatch = true;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        // 前缀匹配（用于编辑、添加等页面）
+                        if (!$routeParamsMatch && str_starts_with($currentUri, $child['route'])) {
+                            $partialMatch = true;
+                        }
                     }
                 }
                 
-                // 确定是否需要展开此菜单
                 if ($exactMatch || $routeParamsMatch || $partialMatch) {
-                    $targetIndex = $index;
-                    break;
+                    // 确定匹配优先级：完全匹配 > 路由参数匹配 > 前缀匹配
+                    $currentPriority = $exactMatch ? 3 : ($routeParamsMatch ? 2 : 1);
+                    
+                    // 如果之前没找到匹配项，直接设置
+                    if ($targetIndex === null) {
+                        $targetIndex = $index;
+                    } else {
+                        // 检查是否当前项是快捷菜单，而之前的不是
+                        $isCurrentShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
+                        $isPreviousShortcut = isset($menu[$targetIndex]['is_shortcut']) && $menu[$targetIndex]['is_shortcut'];
+                        
+                        // 如果当前是快捷菜单而之前的不是，则更新（快捷菜单优先级更高）
+                        if ($isCurrentShortcut && !$isPreviousShortcut) {
+                            $targetIndex = $index;
+                        }
+                        // 如果都不是快捷菜单或都是快捷菜单，比较匹配优先级
+                        elseif (!$isCurrentShortcut && !$isPreviousShortcut) {
+                            // 获取之前目标的匹配类型
+                            $prevExactMatch = false;
+                            $prevRouteMatch = false;
+                            $prevPartialMatch = false;
+                            
+                            foreach ($menu[$targetIndex]['children'] as $prevChild) {
+                                if (isset($prevChild['route'])) {
+                                    if ($currentUri === $prevChild['route']) {
+                                        $prevExactMatch = true;
+                                        break;
+                                    }
+                                    
+                                    $prevPath = parse_url($prevChild['route'], PHP_URL_PATH) ?: '';
+                                    $prevQuery = parse_url($prevChild['route'], PHP_URL_QUERY) ?: '';
+                                    parse_str($prevQuery, $prevParams);
+                                    
+                                    // 参数精确匹配检查
+                                    if ($currentPath === $prevPath && !empty($prevParams)) {
+                                        $paramsMatch = true;
+                                        foreach ($prevParams as $key => $value) {
+                                            if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
+                                                $paramsMatch = false;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if ($paramsMatch) {
+                                            $prevRouteMatch = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // 基础路径匹配检查
+                                    if (!$prevRouteMatch && $currentPath !== $prevPath) {
+                                        $baseCurrentPath = preg_replace('/\/(add|edit|save|delete)$/', '', $currentPath);
+                                        if ($baseCurrentPath === $prevPath && !empty($prevParams)) {
+                                            $paramsMatch = true;
+                                            foreach ($prevParams as $key => $value) {
+                                                if (!isset($currentParams[$key]) || $currentParams[$key] != $value) {
+                                                    $paramsMatch = false;
+                                                    break;
+                                                }
+                                            }
+                                            
+                                            if ($paramsMatch) {
+                                                $prevRouteMatch = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (!$prevRouteMatch && str_starts_with($currentUri, $prevChild['route'])) {
+                                        $prevPartialMatch = true;
+                                    }
+                                }
+                            }
+                            
+                            $prevPriority = $prevExactMatch ? 3 : ($prevRouteMatch ? 2 : 1);
+                            
+                            // 如果当前匹配优先级更高，则更新
+                            if ($currentPriority > $prevPriority) {
+                                $targetIndex = $index;
+                            }
+                        }
+                        // 如果当前不是快捷菜单而之前是，则保持不变
+                    }
                 }
             }
         }
         
-        // 第二步：标记激活状态
-        if ($targetIndex !== null) {
-            $menu[$targetIndex]['is_active'] = true;
-            $menu[$targetIndex]['is_open'] = true;
-            
-            // 标记子菜单激活状态
-            if (isset($menu[$targetIndex]['children'])) {
-                foreach ($menu[$targetIndex]['children'] as &$child) {
-                    if (isset($child['route'])) {
-                        // 精确匹配
-                        if ($child['route'] === $currentUri) {
-                            $child['is_active'] = true;
-                        } else {
-                            // 检查是否为前缀匹配
-                            $childPath = parse_url($child['route'], PHP_URL_PATH) ?: '';
-                            $currentPath = parse_url($currentUri, PHP_URL_PATH) ?: '';
-                            
-                            if ($childPath !== '' && str_starts_with($currentPath, $childPath)) {
-                                $child['is_active'] = true;
-                            }
-                        }
-                    }
-                }
+        // 第二步：应用状态
+        foreach ($menu as $index => &$item) {
+            if ($index === $targetIndex) {
+                $item['should_expand'] = true;
+            } else {
+                $item['should_expand'] = false;
             }
         }
+        unset($item);
         
         return $menu;
     }
