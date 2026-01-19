@@ -140,9 +140,11 @@ class CategoryController extends BaseController
             ];
             
             // 如果是 kslist 模板，则获取子栏目和对应的文章数据
-            if ($listTemplate === 'front/kslist') {
+            // 检查模板路径是否包含 kslist（支持 'front/kslist' 和 'front/kslist.latte' 两种格式）
+            $templateBaseName = basename($listTemplate, '.latte');
+            if ($templateBaseName === 'kslist') {
                 // 获取当前栏目的直接子栏目
-                $subCategories = $this->db->select('sys_category', [
+                $allSubCategories = $this->db->select('sys_category', [
                     'id',
                     'name',
                     'slug'
@@ -152,14 +154,24 @@ class CategoryController extends BaseController
                     'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
                 ]) ?: [];
                 
+                $subCategories = [];
                 $subCategoryArticles = [];
                 
-                // 为每个子栏目获取文章列表
-                foreach ($subCategories as $subCat) {
+                // 为每个子栏目获取文章列表（每个子栏目最多显示12篇文章）
+                // 只包含有文章的子栏目
+                foreach ($allSubCategories as $subCat) {
+                    $subCatId = (int)$subCat['id'];
                     $subArticles = $this->contentModel->getList(1, 12, [
-                        'cid' => $subCat['id']
+                        'cid' => $subCatId
                     ]);
-                    $subCategoryArticles[$subCat['id']] = $subArticles['list'] ?? [];
+                    $articleList = $subArticles['list'] ?? [];
+                    
+                    // 只添加有文章的子栏目
+                    if (!empty($articleList)) {
+                        $subCategories[] = $subCat;
+                        // 使用字符串键确保与模板中的 $subCategory['id'] 匹配（Medoo 返回的 id 可能是字符串）
+                        $subCategoryArticles[(string)$subCatId] = $articleList;
+                    }
                 }
                 
                 $templateData['subCategories'] = $subCategories;
@@ -195,50 +207,36 @@ class CategoryController extends BaseController
                 return $listTemplate;
             }
                 
-            // 验证允许的模板列表
-            $allowedTemplates = [
-                'list',
-                'list.latte',
-                'doctorlist',
-                'doctorlist.latte',
-                'kslist',
-                'kslist.latte'
-            ];
-            
-            error_log('CategoryController::resolveListTemplate - checking if template is allowed: ' . $tpl);
-            error_log('CategoryController::resolveListTemplate - allowed templates: ' . print_r($allowedTemplates, true));
-            
-            if (!in_array($tpl, $allowedTemplates, true)) {
-                error_log('CategoryController::resolveListTemplate - 模板无效: ' . $tpl);
-                error_log('CategoryController::resolveListTemplate - returning default template: ' . $listTemplate);
-                return $listTemplate; // 返回默认模板
+            // 防止路径遍历攻击：确保文件名不包含 ../ 等危险字符
+            if (str_contains($tpl, '..') || str_contains($tpl, '/') || str_contains($tpl, '\\')) {
+                error_log('CategoryController::resolveListTemplate - 模板文件名包含非法字符: ' . $tpl);
+                return $listTemplate;
             }
-            error_log('CategoryController::resolveListTemplate - template is valid: ' . $tpl);
+            
+            // 验证文件名格式：只允许字母、数字、下划线、横杠和点号，且必须以.latte结尾或可以添加.latte
+            $tplBase = str_replace('.latte', '', $tpl);
+            if (!preg_match('/^[a-zA-Z0-9_-]+$/', $tplBase)) {
+                error_log('CategoryController::resolveListTemplate - 模板文件名格式无效: ' . $tpl);
+                return $listTemplate;
+            }
     
             // 确保模板文件扩展名
-            error_log('CategoryController::resolveListTemplate - before ends_with check: ' . $tpl);
             if (!str_ends_with($tpl, '.latte')) {
                 $tpl .= '.latte';
-                error_log('CategoryController::resolveListTemplate - added .latte extension, now: ' . $tpl);
-            } else {
-                error_log('CategoryController::resolveListTemplate - already has .latte extension');
             }
     
-            // 构建完整路径
-            error_log('CategoryController::resolveListTemplate - before adding .latte extension: ' . $tpl);
-            $candidate = 'front/' . ltrim($tpl, '/\\');
-            error_log('CategoryController::resolveListTemplate - candidate template: ' . $candidate);
+            // 构建完整路径并检查文件是否存在（动态验证，允许自定义模板）
+            $candidate = 'front/' . $tpl;
             $candidatePath = dirname(__DIR__, 3) . '/views/' . $candidate;
-            error_log('CategoryController::resolveListTemplate - candidate path: ' . $candidatePath);
-                
-            // 添加调试信息
-            error_log('Template check - candidate: ' . $candidate);
-            error_log('Template check - candidatePath: ' . $candidatePath);
-            error_log('Template check - file exists: ' . (is_file($candidatePath) ? 'true' : 'false'));
+            
+            error_log('CategoryController::resolveListTemplate - 检查模板文件: ' . $candidatePath);
     
             // 检查文件是否存在
             if (is_file($candidatePath)) {
                 $listTemplate = $candidate;
+                error_log('CategoryController::resolveListTemplate - 模板文件存在，使用: ' . $listTemplate);
+            } else {
+                error_log('CategoryController::resolveListTemplate - 模板文件不存在: ' . $candidatePath . '，使用默认模板');
             }
         } catch (\Throwable $e) {
             error_log('解析列表模板失败: ' . $e->getMessage());

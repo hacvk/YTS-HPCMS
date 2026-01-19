@@ -179,28 +179,54 @@ class CategoryController extends AdminBaseController
                 $template = '';
             }
 
-            // 基础白名单校验（防止提交非预期模板）
-            $allowedTemplates = ['list.latte', 'piclist.latte', 'doctorlist.latte', ''];
-            $allowedDetailTemplates = ['article.latte', 'pages.latte', 'pic.latte', 'doctor.latte'];
-
-            if (!in_array($template, $allowedTemplates, true)) {
-                $this->errorJson('列表模板无效');
+            // 验证模板文件是否存在（动态验证，允许自定义模板）
+            // 获取模板目录路径（从 app/Http/Controllers/Admin 向上4级到项目根目录）
+            $viewsDir = dirname(__DIR__, 4) . '/views/front';
+            
+            // 验证列表模板
+            if (!empty($template)) {
+                // 防止路径遍历攻击：确保文件名不包含 ../ 等危险字符
+                if (str_contains($template, '..') || str_contains($template, '/') || str_contains($template, '\\')) {
+                    $this->errorJson('列表模板文件名包含非法字符');
+                }
+                
+                // 验证文件名格式：只允许字母、数字、下划线、横杠和点号，且必须以.latte结尾
+                if (!preg_match('/^[a-zA-Z0-9_-]+\.latte$/', $template)) {
+                    $this->errorJson('列表模板文件名格式无效');
+                }
+                
+                // 检查模板文件是否存在
+                $templatePath = $viewsDir . '/' . $template;
+                if (!file_exists($templatePath)) {
+                    $this->errorJson('列表模板文件不存在：' . $template);
+                }
             }
-            if (!in_array($detailTemplate, $allowedDetailTemplates, true)) {
-                $this->errorJson('详情模板无效');
+            
+            // 验证详情模板
+            if (!empty($detailTemplate)) {
+                // 防止路径遍历攻击
+                if (str_contains($detailTemplate, '..') || str_contains($detailTemplate, '/') || str_contains($detailTemplate, '\\')) {
+                    $this->errorJson('详情模板文件名包含非法字符');
+                }
+                
+                // 验证文件名格式
+                if (!preg_match('/^[a-zA-Z0-9_-]+\.latte$/', $detailTemplate)) {
+                    $this->errorJson('详情模板文件名格式无效');
+                }
+                
+                // 检查模板文件是否存在
+                $detailTemplatePath = $viewsDir . '/' . $detailTemplate;
+                if (!file_exists($detailTemplatePath)) {
+                    $this->errorJson('详情模板文件不存在：' . $detailTemplate);
+                }
             }
 
             // 验证并处理banner图片路径，确保文件实际存在
             $finalBanner = $banner;
             if (!empty($banner)) {
                 // 使用与上传逻辑一致的路径计算方式
-                // 修复路径计算逻辑
-                $root = dirname(dirname(dirname(__DIR__))); // 从 app/Http/Controllers/Admin 开始
-                
-                // 确保我们找到的是正确的项目根目录
-                if (basename($root) === 'app') {
-                    $root = dirname($root); // 上一级才是真正的项目根目录
-                }
+                // 从 app/Http/Controllers/Admin 向上4级到项目根目录
+                $root = dirname(__DIR__, 4);
                 $fullPath = $root . '/public' . $banner;
                             
                 // 记录调试信息
