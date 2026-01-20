@@ -180,6 +180,16 @@ class ArticleController extends AdminBaseController
             // 确保新字段存在
             $article['is_top'] = $article['is_top'] ?? 0;
             $article['is_image_news'] = $article['is_image_news'] ?? 0;
+            $article['meta_title'] = $article['meta_title'] ?? '';
+            $article['meta_keywords'] = $article['meta_keywords'] ?? '';
+            $article['meta_description'] = $article['meta_description'] ?? '';
+            $article['og_image'] = $article['og_image'] ?? '';
+            
+            // 获取文章标签
+            $db = \App\Core\Database::get();
+            $tagModel = new \App\Models\Tag($db);
+            $tags = $tagModel->getByContentId((int)$id);
+            $tagsString = implode(', ', array_column($tags, 'name'));
             
             // 获取栏目树
             $categories = $this->categoryService->getTree();
@@ -200,7 +210,8 @@ class ArticleController extends AdminBaseController
                 'article' => $article,
                 'article_json' => $articleJson,
                 'categories' => $categories,
-                'attachments' => $attachments
+                'attachments' => $attachments,
+                'tags_string' => $tagsString
             ]);
         } catch (\Exception $e) {
             // 记录页面加载失败日志
@@ -243,6 +254,10 @@ class ArticleController extends AdminBaseController
                 'status' => (int)$this->post('status', 1),
                 'is_top' => (int)$this->post('is_top', 0),
                 'is_image_news' => (int)$this->post('is_image_news', 0),
+                'meta_title' => $this->post('meta_title', ''),
+                'meta_keywords' => $this->post('meta_keywords', ''),
+                'meta_description' => $this->post('meta_description', ''),
+                'og_image' => $this->post('og_image', ''),
             ];
                     
             // 验证目标栏目是否为频道
@@ -257,7 +272,8 @@ class ArticleController extends AdminBaseController
             $allPostData = $_POST;
             $excludeFields = [
                 'id', 'category_id', 'title', 'cover_img', 'summary',
-                'content', 'status', 'published_at', 'is_top', 'is_image_news', 'csrf_token'
+                'content', 'status', 'published_at', 'is_top', 'is_image_news',
+                'meta_title', 'meta_keywords', 'meta_description', 'og_image', 'tags', 'csrf_token'
             ];
                     
             foreach ($allPostData as $key => $value) {
@@ -271,6 +287,15 @@ class ArticleController extends AdminBaseController
                 $this->getAdminId(),
                 $this->getAdminUsername()
             );
+            
+            // 保存标签
+            $tagsString = $this->post('tags', '');
+            if (!empty($tagsString) && $result > 0) {
+                $db = \App\Core\Database::get();
+                $tagModel = new \App\Models\Tag($db);
+                $tagNames = array_map('trim', explode(',', $tagsString));
+                $tagModel->syncToContent($result, $tagNames);
+            }
 
             // 如果保存的数据中包含 category_id，跳转时带上 cid 参数
             $redirectUrl = '/admin/article';

@@ -8,6 +8,9 @@ use App\Services\ContentService;
 use App\Services\SiteService;
 use App\Services\CategoryService;
 use App\Services\DoctorService;
+use App\Services\SeoService;
+use App\Services\RecommendationService;
+use Medoo\Medoo;
 
 /**
  * 文章控制器
@@ -27,7 +30,10 @@ class ArticleController extends BaseController
         private readonly Category $categoryModel,
         private readonly SiteService $siteService,
         private readonly CategoryService $categoryService,
-        private readonly DoctorService $doctorService
+        private readonly DoctorService $doctorService,
+        private readonly SeoService $seoService,
+        private readonly RecommendationService $recommendationService,
+        private readonly Medoo $db
     ) {
         parent::__construct();
     }
@@ -70,8 +76,7 @@ class ArticleController extends BaseController
             // 获取文章附件（文档）
             $attachments = [];
             try {
-                $db = \App\Core\Database::get();
-                $fileModel = new \App\Models\File($db);
+                $fileModel = new \App\Models\File($this->db);
                 $attachments = $fileModel->getByRelated('article', $id, 'document');
             } catch (\Throwable $e) {
                 error_log('获取文章附件失败: ' . $e->getMessage());
@@ -110,6 +115,39 @@ class ArticleController extends BaseController
             
             // 构建面包屑导航
             $breadcrumbs = $this->buildBreadcrumbs($category);
+            
+            // 生成SEO标签
+            $articleUrl = '/article/' . $id . '.html';
+            $ogImage = $processedArticle['cover_img'] ?? '';
+            if (empty($ogImage) && !empty($processedArticle['og_image'] ?? '')) {
+                $ogImage = $processedArticle['og_image'];
+            }
+            
+            $seoData = [
+                'title' => $processedArticle['title'] ?? '',
+                'description' => $processedArticle['summary'] ?? '',
+                'url' => $articleUrl,
+                'image' => $ogImage
+            ];
+            
+            $canonicalUrl = $this->seoService->generateCanonicalUrl($articleUrl);
+            $ogTags = $this->seoService->generateOpenGraphTags($seoData);
+            $articleSchema = $this->seoService->generateArticleSchema($processedArticle);
+            $breadcrumbSchema = $this->seoService->generateBreadcrumbSchema($breadcrumbs);
+            $organizationSchema = $this->seoService->generateOrganizationSchema();
+            $jsonLdSchema = $articleSchema . "\n" . $breadcrumbSchema . "\n" . $organizationSchema;
+            
+            // 获取相关文章推荐
+            $relatedArticles = $this->recommendationService->getRelatedArticles($id, 5);
+            
+            // 获取文章标签
+            $tagModel = new \App\Models\Tag($this->db);
+            $tags = $tagModel->getByContentId($id);
+            
+            // 计算基础URL
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $appBaseUrl = $protocol . '://' . $host;
 
             $this->render($detailTemplate, [
                 'title' => $processedArticle['title'] ?? '',
@@ -121,6 +159,12 @@ class ArticleController extends BaseController
                 'navItems' => $navItems,
                 'breadcrumbs' => $breadcrumbs,
                 'attachments' => $attachments,
+                'canonicalUrl' => $canonicalUrl,
+                'ogTags' => $ogTags,
+                'jsonLdSchema' => $jsonLdSchema,
+                'relatedArticles' => $relatedArticles,
+                'tags' => $tags,
+                'appBaseUrl' => $appBaseUrl,
             ]);
         } catch (\Throwable $e) {
             error_log('文章详情页加载失败 ' . $e->getMessage());

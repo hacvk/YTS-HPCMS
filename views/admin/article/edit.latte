@@ -162,6 +162,56 @@
                     <textarea id="content" name="content" style="display: none;">{if isset($article['content'])}{$article['content']|noescape}{/if}</textarea>
                 </div>
                 
+                <!-- SEO优化区域 -->
+                <div class="mb-4">
+                    <h5>SEO优化 <button type="button" class="btn btn-sm btn-outline-primary ml-2" id="btnExtractSeo">自动提取</button></h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_title">SEO标题</label>
+                                <input type="text" class="form-control" id="meta_title" name="meta_title" value="{if isset($article['meta_title'])}{$article['meta_title']}{/if}" placeholder="留空则使用文章标题">
+                                <small class="form-text text-muted">建议长度：30-60字符</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_keywords">SEO关键词</label>
+                                <input type="text" class="form-control" id="meta_keywords" name="meta_keywords" value="{if isset($article['meta_keywords'])}{$article['meta_keywords']}{/if}" placeholder="多个关键词用逗号分隔">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_description">SEO描述</label>
+                                <textarea class="form-control" id="meta_description" name="meta_description" rows="3" placeholder="留空则自动生成">{if isset($article['meta_description'])}{$article['meta_description']}{/if}</textarea>
+                                <small class="form-text text-muted">建议长度：50-155字符</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="og_image">社交分享图片</label>
+                                <input type="text" class="form-control" id="og_image" name="og_image" value="{if isset($article['og_image'])}{$article['og_image']}{/if}" placeholder="请输入图片URL">
+                                {if isset($article['og_image']) && $article['og_image']}
+                                <div class="mt-2">
+                                    <img src="{$article['og_image']}" width="100" class="img-thumbnail">
+                                </div>
+                                {/if}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="tags">标签</label>
+                                <input type="text" class="form-control" id="tags" name="tags" value="{if isset($tags_string)}{$tags_string}{/if}" placeholder="多个标签用逗号分隔">
+                                <small class="form-text text-muted">标签有助于SEO和相关文章推荐</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- 扩展字段区域 -->
                 <div class="mb-4">
                     <h5>扩展信息</h5>
@@ -358,6 +408,8 @@
 <!-- Cropper.js CSS -->
 <link rel="stylesheet" href="/static/cropperjs/cropper.min.css">
 
+<!-- jQuery（部分第三方库依赖） -->
+<script src="/static/front/js/jquery-3.3.1.min.js"></script>
 <!-- WangEditor 富文本编辑器 JS -->
 <script src="/static/wangeditor/cdn/wangEditor.min.js"></script>
 <!-- Cropper.js JS -->
@@ -372,6 +424,161 @@
 <!-- 文章文档附件管理 -->
 <script n:syntax="off">
 (function () {
+    // SEO自动提取功能
+    var btnExtractSeo = document.getElementById('btnExtractSeo');
+    if (btnExtractSeo) {
+        btnExtractSeo.addEventListener('click', function () {
+            // 从wangEditor获取内容
+            var content = '';
+            var editorElement = document.getElementById('editor');
+            if (editorElement) {
+                // 尝试获取wangEditor的内容
+                if (typeof editorElement.innerHTML !== 'undefined') {
+                    content = editorElement.innerHTML.trim();
+                }
+            }
+            // 如果编辑器内容为空，尝试从隐藏字段获取
+            if (!content) {
+                var hiddenContent = document.getElementById('content');
+                if (hiddenContent) {
+                    content = hiddenContent.value || '';
+                }
+            }
+            
+            // 清理HTML标签，只保留纯文本用于关键词提取
+            var textContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            console.log('SEO提取 - 原始内容长度:', content.length);
+            console.log('SEO提取 - 清理后内容:', textContent.substring(0, 100));
+            
+            if (!textContent || textContent.length < 10) {
+                alert('请先输入足够的文章内容（至少10个字符）');
+                return;
+            }
+            
+            btnExtractSeo.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提取中...';
+            btnExtractSeo.disabled = true;
+            
+            var csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+            
+            // 本地备用提取器（后端不可用时使用）
+            function extractSeoLocally(text) {
+                // 生成描述：截取前 155 字符
+                var description = text.substring(0, 155);
+
+                // 生成关键词：按中文/英文/数字分词，过滤停用词和单字符
+                var stopwords = ['的','是','了','在','和','与','或','及','等','为','之','于','以','而','但','若','则','因','所','从','对','把','被','让','给','向','到','过','来','去','这','那','他','她','它','们','你','我','自己','不','有','没','无','可','能','要','会','就','也','都','且','如','因为','所以','虽然','但是','然而','并且','或者','还是','一个','一些','这个','那个','什么','怎样','如何','可以','应该','需要','必须','可能','应当','值得'];
+                var tokens = text.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{2,}|[0-9]{2,}/g) || [];
+                var freq = {};
+                tokens.forEach(function(t){
+                    var w = t.toLowerCase();
+                    if (stopwords.indexOf(w) >= 0) return;
+                    freq[w] = (freq[w] || 0) + 1;
+                });
+                var keywords = Object.keys(freq).sort(function(a,b){return freq[b]-freq[a];}).slice(0, 10);
+
+                return { keywords: keywords, description: description };
+            }
+
+            // 关键词筛选：2-4 字/字符，随机取 3-4 个
+            function pickKeywords(keywords, text) {
+                if (!Array.isArray(keywords)) return [];
+                var dictionary = [
+                    '微创','治疗','手术','康复','诊疗','麻醉','护理','技术','设备','影像','肿瘤','心血管','消化','内镜',
+                    '骨科','关节','神经','介入','血管','腔镜','术式','方案','风险','预后','方案','方案优化','管理','流程'
+                ];
+                var filtered = keywords
+                    .map(function(k){ return (k || '').trim(); })
+                    .filter(function(k){
+                        var len = k.length;
+                        return len >= 2 && len <= 4;
+                    });
+                // 去重
+                var uniq = Array.from(new Set(filtered));
+                var textLower = (text || '').toLowerCase();
+                var dictHit = dictionary.filter(function(k){
+                    return text.indexOf(k) !== -1 || textLower.indexOf(k.toLowerCase()) !== -1;
+                });
+                if (dictHit.length) {
+                    uniq = dictHit.concat(uniq);
+                    uniq = Array.from(new Set(uniq));
+                }
+                // 洗牌
+                for (var i = uniq.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var tmp = uniq[i]; uniq[i] = uniq[j]; uniq[j] = tmp;
+                }
+                return uniq.slice(0, Math.floor(Math.random() * 2) + 3); // 取 3-4 个
+            }
+
+            fetch('/api/seo/extract-keywords', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: 'content=' + encodeURIComponent(textContent) + '&csrf_token=' + encodeURIComponent(csrfToken),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                console.log('SEO提取 - 响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error('服务器错误: ' + response.status);
+                }
+                return response.text().then(function (text) {
+                    if (!text) {
+                        return { success: false, message: '服务器未返回数据' };
+                    }
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('SEO提取 - JSON解析失败，原始内容:', text);
+                        throw new Error('响应解析失败');
+                    }
+                });
+            }).then(function (data) {
+                console.log('SEO提取 - 响应数据:', data);
+                if (data.success) {
+                    // 自动填充关键词
+                    var picked = pickKeywords(data.keywords || [], textContent);
+                    if (picked.length) {
+                        document.getElementById('meta_keywords').value = picked.join(', ');
+                    }
+                    // 自动填充描述
+                    if (data.description) {
+                        document.getElementById('meta_description').value = data.description;
+                    }
+                    alert('SEO信息提取成功！请根据需要进行调整。');
+                } else {
+                    // 后端失败，使用本地备用提取
+                    var local = extractSeoLocally(textContent);
+                    var pickedLocal = pickKeywords(local.keywords || [], textContent);
+                    if (pickedLocal.length) {
+                        document.getElementById('meta_keywords').value = pickedLocal.join(', ');
+                    }
+                    if (local.description) {
+                        document.getElementById('meta_description').value = local.description;
+                    }
+                    console.warn('SEO提取后端未返回有效数据，已使用本地提取。原因:', data.message || '未知');
+                }
+            }).catch(function (error) {
+                console.error('提取异常:', error);
+                // 网络/解析异常，使用本地备用提取
+                var localResult = extractSeoLocally(textContent);
+                var pickedFallback = pickKeywords(localResult.keywords || [], textContent);
+                if (pickedFallback.length) {
+                    document.getElementById('meta_keywords').value = pickedFallback.join(', ');
+                }
+                if (localResult.description) {
+                    document.getElementById('meta_description').value = localResult.description;
+                }
+                console.warn('SEO提取异常，已使用本地提取。', error);
+            }).finally(function () {
+                btnExtractSeo.innerHTML = '自动提取';
+                btnExtractSeo.disabled = false;
+            });
+        });
+    }
+    
     var uploadBtn = document.getElementById('btnUploadDocument');
     var fileInput = document.getElementById('documentFileInput');
 
@@ -444,77 +651,103 @@
         });
     }
 
-    // 保存单个附件信息
-    $(document).on('click', '.btn-attachment-save', function () {
-        var id = $(this).data('id');
-        var row = $(this).closest('tr');
-        var saveBtn = $(this);
-        var originalText = saveBtn.text();
-            
-        // 显示保存状态
-        saveBtn.html('<i class="fas fa-spinner fa-spin"></i>');
-        saveBtn.prop('disabled', true);
-    
-        var sort = row.find('.attachment-sort').val() || 0;
-        var description = row.find('.attachment-description').val() || '';
-        var articleId = $('input[name="id"]').val() || 0;
-        var csrfToken = $('#csrf_token').val() || '';
-    
-        $.post('/admin/file/update', {
-            id: id,
-            related_type: 'article',
-            related_id: articleId,
-            file_usage: 'document',
-            is_primary: 0,
-            sort: sort,
-            description: description,
-            csrf_token: csrfToken
-        }, function (res) {
-            if (res && res.code === 0) {
-                alert('保存成功');
-            } else {
-                alert(res && res.message ? res.message : '保存失败');
-            }
-        }, 'json').always(function() {
-            // 恢复按钮状态
-            saveBtn.html(originalText);
-            saveBtn.prop('disabled', false);
-        });
-    });
+    // 附件管理（移除 jQuery 依赖，改用原生 JS）
+    document.addEventListener('click', function (event) {
+        var saveBtn = event.target.closest('.btn-attachment-save');
+        if (saveBtn) {
+            var row = saveBtn.closest('tr');
+            var originalText = saveBtn.innerHTML;
 
-    // 删除附件
-    $(document).on('click', '.btn-attachment-delete', function () {
-        if (!confirm('确定要删除该附件吗？')) {
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            saveBtn.disabled = true;
+
+            var sortInput = row.querySelector('.attachment-sort');
+            var descInput = row.querySelector('.attachment-description');
+            var sort = sortInput ? sortInput.value || 0 : 0;
+            var description = descInput ? descInput.value || '' : '';
+            var articleIdInput = document.querySelector('input[name="id"]');
+            var articleId = articleIdInput ? articleIdInput.value || 0 : 0;
+            var csrfInput = document.getElementById('csrf_token');
+            var csrfToken = csrfInput ? csrfInput.value : '';
+            var id = saveBtn.getAttribute('data-id') || 0;
+
+            var payload = new URLSearchParams({
+                id: id,
+                related_type: 'article',
+                related_id: articleId,
+                file_usage: 'document',
+                is_primary: '0',
+                sort: sort,
+                description: description,
+                csrf_token: csrfToken
+            });
+
+            fetch('/admin/file/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: payload.toString(),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (res) {
+                if (res && res.code === 0) {
+                    alert('保存成功');
+                } else {
+                    alert(res && res.message ? res.message : '保存失败');
+                }
+            }).catch(function () {
+                alert('保存失败，请稍后重试');
+            }).finally(function () {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+
             return;
         }
-    
-        var deleteBtn = $(this);
-        var originalText = deleteBtn.text();
-            
-        // 显示删除状态
-        deleteBtn.html('<i class="fas fa-spinner fa-spin"></i>');
-        deleteBtn.prop('disabled', true);
-    
-        var id = deleteBtn.data('id');
-        var csrfToken = $('#csrf_token').val() || '';
-    
-        $.post('/admin/file/delete/' + id, {
-            csrf_token: csrfToken
-        }, function (res) {
-            if (res && res.code === 0) {
-                window.location.reload();
-            } else {
-                alert(res && res.message ? res.message : '删除失败');
-                // 如果删除失败，恢复按钮状态
-                deleteBtn.html(originalText);
-                deleteBtn.prop('disabled', false);
+
+        var deleteBtn = event.target.closest('.btn-attachment-delete');
+        if (deleteBtn) {
+            if (!confirm('确定要删除该附件吗？')) {
+                return;
             }
-        }, 'json').fail(function() {
-            alert('删除失败，请稍后重试');
-            // 如果请求失败，恢复按钮状态
-            deleteBtn.html(originalText);
-            deleteBtn.prop('disabled', false);
-        });
+
+            var originalDeleteText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            deleteBtn.disabled = true;
+
+            var deleteId = deleteBtn.getAttribute('data-id') || 0;
+            var csrfInputDel = document.getElementById('csrf_token');
+            var csrfTokenDel = csrfInputDel ? csrfInputDel.value : '';
+
+            var delPayload = new URLSearchParams({
+                csrf_token: csrfTokenDel
+            });
+
+            fetch('/admin/file/delete/' + deleteId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: delPayload.toString(),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (res) {
+                if (res && res.code === 0) {
+                    window.location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '删除失败');
+                    deleteBtn.innerHTML = originalDeleteText;
+                    deleteBtn.disabled = false;
+                }
+            }).catch(function () {
+                alert('删除失败，请稍后重试');
+                deleteBtn.innerHTML = originalDeleteText;
+                deleteBtn.disabled = false;
+            });
+        }
     });
 })();
 </script>

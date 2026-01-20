@@ -12,6 +12,13 @@
     <title>{$title ?? '默认标题'}</title>
     <meta name="keywords" content="{$keywords ?? ''}"/>
     <meta name="description" content="{$description ?? ''}"/>
+    <link rel="canonical" href="{$canonicalUrl ?? $baseUrl ?? $appBaseUrl}" />
+    {if isset($ogTags)}
+    {$ogTags|noescape}
+    {/if}
+    {if isset($jsonLdSchema)}
+    {$jsonLdSchema|noescape}
+    {/if}
 
     <!-- Styles -->
     <link href="{asset('static/front/css/index.css')}" rel="stylesheet" type="text/css"/>

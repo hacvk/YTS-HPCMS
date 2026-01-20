@@ -19,7 +19,7 @@ class Content
     /**
      * 表名
      */
-    private const TABLE = 'sys_content';
+    public const TABLE = 'sys_content';
 
     /**
      * JSON 字段列表（attributes 字段存储扩展字段 JSON）

@@ -7,6 +7,7 @@ use App\Models\Banner;
 use App\Models\Content;
 use App\Services\CategoryService;
 use App\Services\SiteService;
+use App\Services\SeoService;
 use Medoo\Medoo;
 
 /**
@@ -29,6 +30,7 @@ class HomeController extends BaseController
         private readonly Banner $bannerModel,
         private readonly CategoryService $categoryService,
         private readonly SiteService $siteService,
+        private readonly SeoService $seoService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -68,10 +70,27 @@ class HomeController extends BaseController
             'site_description' => $this->db->get('sys_setting', 'value', ['key' => 'site_description'])
         ];
         
+        // 生成SEO标签
+        $ogTags = $this->seoService->generateOpenGraphTags([
+            'title' => $siteSettings['site_title'] ?? '首页',
+            'description' => $siteSettings['site_description'] ?? '',
+            'url' => '/'
+        ]);
+        $organizationSchema = $this->seoService->generateOrganizationSchema();
+        $jsonLdSchema = $organizationSchema;
+        
+        // 计算基础URL
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        $appBaseUrl = $protocol . '://' . $host;
+        
         $data = [
             'title' => $siteSettings['site_title'] ?? '默认标题',
             'keywords' => $siteSettings['site_keywords'] ?? '',
             'description' => $siteSettings['site_description'] ?? '',
+            'appBaseUrl' => $appBaseUrl,
+            'ogTags' => $ogTags,
+            'jsonLdSchema' => $jsonLdSchema,
             'navItems' => $navItems,
             'bannerItems' => $this->bannerModel->getBanners(), // 轮播图
             'indexFastItems' => $this->bannerModel->getIndexFastItems(10), // 首页快捷方式

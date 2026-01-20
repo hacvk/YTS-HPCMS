@@ -7,6 +7,7 @@ use App\Models\Content;
 use App\Services\DoctorService;
 use App\Services\SiteService;
 use App\Services\CategoryService;
+use App\Services\SeoService;
 use Medoo\Medoo;
 
 /**
@@ -28,6 +29,7 @@ class CategoryController extends BaseController
         private readonly DoctorService $doctorService,
         private readonly SiteService $siteService,
         private readonly CategoryService $categoryService,
+        private readonly SeoService $seoService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -148,6 +150,22 @@ class CategoryController extends BaseController
             error_log('Rendering template: ' . $listTemplate . ' for category: ' . ($category['name'] ?? 'unknown'));
             
             // 根据模板类型决定是否获取子栏目数据
+            $categoryUrl = '/c/' . ($category['slug'] ?? $categoryId);
+            $canonicalUrl = $this->seoService->generateCanonicalUrl($categoryUrl);
+            $ogTags = $this->seoService->generateOpenGraphTags([
+                'title' => $category['name'] ?? '',
+                'description' => $category['meta_description'] ?? ($category['name'] ?? ''),
+                'url' => $categoryUrl
+            ]);
+            $breadcrumbSchema = $this->seoService->generateBreadcrumbSchema($breadcrumbs);
+            $organizationSchema = $this->seoService->generateOrganizationSchema();
+            $jsonLdSchema = $breadcrumbSchema . "\n" . $organizationSchema;
+            
+            // 计算基础URL
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $appBaseUrl = $protocol . '://' . $host;
+            
             $templateData = [
                 'title' => (string)($category['name'] ?? ''),
                 'category' => $category,
@@ -159,6 +177,10 @@ class CategoryController extends BaseController
                 'sidebarItems' => $sidebarItems,
                 'filterData' => $filterData,
                 'breadcrumbs' => $breadcrumbs,
+                'canonicalUrl' => $canonicalUrl,
+                'ogTags' => $ogTags,
+                'jsonLdSchema' => $jsonLdSchema,
+                'appBaseUrl' => $appBaseUrl,
             ];
             
             // 如果是 kslist 模板，则获取子栏目和对应的文章数据

@@ -40,7 +40,7 @@ class ContentService
      */
     public function save(array $data, ?int $adminId = null, ?string $adminUsername = null): int
     {
-        $this->validate($data);
+        $this->validate($data, $adminId, $adminUsername);
 
         $data = $this->format($data);
 
@@ -59,7 +59,7 @@ class ContentService
      * @param array<string, mixed> $data 待验证的数据
      * @throws ValidationException 验证失败时抛出
      */
-    private function validate(array $data): void
+    private function validate(array $data, ?int $adminId = null, ?string $adminUsername = null): void
     {
         $title = $data['title'] ?? '';
         if (empty(trim($title))) {

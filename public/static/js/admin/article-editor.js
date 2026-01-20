@@ -37,9 +37,15 @@
         const csrfTokenElement = document.getElementById('csrf_token');
         const csrfToken = csrfTokenElement ? csrfTokenElement.value : '';
 
-        // 获取编辑器容器的初始HTML内容
+        // 获取初始内容：优先隐藏的 textarea（后端填充），否则容器占位内容
         const editorContainer = document.getElementById('editor');
-        const initialHtml = editorContainer ? editorContainer.innerHTML.trim() : '';
+        const contentTextarea = document.getElementById('content');
+        let initialHtml = '';
+        if (contentTextarea && typeof contentTextarea.value === 'string') {
+            initialHtml = contentTextarea.value.trim();
+        } else if (editorContainer && typeof editorContainer.innerHTML === 'string') {
+            initialHtml = editorContainer.innerHTML.trim();
+        }
 
         // 清空编辑器容器（移除模板内容）
         if (editorContainer) {

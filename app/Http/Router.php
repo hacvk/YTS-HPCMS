@@ -185,6 +185,12 @@ class Router
             // Front
             'GET /' => ['HomeController', 'index'],
 
+            // SEO
+            'GET /seo/sitemap' => ['SeoController', 'sitemap'],
+            'GET /seo/sitemap.xml' => ['SeoController', 'sitemap'],
+            'GET /robots.txt' => ['SeoController', 'robots'],
+            'POST /api/seo/extract-keywords' => ['SeoController', 'extractKeywords'],
+
             // Admin - auth & dashboard
             'GET /admin' => ['Admin\\LoginController', 'index'],
             'GET /admin/login/captcha' => ['Admin\\LoginController', 'captcha'],
