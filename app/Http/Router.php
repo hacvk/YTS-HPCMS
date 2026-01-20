@@ -366,7 +366,7 @@ class Router
             }
             
             // Front - file download (GET /file/download/{id})
-            if (preg_match('#^/file/download/([1-9][0-9]*)$#', $uri, $matches)) {
+            if (preg_match('#^/file/download/([0-9]+)$#', $uri, $matches)) {
                 $_GET['id'] = (int)$matches[1];
                 return ['controller' => 'FileController', 'action' => 'download'];
             }

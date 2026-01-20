@@ -43,7 +43,7 @@ class FileController extends BaseController
                 return;
             }
 
-            $publicDir = dirname(__DIR__, 2) . '/public';
+            $publicDir = dirname(__DIR__, 3) . '/public';
             $uploadsDir = $publicDir . '/uploads';
 
             // 构建物理路径
