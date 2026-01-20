@@ -1,5 +1,9 @@
 {extends 'layout.latte'}
 
+{block head}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+{/block}
+
 {block content}
 <div class="Banner_dy">
     {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('/uploads/images/nullbanner.jpg')) : asset('/uploads/images/nullbanner.jpg')}
@@ -36,8 +40,62 @@
                 内容字段尚未增加
               {/if}
             </div>
+          
+            {if isset($attachments) && $attachments && count($attachments)}
+              <div class="article-attachments mt-4">
+                <h3 class="title">相关文档附件</h3>
+                <div class="attachments-container">
+                  {foreach $attachments as $file}
+                    {var $ext = strtolower(pathinfo($file['original_name'], \PATHINFO_EXTENSION))}
+                    {var $sizeKb = ceil((int)($file['size'] ?? 0) / 1024)}
+                    <div class="attachment-item">
+                      <div class="attachment-icon">
+                        {if $ext === 'pdf'}
+                          <i class="fas fa-file-pdf text-danger"></i>
+                        {elseif in_array($ext, ['doc', 'docx'])}
+                          <i class="fas fa-file-word text-primary"></i>
+                        {elseif in_array($ext, ['xls', 'xlsx'])}
+                          <i class="fas fa-file-excel text-success"></i>
+                        {elseif in_array($ext, ['ppt', 'pptx'])}
+                          <i class="fas fa-file-powerpoint text-warning"></i>
+                        {elseif $ext === 'txt'}
+                          <i class="fas fa-file-alt text-secondary"></i>
+                        {else}
+                          <i class="fas fa-file text-muted"></i>
+                        {/if}
+                      </div>
+                      <div class="attachment-info">
+                        <div class="attachment-name">
+                          <a href="/file/download/{$file['id']}" target="_blank" class="attachment-link">{$file['original_name']}</a>
+                        </div>
+                        <div class="attachment-meta">
+                          <span class="file-ext">.{$ext}</span>
+                          <span class="file-size">{$sizeKb} KB</span>
+                          {if $file['description']}
+                            <span class="file-desc">{$file['description']}</span>
+                          {/if}
+                        </div>
+                      </div>
+                      <div class="attachment-actions">
+                        <a href="/file/download/{$file['id']}" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-download"></i> 下载
+                        </a>
+                      </div>
+                    </div>
+                    {if $ext === 'pdf'}
+                      <div class="attachment-preview-pdf mt-3">
+                        <div class="preview-header">
+                          <i class="fas fa-eye"></i> PDF预览
+                        </div>
+                        <iframe src="/pdfjs/web/viewer.html?file=/{$file['path']}" style="width:100%;height:600px;border:1px solid #dee2e6;border-radius: 0.375rem;" frameborder="0"></iframe>
+                      </div>
+                    {/if}
+                  {/foreach}
+                </div>
+              </div>
+            {/if}
           </div>
-        
+          
           <div class="pn-page">
             <div class="operating">
               <a class="a-print" href="javascript:void(0);">打印本页</a>
@@ -94,4 +152,123 @@ $(".a-print").click(function(){
     window.close();
 }
 </script>
+<style>
+.article-attachments {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 25px;
+    border: 1px solid #e9ecef;
+}
+
+.article-attachments .title {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.attachments-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.attachment-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.attachment-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    min-width: 30px;
+    text-align: center;
+}
+
+.attachment-info {
+    flex: 1;
+}
+
+.attachment-name {
+    margin-bottom: 5px;
+}
+
+.attachment-link {
+    color: #2c3e50;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.attachment-link:hover {
+    color: #3498db;
+    text-decoration: underline;
+}
+
+.attachment-meta {
+    display: flex;
+    gap: 15px;
+    font-size: 14px;
+    color: #6c757d;
+}
+
+.file-ext {
+    background: #e9ecef;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: monospace;
+}
+
+.file-size {
+    background: #d1ecf1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: #0c5460;
+}
+
+.file-desc {
+    font-style: italic;
+}
+
+.attachment-actions {
+    margin-left: 15px;
+}
+
+.btn-outline-primary {
+    border-color: #3498db;
+    color: #3498db;
+}
+
+.btn-outline-primary:hover {
+    background-color: #3498db;
+    color: white;
+}
+
+.attachment-preview-pdf {
+    margin-top: 20px;
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
+}
+
+.preview-header {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+</style>
 {/block}

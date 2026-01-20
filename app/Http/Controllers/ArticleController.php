@@ -60,13 +60,23 @@ class ArticleController extends BaseController
             }
 
             $categoryId = (int)($article['category_id'] ?? 0);
-
+            
             // 获取上一篇文章
             $prevArticle = $this->contentService->getPrevArticle($id, $categoryId);
-
+            
             // 获取下一篇文章
             $nextArticle = $this->contentService->getNextArticle($id, $categoryId);
-
+            
+            // 获取文章附件（文档）
+            $attachments = [];
+            try {
+                $db = \App\Core\Database::get();
+                $fileModel = new \App\Models\File($db);
+                $attachments = $fileModel->getByRelated('article', $id, 'document');
+            } catch (\Throwable $e) {
+                error_log('获取文章附件失败: ' . $e->getMessage());
+            }
+            
             // 使用 SiteService 获取导航数据
             $navItems = $this->siteService->buildNav();
 
@@ -110,6 +120,7 @@ class ArticleController extends BaseController
                 'sidebarItems' => $sidebarItems,
                 'navItems' => $navItems,
                 'breadcrumbs' => $breadcrumbs,
+                'attachments' => $attachments,
             ]);
         } catch (\Throwable $e) {
             error_log('文章详情页加载失败 ' . $e->getMessage());

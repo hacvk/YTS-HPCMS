@@ -246,7 +246,11 @@ class Router
             'POST /admin/friendlink/delete' => ['Admin\\FriendLinkController', 'delete'],
             'POST /admin/attachment/delete' => ['Admin\\AttachmentController', 'delete'],
             'POST /admin/attachment/batchDelete' => ['Admin\\AttachmentController', 'batchDelete'],
-
+            
+            // Admin - file manage
+            'GET /admin/file' => ['Admin\\FileController', 'index'],
+            'POST /admin/file/update' => ['Admin\\FileController', 'update'],
+            
             // Admin - upload
             'GET /admin/upload' => ['Admin\\UploadController', 'index'],
             'POST /admin/upload/do' => ['Admin\\UploadController', 'upload'],
@@ -360,7 +364,13 @@ class Router
                 $_GET['id'] = (int)$matches[1];
                 return ['controller' => 'ArticleController', 'action' => 'index'];
             }
-
+            
+            // Front - file download (GET /file/download/{id})
+            if (preg_match('#^/file/download/([1-9][0-9]*)$#', $uri, $matches)) {
+                $_GET['id'] = (int)$matches[1];
+                return ['controller' => 'FileController', 'action' => 'download'];
+            }
+            
             // Front - category list with pagination (GET /c/{slug}/page/{page})
             if (preg_match('#^/c/([^/]+)/page/([1-9][0-9]*)$#', $uri, $matches)) {
                 return $this->handleCategoryRoute($matches[1], (int)$matches[2]);
@@ -382,11 +392,17 @@ class Router
                 $_POST['id'] = (int)$matches[1];
                 return ['controller' => 'Admin\\ArticleController', 'action' => 'delete'];
             }
-
+        
             // Admin - page delete (POST /admin/page/delete/{id})
             if (preg_match('#^/admin/page/delete/([0-9]+)$#', $uri, $matches)) {
                 $_POST['id'] = (int)$matches[1];
                 return ['controller' => 'Admin\\PageController', 'action' => 'delete'];
+            }
+        
+            // Admin - file delete (POST /admin/file/delete/{id})
+            if (preg_match('#^/admin/file/delete/([0-9]+)$#', $uri, $matches)) {
+                $_POST['id'] = (int)$matches[1];
+                return ['controller' => 'Admin\\FileController', 'action' => 'delete'];
             }
         }
 

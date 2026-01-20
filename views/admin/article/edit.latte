@@ -173,7 +173,68 @@
                 
                 <!-- 文章数据JSON，用于扩展字段加载 -->
                 <input type="hidden" id="article_json" value="{if isset($article_json)}{$article_json}{else}null{/if}">
-                
+                                
+                <!-- 文档附件管理 -->
+                <div class="mb-4">
+                    <h5>文档附件</h5>
+                    <hr>
+                    {if isset($article['id'])}
+                        <div class="alert alert-info small">
+                            支持上传的文档类型：PDF、Word、WPS、Excel、PowerPoint、TXT 等（扩展名：pdf, doc, docx, wps, dps, et, xls, xlsx, ppt, pptx, txt），单个文件最大 15MB。
+                        </div>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnUploadDocument">
+                                <i class="fas fa-upload"></i> 上传文档附件
+                            </button>
+                            <input type="file" id="documentFileInput" name="document_files[]" class="d-none" multiple>
+                        </div>
+                        <div id="article-attachments">
+                            {if isset($attachments) && $attachments && count($attachments)}
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">ID</th>
+                                            <th>文件名</th>
+                                            <th style="width: 120px;">大小 (KB)</th>
+                                            <th style="width: 90px;">排序</th>
+                                            <th>备注</th>
+                                            <th style="width: 120px;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {foreach $attachments as $file}
+                                            {var $sizeKb = ceil((int)($file['size'] ?? 0) / 1024)}
+                                            <tr data-id="{$file['id']}">
+                                                <td>{$file['id']}</td>
+                                                <td>
+                                                    <a href="/file/download/{$file['id']}" target="_blank">{$file['original_name']}</a>
+                                                </td>
+                                                <td>{$sizeKb}</td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm attachment-sort" value="{$file['sort'] ?? 0}" data-id="{$file['id']}" min="0">
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm attachment-description" value="{ifset $file['description']}{$file['description']}{/ifset}" data-id="{$file['id']}">
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-attachment-save" data-id="{$file['id']}">保存</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-attachment-delete" data-id="{$file['id']}">删除</button>
+                                                </td>
+                                            </tr>
+                                        {/foreach}
+                                    </tbody>
+                                </table>
+                            {else}
+                                <p class="text-muted mb-0">当前文章还没有文档附件。</p>
+                            {/if}
+                        </div>
+                    {else}
+                        <div class="alert alert-warning small mb-0">
+                            请先保存文章，保存成功后可在编辑页面上传文档附件。
+                        </div>
+                    {/if}
+                </div>
+                                
                 <!-- 表单按钮 -->
                 <div class="form-group">
                     <button type="submit" class="btn btn-primary">
@@ -307,4 +368,154 @@
 <script src="/static/js/admin/article-editor.js"></script>
 <!-- 扩展字段功能 -->
 <script src="/static/js/admin/extend-fields.js"></script>
+
+<!-- 文章文档附件管理 -->
+<script n:syntax="off">
+(function () {
+    var uploadBtn = document.getElementById('btnUploadDocument');
+    var fileInput = document.getElementById('documentFileInput');
+
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', function () {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function () {
+            if (!this.files || !this.files.length) {
+                return;
+            }
+
+            var csrfInput = document.getElementById('csrf_token');
+            var csrfToken = csrfInput ? csrfInput.value : '';
+            var idInput = document.querySelector('input[name="id"]');
+            var articleId = idInput ? idInput.value : '';
+
+            if (!articleId) {
+                alert('请先保存文章后再上传附件');
+                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 上传文档附件';
+                uploadBtn.disabled = false;
+                return;
+            }
+            
+            var files = this.files;
+            var uploadedCount = 0;
+            var totalCount = files.length;
+
+            for (var i = 0; i < files.length; i++) {
+                var formData = new FormData();
+                formData.append('file', files[i]);
+                formData.append('module', 'document');
+                formData.append('related_type', 'article');
+                formData.append('related_id', articleId);
+                formData.append('file_usage', 'document');
+                formData.append('csrf_token', csrfToken);
+
+                fetch('/admin/upload/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    // WangEditor upload response format - errno: 0, data: [url]
+                    if (data && data.errno === 0) {
+                        uploadedCount++;
+                        // 显示进度
+                        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中... (' + uploadedCount + '/' + totalCount + ')';
+                    } else {
+                        console.error('上传失败:', data && data.message ? data.message : '未知错误');
+                        alert(data && data.message ? data.message : '上传失败: ' + files[i].name);
+                    }
+                }).catch(function (error) {
+                    console.error('上传异常:', error);
+                    alert('上传失败，请稍后重试: ' + files[i].name);
+                }).finally(function() {
+                    // 全部上传完成后刷新页面
+                    if (uploadedCount === totalCount) {
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 500);
+                    }
+                });
+            }
+
+            // 重置 input，避免同一文件无法再次选择
+            this.value = '';
+        });
+    }
+
+    // 保存单个附件信息
+    $(document).on('click', '.btn-attachment-save', function () {
+        var id = $(this).data('id');
+        var row = $(this).closest('tr');
+        var saveBtn = $(this);
+        var originalText = saveBtn.text();
+            
+        // 显示保存状态
+        saveBtn.html('<i class="fas fa-spinner fa-spin"></i>');
+        saveBtn.prop('disabled', true);
+    
+        var sort = row.find('.attachment-sort').val() || 0;
+        var description = row.find('.attachment-description').val() || '';
+        var articleId = $('input[name="id"]').val() || 0;
+        var csrfToken = $('#csrf_token').val() || '';
+    
+        $.post('/admin/file/update', {
+            id: id,
+            related_type: 'article',
+            related_id: articleId,
+            file_usage: 'document',
+            is_primary: 0,
+            sort: sort,
+            description: description,
+            csrf_token: csrfToken
+        }, function (res) {
+            if (res && res.code === 0) {
+                alert('保存成功');
+            } else {
+                alert(res && res.message ? res.message : '保存失败');
+            }
+        }, 'json').always(function() {
+            // 恢复按钮状态
+            saveBtn.html(originalText);
+            saveBtn.prop('disabled', false);
+        });
+    });
+
+    // 删除附件
+    $(document).on('click', '.btn-attachment-delete', function () {
+        if (!confirm('确定要删除该附件吗？')) {
+            return;
+        }
+    
+        var deleteBtn = $(this);
+        var originalText = deleteBtn.text();
+            
+        // 显示删除状态
+        deleteBtn.html('<i class="fas fa-spinner fa-spin"></i>');
+        deleteBtn.prop('disabled', true);
+    
+        var id = deleteBtn.data('id');
+        var csrfToken = $('#csrf_token').val() || '';
+    
+        $.post('/admin/file/delete/' + id, {
+            csrf_token: csrfToken
+        }, function (res) {
+            if (res && res.code === 0) {
+                window.location.reload();
+            } else {
+                alert(res && res.message ? res.message : '删除失败');
+                // 如果删除失败，恢复按钮状态
+                deleteBtn.html(originalText);
+                deleteBtn.prop('disabled', false);
+            }
+        }, 'json').fail(function() {
+            alert('删除失败，请稍后重试');
+            // 如果请求失败，恢复按钮状态
+            deleteBtn.html(originalText);
+            deleteBtn.prop('disabled', false);
+        });
+    });
+})();
+</script>
 {/block}

@@ -183,16 +183,24 @@ class ArticleController extends AdminBaseController
             
             // 获取栏目树
             $categories = $this->categoryService->getTree();
-            
+                        
+            // 获取文章附件（文档）
+            $db = \App\Core\Database::get();
+            $fileModel = new \App\Models\File($db);
+            $attachments = $fileModel->getByRelated('article', (int)$id, 'document');
+                    
+            error_log('文章ID: ' . $id . ', 附件数量: ' . count($attachments));
+                    
             // 将文章数据编码为 JSON，供前端使用
             $articleJson = json_encode($article, JSON_UNESCAPED_UNICODE);
-            
+                    
             $this->render('admin/article/edit', [
                 'title' => '编辑文章',
                 'action' => '/admin/article/save',
                 'article' => $article,
                 'article_json' => $articleJson,
-                'categories' => $categories
+                'categories' => $categories,
+                'attachments' => $attachments
             ]);
         } catch (\Exception $e) {
             // 记录页面加载失败日志

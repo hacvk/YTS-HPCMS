@@ -58,7 +58,22 @@ class FileService
      * 默认最大文件大小（5MB）
      */
     private const DEFAULT_MAX_SIZE = 5 * 1024 * 1024;
-
+    
+    /**
+     * 文档附件允许的扩展名（文章附件、说明文档等）
+     *
+     * @var array<int, string>
+     */
+    private const DOCUMENT_ALLOWED_EXTENSIONS = [
+        'pdf', 'doc', 'docx', 'wps', 'dps', 'et',
+        'xls', 'xlsx', 'ppt', 'pptx', 'txt',
+    ];
+    
+    /**
+     * 文档类最大文件大小（15MB）
+     */
+    private const DOCUMENT_MAX_SIZE = 15 * 1024 * 1024;
+    
     /**
      * 上传目录基础路径（相对于 public 目录）
      */
@@ -252,6 +267,13 @@ class FileService
      */
     public static function validateUploadedFile(array $uploadedFile, array $options = []): array
     {
+        $module = (string)($options['module'] ?? '');
+        $fileUsage = (string)($options['file_usage'] ?? '');
+    
+        if ($module === 'document' || $fileUsage === 'document') {
+            return self::validateDocumentFile($uploadedFile, $options);
+        }
+    
         // 检查文件是否上传成功
         $errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($errorCode !== UPLOAD_ERR_OK) {
@@ -312,7 +334,64 @@ class FileService
 
         return ['valid' => true];
     }
-
+ 
+    /**
+     * 文档类文件（文章附件等）验证逻辑
+     *
+     * @param array<string, mixed> $uploadedFile
+     * @param array<string, mixed> $options
+     * @return array{valid: bool, message?: string}
+     */
+    private static function validateDocumentFile(array $uploadedFile, array $options = []): array
+    {
+        $errorCode = (int)($uploadedFile['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($errorCode !== UPLOAD_ERR_OK) {
+            return [
+                'valid' => false,
+                'message' => self::getUploadErrorMessage($errorCode)
+            ];
+        }
+ 
+        $originalName = (string)($uploadedFile['name'] ?? '');
+        $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+ 
+        if ($extension === '') {
+            return [
+                'valid' => false,
+                'message' => '无法识别文件扩展名'
+            ];
+        }
+ 
+        // 禁止扩展名优先
+        if (in_array($extension, self::FORBIDDEN_EXTENSIONS, true)) {
+            return [
+                'valid' => false,
+                'message' => '不允许的文件扩展名：' . $extension
+            ];
+        }
+ 
+        // 白名单扩展名
+        if (!in_array($extension, self::DOCUMENT_ALLOWED_EXTENSIONS, true)) {
+            return [
+                'valid' => false,
+                'message' => '不支持的文档类型，仅支持：' . implode(', ', self::DOCUMENT_ALLOWED_EXTENSIONS)
+            ];
+        }
+ 
+        // 文件大小校验（默认使用文档大小上限，可通过 options 覆盖）
+        $maxSize = $options['max_size'] ?? self::DOCUMENT_MAX_SIZE;
+        $size = (int)($uploadedFile['size'] ?? 0);
+        if ($size > $maxSize) {
+            $maxSizeMB = round($maxSize / 1024 / 1024, 2);
+            return [
+                'valid' => false,
+                'message' => "文件大小超过限制，最大: {$maxSizeMB}MB"
+            ];
+        }
+ 
+        return ['valid' => true];
+    }
+ 
     /**
      * 计算文件哈希
      *
@@ -410,6 +489,12 @@ class FileService
             $randomNumber = mt_rand(100000, 999999);
             $fileName = 'images/banner' . $randomNumber . '.' . $fileExtension;
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
+        } elseif ($module === 'document') {
+            // 文档附件模块：单独放在 docs 子目录下，便于区分管理
+            // 日期路径格式：docs/YYYY/MM/DD/hash.ext
+            $datePath = date('Y/m/d');
+            $fileName = 'docs/' . $datePath . '/' . $fileHash . '.' . $fileExtension;
+            $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         } else {
             // 默认：使用原来的按日hash命名方式（使用清理后的扩展名）
             // 使用哈希作为文件名，确保安全
@@ -418,7 +503,7 @@ class FileService
             $fileName = $datePath . '/' . $fileHash . '.' . $fileExtension;
             $relativePath = self::UPLOAD_BASE_DIR . '/' . $fileName;
         }
-
+        
         // 验证路径安全性（防止路径遍历）
         if (strpos($fileName, '..') !== false || strpos($fileName, "\0") !== false) {
             throw new \RuntimeException('检测到不安全的路径字符');
