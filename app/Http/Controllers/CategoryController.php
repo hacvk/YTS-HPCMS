@@ -79,7 +79,7 @@ class CategoryController extends BaseController
             if ($page < 1) {
                 $page = 1;
             }
-            $limit = 10; // 每页显示10篇文章
+            $limit = 6; // 每页显示6篇文章
 
             // 检查当前栏目是否为频道
             $currentCategory = $this->db->get('sys_category', ['id', 'parent_id', 'name', 'slug', 'type', 'template', 'detail_template', 'sort', 'is_hidden', 'is_channel', 'banner', 'create_time', 'update_time'], ['id' => $categoryId]);

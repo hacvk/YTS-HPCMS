@@ -7,6 +7,7 @@ use App\Http\Controllers\BaseController;
 use App\Core\App;
 use App\Core\Database;
 use App\Core\Security;
+use App\Core\View;
 use App\Services\SessionService;
 
 /**
@@ -296,6 +297,47 @@ abstract class AdminBaseController extends BaseController
     }
 
     /**
+     * 返回成功 JSON 响应
+     *
+     * @param string $message 消息
+     * @param mixed $data 数据
+     * @param string|null $url 跳转URL
+     * @return void
+     */
+    protected function successJson(string $message, mixed $data = null, ?string $url = null): void
+    {
+        $response = [
+            'code' => 0,
+            'message' => $message,
+        ];
+
+        if ($data !== null) {
+            $response['data'] = $data;
+        }
+
+        if ($url !== null) {
+            $response['url'] = $url;
+        }
+
+        $this->json($response);
+    }
+
+    /**
+     * 返回错误 JSON 响应
+     *
+     * @param string $message 错误消息
+     * @param int $code 错误码
+     * @return void
+     */
+    protected function errorJson(string $message, int $code = 1): void
+    {
+        $this->json([
+            'code' => $code,
+            'message' => $message,
+        ]);
+    }
+
+    /**
      * 页面跳转
      *
      * @param string $url 目标URL
@@ -342,6 +384,40 @@ abstract class AdminBaseController extends BaseController
     protected function getClientIp(): string
     {
         return SessionService::getClientIp();
+    }
+
+    /**
+     * 检查当前页面是否激活
+     *
+     * @param string $route 路由
+     * @return bool
+     */
+    protected function isActive(string $route): bool
+    {
+        $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
+        return str_starts_with($currentUri, $route);
+    }
+    
+    /**
+     * 统一验证POST请求和CSRF
+     *
+     * @param string $customMessage 自定义错误消息
+     * @return bool 验证结果
+     */
+    protected function validatePostAndCsrf(string $customMessage = '请求方法错误或CSRF验证失败'): bool
+    {
+        if (!$this->isPost()) {
+            $this->errorJson($customMessage);
+            return false;
+        }
+    
+        $csrfToken = $this->post('csrf_token', '');
+        if (!Security::checkCsrfToken($csrfToken)) {
+            $this->errorJson('CSRF Token验证失败');
+            return false;
+        }
+    
+        return true;
     }
 
     /**

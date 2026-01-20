@@ -1,0 +1,266 @@
+{* views/front/eqlist.latte - 设备展示图文列表页 *}
+{extends 'layout.latte'}
+
+{block title}{ifset $category}{($category['name'] ?? '设备展示')}{else}设备展示{/ifset} - {$config['site']['title'] ?? ''}{/block}
+
+{block head}
+    <meta name="keywords" content="{ifset $category}{$category['keywords'] ?? ''}{/ifset}" />
+    <meta name="description" content="{ifset $category}{$category['description'] ?? ''}{/ifset}" />
+
+    <style>
+        .equipment-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            margin: 0;
+            padding: 0;
+        }
+
+        .equipment-card {
+            border: 1px solid #ededed;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #fff;
+            transition: all 0.25s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .equipment-card:hover {
+            border-color: #0068b7;
+            box-shadow: 0 10px 24px rgba(0, 104, 183, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .equipment-image {
+            width: 100%;
+            height: 250px;
+            background: #f5f5f5;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .equipment-image a {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .equipment-image img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.35s ease;
+        }
+
+        .equipment-card:hover .equipment-image img {
+            transform: scale(1.04);
+        }
+
+        .equipment-content {
+            padding: 10px 14px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 0;
+        }
+
+        .equipment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .equipment-title {
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.35;
+            font-weight: 600;
+            color: #111;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .equipment-title a {
+            color: #111;
+            text-decoration: none;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .equipment-title a:hover {
+            color: #0068b7;
+        }
+
+        .equipment-btn {
+            flex: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            background: #0068b7;
+            color: #fff;
+            font-size: 14px;
+            line-height: 1;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .equipment-btn:hover {
+            background: #005baa;
+            color: #fff;
+        }
+
+
+        .equipment-specs {
+            border-top: 1px dashed #ededed;
+            padding-top: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .equipment-specs .label {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .equipment-empty {
+            border: 1px dashed #ddd;
+            border-radius: 8px;
+            padding: 40px 0;
+            text-align: center;
+            color: #999;
+            grid-column: 1 / -1;
+            background: #fff;
+        }
+
+        @media (max-width: 1024px) {
+            .equipment-grid {
+                grid-template-columns: 1fr;
+            }
+            .equipment-card {
+                min-height: 0;
+            }
+        }
+    </style>
+{/block}
+
+{block content}
+<!-- Banner -->
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('uploads/images/nullbanner.jpg')) : asset('uploads/images/nullbanner.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+<!-- Banner End -->
+
+<!-- breadcrumbs -->
+<div class="crumbs">
+    <div class="auto auto_1150">
+        <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&raquo;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{/ifset}
+    </div>
+</div>
+
+<div class="auto auto_1150">
+    <div class="w22 fl">
+        {include 'sidebar.latte'}
+    </div>
+    <div class="w75 fr">
+        <div class="equipment-grid">
+            {var $list = $articles['list'] ?? []}
+            {if count($list) > 0}
+                {foreach $list as $a}
+                    {var $link = $a['link'] ?? '/article/' . ($a['id'] ?? '')}
+                    {var $title = $a['title'] ?? $a['name'] ?? ''}
+                    {var $pic = $a['pic'] ?? $a['cover_img'] ?? asset('static/picture/default-equipment.jpg')}
+                    {var $desc = $a['description'] ?? $a['summary'] ?? ''}
+
+                    <div class="equipment-card">
+                        <div class="equipment-image">
+                            <a href="{$link}">
+                                <img src="{$pic}" alt="{$title}">
+                            </a>
+                        </div>
+                        <div class="equipment-content">
+                            <div class="equipment-header">
+                                <h3 class="equipment-title">
+                                    <a href="{$link}">{if $title !== ''}{$title}{else}未命名设备{/if}</a>
+                                </h3>
+                                <a href="{$link}" class="equipment-btn">查看详情</a>
+                            </div>
+
+                            {ifset $a['attributes']['specs']}
+                                <div class="equipment-specs">
+                                    <span class="label">规格参数：</span>
+                                    <span class="value">{$a['attributes']['specs']}</span>
+                                </div>
+                            {/ifset}
+                        </div>
+                    </div>
+                {/foreach}
+            {else}
+                <div class="equipment-empty">暂无设备信息</div>
+            {/if}
+        </div>
+
+        <div class="pagelist">
+            {ifset $pagination}
+                {$pagination|noescape}
+            {else}
+                {ifset $totalPages}
+                    <div class="pagination">
+                        {if $currentPage > 1}
+                            <a href="/c/{$category['slug']}/page/{=$currentPage - 1}" class="prev">&laquo; 上一页</a>
+                        {/if}
+
+                        {var $startPage = max(1, $currentPage - 2)}
+                        {var $endPage = min($totalPages, $currentPage + 2)}
+
+                        {if $startPage > 1}
+                            <a href="/c/{$category['slug']}/page/1">1</a>
+                            {if $startPage > 2}
+                                <span class="ellipsis">...</span>
+                            {/if}
+                        {/if}
+
+                        {for $i = $startPage; $i <= $endPage; $i++}
+                            {if $i == $currentPage}
+                                <span class="current">{$i}</span>
+                            {else}
+                                <a href="/c/{$category['slug']}/page/{$i}">{$i}</a>
+                            {/if}
+                        {/for}
+
+                        {if $endPage < $totalPages}
+                            {if $endPage < $totalPages - 1}
+                                <span class="ellipsis">...</span>
+                            {/if}
+                            <a href="/c/{$category['slug']}/page/{$totalPages}">{$totalPages}</a>
+                        {/if}
+
+                        {if $currentPage < $totalPages}
+                            <a href="/c/{$category['slug']}/page/{=$currentPage + 1}" class="next">下一页 &raquo;</a>
+                        {/if}
+                    </div>
+                {/ifset}
+            {/ifset}
+        </div>
+    </div>
+    <div class="clear"></div>
+</div>
+{/block}
+
+{block scripts}
+<script type="text/javascript">
+    $(function() {
+        $('.equipment-image img').on('error', function() {
+            $(this).attr('src', '{$basePath}static/picture/default-equipment.jpg');
+        });
+    });
+</script>
+{/block}

@@ -22,7 +22,12 @@ class SystemController extends AdminBaseController
             $hours = intdiv($seconds % 86400, 3600);
             $minutes = intdiv($seconds % 3600, 60);
             $secs = $seconds % 60;
-            $runtime = sprintf('%d�?%02d:%02d:%02d', $days, $hours, $minutes, $secs);
+            
+            if ($days > 0) {
+                $runtime = sprintf('%d天 %02d:%02d:%02d', $days, $hours, $minutes, $secs);
+            } else {
+                $runtime = sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
+            }
         }
 
         $lastRebootAt = '-';
@@ -57,12 +62,17 @@ class SystemController extends AdminBaseController
                 ? $ext
                 : ($ext . '（缺失）');
         }
-        $requiredExtensionsText = implode('�?, $requiredExtensionsDisplay);
+        $requiredExtensionsText = implode(', ', $requiredExtensionsDisplay);
 
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? '');
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        $currentUrl = ($host !== '') ? ($scheme . '://' . $host . $uri) : $uri;
+        
+        if ($host !== '') {
+            $currentUrl = $scheme . '://' . $host . $uri;
+        } else {
+            $currentUrl = $uri;
+        }
 
         $this->render('admin/system/about', [
             'title' => '关于系统',
