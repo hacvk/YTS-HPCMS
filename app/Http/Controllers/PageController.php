@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Services\ContentService;
 use App\Services\SiteService;
 use App\Services\CategoryService;
+use App\Services\SeoService;
 use Medoo\Medoo;
 
 /**
@@ -32,6 +33,7 @@ class PageController extends BaseController
         private readonly ContentService $contentService,
         private readonly SiteService $siteService,
         private readonly CategoryService $categoryService,
+        private readonly SeoService $seoService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -137,6 +139,23 @@ class PageController extends BaseController
             // 构建侧边栏数据
             $sidebarItems = $this->buildSidebarItems($category);
             
+            // 生成SEO标签
+            $pageUrl = '/c/' . ($category['slug'] ?? $category['id']);
+            $canonicalUrl = $this->seoService->generateCanonicalUrl($pageUrl);
+            $ogTags = $this->seoService->generateOpenGraphTags([
+                'title' => $category['name'] ?? '',
+                'description' => $pageContent['summary'] ?? '',
+                'url' => $pageUrl
+            ]);
+            $breadcrumbSchema = $this->seoService->generateBreadcrumbSchema($breadcrumbs);
+            $organizationSchema = $this->seoService->generateOrganizationSchema();
+            $jsonLdSchema = $breadcrumbSchema . "\n" . $organizationSchema;
+            
+            // 计算基础URL
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $appBaseUrl = $protocol . '://' . $host;
+            
             // 渲染模板
             $this->render($template, [
                 'title' => (string)($category['name'] ?? ''),
@@ -145,6 +164,10 @@ class PageController extends BaseController
                 'navItems' => $navItems,
                 'breadcrumbs' => $breadcrumbs,
                 'sidebarItems' => $sidebarItems,
+                'canonicalUrl' => $canonicalUrl,
+                'ogTags' => $ogTags,
+                'jsonLdSchema' => $jsonLdSchema,
+                'appBaseUrl' => $appBaseUrl,
             ]);
         } catch (\Throwable $e) {
             error_log('单页显示失败 ' . $e->getMessage());

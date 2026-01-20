@@ -37,6 +37,24 @@ class Router
      * @var string
      */
     private string $controllerNamespace = 'App\\Http\\Controllers\\';
+    
+    /**
+     * 中间件列表
+     *
+     * @var array<string> 中间件类名列表
+     */
+    private array $middlewares = [];
+    
+    /**
+     * 注册中间件
+     *
+     * @param string $middleware 中间件类名
+     * @return void
+     */
+    public function registerMiddleware(string $middleware): void
+    {
+        $this->middlewares[] = $middleware;
+    }
 
 
     /**
@@ -184,6 +202,12 @@ class Router
         return [
             // Front
             'GET /' => ['HomeController', 'index'],
+
+            // SEO
+            'GET /seo/sitemap' => ['SeoController', 'sitemap'],
+            'GET /seo/sitemap.xml' => ['SeoController', 'sitemap'],
+            'GET /robots.txt' => ['SeoController', 'robots'],
+            'POST /api/seo/extract-keywords' => ['SeoController', 'extractKeywords'],
 
             // Admin - auth & dashboard
             'GET /admin' => ['Admin\\LoginController', 'index'],
@@ -459,7 +483,38 @@ class Router
             throw new RouterException("方法不存在: {$controllerName}::{$actionName}()");
         }
 
-        $controller->$actionName();
+        // 创建请求处理闭包
+        $requestHandler = function () use ($controller, $actionName) {
+            $controller->$actionName();
+            return true;
+        };
+
+        // 执行中间件链
+        $this->executeMiddlewareChain($requestHandler);
+    }
+    
+    /**
+     * 执行中间件链
+     *
+     * @param callable $requestHandler 请求处理闭包
+     * @return void
+     */
+    private function executeMiddlewareChain(callable $requestHandler): void
+    {
+        $handler = $requestHandler;
+        
+        // 反转中间件顺序，确保先注册的中间件先执行
+        $middlewares = array_reverse($this->middlewares);
+        
+        foreach ($middlewares as $middlewareClass) {
+            $middleware = $this->container->get($middlewareClass);
+            $handler = function () use ($middleware, $handler) {
+                return $middleware->handle($handler);
+            };
+        }
+        
+        // 执行中间件链
+        $handler();
     }
 
     /**

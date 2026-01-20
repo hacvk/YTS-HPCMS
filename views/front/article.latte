@@ -108,8 +108,33 @@
             {/ifset}
             
             {ifset $nextArticle}
-              <aside class="dot">下一篇:<a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
+              <aside class="dot">下一篇: <a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
             {/ifset}
+            
+            {if isset($tags) && $tags && count($tags)}
+              <div class="article-tags mt-3">
+                <em>标签：</em>
+                {foreach $tags as $index => $tag}
+                  <a href="/search?tag={$tag['name']|urlencode}" class="tag-link">{$tag['name']}</a>{if !$index == count($tags) - 1}, {/if}
+                {/foreach}
+              </div>
+            {/if}
+            
+            {if isset($relatedArticles) && $relatedArticles && count($relatedArticles)}
+              <div class="related-articles mt-4">
+                <h4 class="related-title">相关文章</h4>
+                <ul class="related-list">
+                  {foreach $relatedArticles as $related}
+                    <li>
+                      <a href="/article/{$related['id']}.html" title="{$related['title']}">
+                        {$related['title']}
+                      </a>
+                      <span class="related-date">{date('Y-m-d', strtotime($related['published_at']))}</span>
+                    </li>
+                  {/foreach}
+                </ul>
+              </div>
+            {/if}
           </div>
         </article>
       </div>
@@ -188,6 +213,83 @@ $(".a-print").click(function(){
 
 .attachment-item:hover {
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.article-tags {
+    padding: 15px 0;
+    border-top: 1px dashed #dee2e6;
+    color: #6c757d;
+}
+
+.article-tags .tag-link {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 15px;
+    text-decoration: none;
+    margin: 2px;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.article-tags .tag-link:hover {
+    background: #3498db;
+    color: white;
+}
+
+.related-articles {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.related-articles .related-title {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.related-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.related-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.related-list li:last-child {
+    border-bottom: none;
+}
+
+.related-list a {
+    color: #495057;
+    text-decoration: none;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 15px;
+}
+
+.related-list a:hover {
+    color: #3498db;
+}
+
+.related-date {
+    color: #adb5bd;
+    font-size: 12px;
+    white-space: nowrap;
 }
 
 .attachment-icon {

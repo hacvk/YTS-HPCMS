@@ -27,6 +27,7 @@ class LogService
     public const LEVEL_ERROR = 'error';
     public const LEVEL_DEBUG = 'debug';
     public const LEVEL_WARNING = 'warning';
+    public const LEVEL_CRITICAL = 'critical';
 
     /**
      * 日志驱动实例（单例）
@@ -305,6 +306,45 @@ class LogService
             $target,
             $message,
             self::LEVEL_WARNING
+        );
+    }
+    
+    /**
+     * 记录严重错误日志
+     *
+     * @param string $message 错误消息
+     * @param array<string, mixed> $context 上下文数据
+     * @param int|null $adminId 管理员ID（如果为null，则尝试从Session获取）
+     * @param string|null $username 用户名（如果为null，则尝试从Session获取）
+     * @return bool 是否记录成功
+     */
+    public static function critical(string $message, array $context = [], ?int $adminId = null, ?string $username = null): bool
+    {
+        // 如果没有提供管理员信息，尝试从Session获取
+        if ($adminId === null || $username === null) {
+            $sessionInfo = self::getAdminInfoFromSession();
+            $adminId = $adminId ?? $sessionInfo['admin_id'];
+            $username = $username ?? $sessionInfo['username'];
+        }
+
+        // 将上下文数据转换为字符串
+        $contextStr = '';
+        if (!empty($context)) {
+            $contextStr = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        }
+
+        $fullMessage = $message;
+        if ($contextStr) {
+            $fullMessage .= "\n上下文数据\n" . $contextStr;
+        }
+
+        return self::record(
+            $adminId ?? 0,
+            $username ?? 'system',
+            'critical',  // 确保 action 不为空
+            null,
+            $fullMessage,
+            self::LEVEL_CRITICAL
         );
     }
 

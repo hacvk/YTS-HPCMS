@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Core;
 
 use Medoo\Medoo;
+use App\Services\LogService;
 
 /**
  * 数据库连接异常
@@ -23,6 +24,11 @@ class Database
      * @var Medoo|null
      */
     private static ?Medoo $instance = null;
+    
+    /**
+     * 慢查询阈值（毫秒）
+     */
+    public const SLOW_QUERY_THRESHOLD = 100;
 
     /**
      * 私有构造函数（防止外部实例化）
@@ -49,6 +55,32 @@ class Database
         }
 
         return self::$instance;
+    }
+    
+    /**
+     * 记录慢查询
+     *
+     * @param string $sql SQL语句
+     * @param array $params 参数
+     * @param float $duration 执行时间（毫秒）
+     * @return void
+     */
+    public static function logSlowQuery(string $sql, array $params, float $duration): void
+    {
+        if ($duration >= self::SLOW_QUERY_THRESHOLD) {
+            try {
+                $db = self::get();
+                $db->insert('slow_queries', [
+                    'request_id' => $_SERVER['REQUEST_ID'] ?? uniqid('req_'),
+                    'sql' => $sql,
+                    'params' => json_encode($params),
+                    'duration' => round($duration, 2),
+                    'timestamp' => time(),
+                ]);
+            } catch (\Exception $e) {
+                LogService::error($e, 'slow_query_log_failed');
+            }
+        }
     }
 
     /**
