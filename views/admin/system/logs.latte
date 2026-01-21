@@ -1,0 +1,294 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+    </div>
+    
+    <!-- 日志类型切换标签 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <ul class="nav nav-tabs" id="logTab" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link {if $type == 'operation'}active{/if}" 
+                       href="/admin/system/logs?type=operation&start_date={$start_date}&end_date={$end_date}">操作日志</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {if $type == 'performance'}active{/if}" 
+                       href="/admin/system/logs?type=performance&start_date={$start_date}&end_date={$end_date}">性能日志</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {if $type == 'error'}active{/if}" 
+                       href="/admin/system/logs?type=error&start_date={$start_date}&end_date={$end_date}">错误日志</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {if $type == 'slow_query'}active{/if}" 
+                       href="/admin/system/logs?type=slow_query&start_date={$start_date}&end_date={$end_date}">慢查询日志</a>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body">
+            <!-- 筛选搜索框 -->
+            <form class="form-inline mb-3" method="get" action="/admin/system/logs">
+                <input type="hidden" name="type" value="{$type}">
+                
+                {if $type == 'operation'}
+                <div class="form-group mr-3 mb-2">
+                    <label for="action" class="mr-2">操作类型：</label>
+                    <select class="form-control" id="action" name="action">
+                        <option value="">全部</option>
+                        {foreach $action_types as $key => $label}
+                        <option value="{$key}" {if $action == $key}selected{/if}>{$label}</option>
+                        {/foreach}
+                    </select>
+                </div>
+                {/if}
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="start_date" class="mr-2">开始日期：</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{$start_date}">
+                </div>
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="end_date" class="mr-2">结束日期：</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{$end_date}">
+                </div>
+                
+                <button type="submit" class="btn btn-primary mb-2">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <a href="/admin/system/logs?type={$type}" class="btn btn-secondary mb-2 ml-2">
+                    <i class="fas fa-redo"></i> 重置
+                </a>
+                
+                <button type="button" class="btn btn-danger mb-2 ml-2" onclick="cleanLogs()">
+                    <i class="fas fa-trash"></i> 清理过期日志
+                </button>
+            </form>
+            
+            <!-- 日志列表表格 -->
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 80px; width: 80px;">ID</th>
+                            {if $type == 'operation'}
+                            <th style="min-width: 120px; width: 120px;">管理员</th>
+                            <th style="min-width: 100px; width: 100px;">操作类型</th>
+                            <th style="min-width: 200px;">操作内容</th>
+                            <th style="min-width: 150px;">目标</th>
+                            <th style="min-width: 130px; width: 130px;">IP地址</th>
+                            {elseif $type == 'performance'}
+                            <th style="min-width: 120px;">请求URI</th>
+                            <th style="min-width: 100px;">方法</th>
+                            <th style="min-width: 80px;">状态码</th>
+                            <th style="min-width: 100px;">耗时(ms)</th>
+                            <th style="min-width: 100px;">内存使用(KB)</th>
+                            <th style="min-width: 130px; width: 130px;">IP地址</th>
+                            {elseif $type == 'error'}
+                            <th style="min-width: 150px;">错误类型</th>
+                            <th style="min-width: 200px;">错误消息</th>
+                            <th style="min-width: 150px;">URI</th>
+                            <th style="min-width: 100px;">IP地址</th>
+                            <th style="min-width: 100px;">管理员ID</th>
+                            {elseif $type == 'slow_query'}
+                            <th style="min-width: 200px;">SQL语句</th>
+                            <th style="min-width: 100px;">耗时(ms)</th>
+                            <th style="min-width: 100px;">参数</th>
+                            {/if}
+                            <th style="min-width: 160px; width: 160px;">时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($logs) > 0}
+                        {foreach $logs as $log}
+                        <tr>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['id']}</td>
+                            
+                            {if $type == 'operation'}
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['admin_name']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $log['action'] == 'login'}
+                                <span class="badge badge-pill bg-success">登录</span>
+                                {elseif $log['action'] == 'logout'}
+                                <span class="badge badge-pill bg-dark text-white">退出</span>
+                                {elseif $log['action'] == 'create'}
+                                <span class="badge badge-pill bg-primary">创建</span>
+                                {elseif $log['action'] == 'update'}
+                                <span class="badge badge-pill bg-info text-dark">更新</span>
+                                {elseif $log['action'] == 'delete'}
+                                <span class="badge badge-pill bg-danger">删除</span>
+                                {elseif $log['action'] == 'error'}
+                                <span class="badge badge-pill bg-warning text-dark">错误</span>
+                                {elseif $log['action'] === '' || $log['action'] === null}
+                                <span class="badge badge-pill bg-light text-dark">未知</span>
+                                {else}
+                                <span class="badge badge-pill bg-secondary">{$log['action']}</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; max-width: 200px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['message']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; max-width: 150px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+                                    {ifset $log['target']}{if $log['target'] !== ''}{$log['target']}{else}-{/if}{else}-{/ifset}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['ip']}</td>
+                            
+                            {elseif $type == 'performance'}
+                            <td style="word-break: break-word; max-width: 120px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal;">
+                                    {$log['uri']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['method']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['status_code']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['duration']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['memory_used']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['ip']}</td>
+                            
+                            {elseif $type == 'error'}
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['error_type']}</td>
+                            <td style="word-break: break-word; max-width: 200px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['error_message']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['uri']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['ip']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{ifset $log['admin_id']}{if $log['admin_id'] !== null}{$log['admin_id']}{else}-{/if}{else}-{/ifset}</td>
+                            
+                            {elseif $type == 'slow_query'}
+                            <td style="word-break: break-word; max-width: 200px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['sql']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['duration']}</td>
+                            <td style="word-break: break-word; max-width: 100px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['params']}
+                                </div>
+                            </td>
+                            
+                            {/if}
+                            
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $type == 'performance' || $type == 'error' || $type == 'slow_query'}
+                                    {date('Y-m-d H:i:s', $log['timestamp'])}
+                                {else}
+                                    {$log['create_time']}
+                                {/if}
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="{if $type == 'operation'}7{elseif $type == 'performance'}7{elseif $type == 'error'}6{elseif $type == 'slow_query'}4{/if}" class="text-center">暂无数据</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            {if $total > 0}
+            <div class="pagination justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {if $page == 1}disabled{/if}">
+                        <a class="page-link" href="/admin/system/logs?type={$type}&page={max(1, $page-1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    
+                    {var $totalPages = ceil($total / $limit)}
+                    {var $startPage = max(1, $page - 4)}
+                    {var $endPage = min($totalPages, $startPage + 8)} 
+                    {if $startPage > 1}
+                    <li class="page-item"><a class="page-link" href="/admin/system/logs?type={$type}&page=1&start_date={$start_date}&end_date={$end_date}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {/if}
+                    
+                    {for $i = $startPage; $i <= $endPage; $i++}
+                    <li class="page-item {if $i == $page}active{/if}">
+                        <a class="page-link" href="/admin/system/logs?type={$type}&page={$i}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
+                    </li>
+                    {/for}
+                    
+                    {if $endPage < $totalPages}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="/admin/system/logs?type={$type}&page={$totalPages}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
+                    {/if}
+                    
+                    <li class="page-item {if $page == $totalPages}disabled{/if}">
+                        <a class="page-link" href="/admin/system/logs?type={$type}&page={min($totalPages, $page+1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {/if}
+        </div>
+    </div>
+</div>
+
+<!-- 清理日志确认对话框 -->
+<script n:syntax=off>
+function cleanLogs() {
+    const days = prompt('请输入要保留的天数（默认30天）：', '30');
+    if (days === null) return;
+    
+    const daysNum = parseInt(days);
+    if (isNaN(daysNum) || daysNum < 1) {
+        alert('请输入有效的天数');
+        return;
+    }
+    
+    const typeLabels = {
+        'operation': '操作',
+        'performance': '性能',
+        'error': '错误',
+        'slow_query': '慢查询'
+    };
+    const typeLabel = typeLabels['{$type}'] || '未知';
+    
+    if (!confirm('确定要清理 ' + daysNum + ' 天前的' + typeLabel + '日志吗？此操作不可恢复！')) {
+        return;
+    }
+    
+    // 获取 CSRF Token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
+                     document.getElementById('csrf_token')?.value || '';
+    
+    // 发送清理请求
+    fetch('/admin/system/clean-logs', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'csrf_token=' + encodeURIComponent(csrfToken) + '&days=' + daysNum + '&type={$type}'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.code === 0) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message || '清理失败');
+        }
+    })
+    .catch(function(error) {
+        console.error('清理失败:', error);
+        alert('清理失败：' + error.message);
+    });
+}
+</script>
+{/block}

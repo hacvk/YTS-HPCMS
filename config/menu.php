@@ -52,6 +52,7 @@ return [
         'icon'  => 'info-circle',
         'children' => [
             ['title' => '关于系统', 'route' => '/admin/system/about', 'perm' => 'admin:system:view'],
+            ['title' => '系统日志', 'route' => '/admin/system/logs', 'perm' => 'admin:system:logs:view'],
         ]
     ]
 ];

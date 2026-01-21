@@ -125,6 +125,8 @@ return [
 
     // 日志管理
     'GET /admin/log' => ['Admin\\LogController', 'index'],
+    'GET /admin/system/logs' => ['Admin\\SystemController', 'logs'],
+    'POST /admin/system/clean-logs' => ['Admin\\SystemController', 'cleanLogs'],
 
     // 缓存管理
     'GET /admin/cache' => ['Admin\\CacheController', 'index'],
