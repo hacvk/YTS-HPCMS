@@ -596,36 +596,81 @@ abstract class AdminBaseController extends BaseController
     {
         $processedMenu = [];
         
+        // 首先查找需要展开的菜单项
+        $targetIndex = null;
+        $isShortcutExpanded = false; // 标记快捷导航或快捷内容管理是否展开
+        
+        // 第一步：寻找最佳匹配项（优先级：快捷导航 > 快捷内容管理 > 其他）
+        foreach ($menu as $index => $item) {
+            $shouldExpand = false;
+            
+            if (isset($item['children']) && is_array($item['children'])) {
+                // 检查子菜单项是否有匹配的激活项
+                $hasActiveChild = false;
+                
+                foreach ($item['children'] as $child) {
+                    if (isset($child['route']) && $this->isActive($child['route'])) {
+                        $hasActiveChild = true;
+                        break;
+                    }
+                }
+                
+                if ($hasActiveChild) {
+                    $shouldExpand = true;
+                } else {
+                    // 如果当前 URI 匹配父级菜单项的路由前缀，也需要展开
+                    if (isset($item['route']) && str_starts_with($currentUri, $item['route'])) {
+                        $shouldExpand = true;
+                    }
+                }
+                
+                // 如果需要展开
+                if ($shouldExpand) {
+                    // 检查是否是快捷导航或快捷内容管理
+                    $isShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
+                    $isShortcutContent = isset($item['title']) && $item['title'] === '快捷内容管理';
+                    
+                    // 如果是快捷导航或快捷内容管理，优先级更高
+                    if (($isShortcut || $isShortcutContent) && !$isShortcutExpanded) {
+                        $targetIndex = $index;
+                        $isShortcutExpanded = true;
+                    } elseif (!$isShortcutExpanded) {
+                        // 如果还没有快捷导航展开，则设置普通菜单
+                        if ($targetIndex === null) {
+                            $targetIndex = $index;
+                        }
+                    }
+                }
+            } elseif (isset($item['route']) && $this->isActive($item['route'])) {
+                // 顶级菜单项激活的情况
+                $isShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
+                $isShortcutContent = isset($item['title']) && $item['title'] === '快捷内容管理';
+                
+                if (($isShortcut || $isShortcutContent) && !$isShortcutExpanded) {
+                    $targetIndex = $index;
+                    $isShortcutExpanded = true;
+                } elseif (!$isShortcutExpanded) {
+                    if ($targetIndex === null) {
+                        $targetIndex = $index;
+                    }
+                }
+            }
+        }
+        
+        // 第二步：应用展开状态
         foreach ($menu as $index => $item) {
             $processedItem = $item;
             
             // 检查是否是顶级菜单项并激活
             if (isset($item['route']) && $this->isActive($item['route'])) {
                 $processedItem['is_active'] = true;
+            }
+            
+            // 设置展开状态
+            if ($index === $targetIndex) {
                 $processedItem['should_expand'] = true;
-            } elseif (isset($item['children']) && is_array($item['children'])) {
-                // 检查子菜单项是否有匹配的激活项
-                $hasActiveChild = false;
-                $shouldExpand = false;
-                
-                foreach ($item['children'] as $child) {
-                    if (isset($child['route']) && $this->isActive($child['route'])) {
-                        $hasActiveChild = true;
-                        $shouldExpand = true;
-                        break;
-                    }
-                }
-                
-                if ($hasActiveChild) {
-                    $processedItem['should_expand'] = true;
-                } else {
-                    // 如果当前 URI 匹配父级菜单项的路由前缀，也需要展开
-                    if (isset($item['route']) && str_starts_with($currentUri, $item['route'])) {
-                        $processedItem['should_expand'] = true;
-                    }
-                }
             } else {
-                // 默认不展开
+                // 其他菜单组关闭
                 $processedItem['should_expand'] = false;
             }
             
