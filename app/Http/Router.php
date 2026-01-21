@@ -39,6 +39,27 @@ class Router
     private string $controllerNamespace = 'App\\Http\\Controllers\\';
     
     /**
+     * 路由参数（从动态路由提取）
+     *
+     * @var array<string, mixed>
+     */
+    private array $routeParams = [];
+    
+    /**
+     * 静态路由缓存
+     *
+     * @var array<string, array{controller: string, action: string}>|null
+     */
+    private static ?array $routeCache = null;
+    
+    /**
+     * 动态路由配置缓存
+     *
+     * @var array|null
+     */
+    private static ?array $dynamicRouteConfig = null;
+    
+    /**
      * 中间件列表
      *
      * @var array<string> 中间件类名列表
@@ -193,13 +214,33 @@ class Router
     }
 
     /**
-     * 获取静态路由配置
+     * 获取静态路由配置（带缓存）
      *
      * @return array<string, array{controller: string, action: string}>
      */
     private function getStaticRoutes(): array
     {
-        return [
+        // 使用静态缓存
+        if (self::$routeCache !== null) {
+            return self::$routeCache;
+        }
+
+        // 生产环境从缓存文件加载
+        if (!App::isDebug()) {
+            $cacheFile = dirname(__DIR__, 2) . '/storage/cache/routes.php';
+            if (file_exists($cacheFile)) {
+                self::$routeCache = require $cacheFile;
+                return self::$routeCache;
+            }
+        }
+
+        // 从配置文件加载路由
+        $configFile = dirname(__DIR__, 2) . '/config/routes.php';
+        if (file_exists($configFile)) {
+            $routes = require $configFile;
+        } else {
+            // 降级使用内置路由
+            $routes = [
             // Front
             'GET /' => ['HomeController', 'index'],
 
@@ -304,7 +345,44 @@ class Router
             'GET /admin/cache' => ['Admin\\CacheController', 'index'],
             'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],
             'POST /admin/cache/clear-all' => ['Admin\\CacheController', 'clearAll'],
-        ];
+            ];
+        }
+
+        // 生产环境缓存到文件
+        if (!App::isDebug()) {
+            $cacheDir = dirname(__DIR__, 2) . '/storage/cache';
+            if (!is_dir($cacheDir)) {
+                @mkdir($cacheDir, 0755, true);
+            }
+            file_put_contents(
+                $cacheDir . '/routes.php',
+                '<?php return ' . var_export($routes, true) . ';'
+            );
+        }
+
+        self::$routeCache = $routes;
+        return $routes;
+    }
+    
+    /**
+     * 清除路由缓存
+     *
+     * @return void
+     */
+    public static function clearRouteCache(): void
+    {
+        self::$routeCache = null;
+        self::$dynamicRouteConfig = null;
+        
+        $cacheFile = dirname(__DIR__, 2) . '/storage/cache/routes.php';
+        if (file_exists($cacheFile)) {
+            @unlink($cacheFile);
+        }
+        
+        $dynamicCacheFile = dirname(__DIR__, 2) . '/storage/cache/dynamic_routes.php';
+        if (file_exists($dynamicCacheFile)) {
+            @unlink($dynamicCacheFile);
+        }
     }
 
     /**
@@ -360,7 +438,116 @@ class Router
     }
 
     /**
-     * 匹配动态路由
+     * 获取动态路由配置（带缓存）
+     *
+     * @return array
+     */
+    private function getDynamicRouteConfig(): array
+    {
+        if (self::$dynamicRouteConfig !== null) {
+            return self::$dynamicRouteConfig;
+        }
+
+        // 从缓存文件加载
+        if (!App::isDebug()) {
+            $cacheFile = dirname(__DIR__, 2) . '/storage/cache/dynamic_routes.php';
+            if (file_exists($cacheFile)) {
+                self::$dynamicRouteConfig = require $cacheFile;
+                return self::$dynamicRouteConfig;
+            }
+        }
+
+        // 配置动态路由
+        $config = [
+            'GET' => [
+                // Admin - page edit
+                [
+                    'pattern' => '#^/admin/page/edit/([0-9]+)/?$#',
+                    'controller' => 'Admin\\PageController',
+                    'action' => 'edit',
+                    'params' => ['category_id' => 1, 'id' => 1],
+                ],
+                // Admin - article edit
+                [
+                    'pattern' => '#^/admin/article/edit/([0-9]+)/?$#',
+                    'controller' => 'Admin\\ArticleController',
+                    'action' => 'edit',
+                    'params' => ['id' => 1],
+                ],
+                // Front - article detail
+                [
+                    'pattern' => '#^/article/([1-9][0-9]*)$#',
+                    'controller' => 'ArticleController',
+                    'action' => 'index',
+                    'params' => ['id' => 1],
+                ],
+                // Front - file download
+                [
+                    'pattern' => '#^/file/download/([0-9]+)$#',
+                    'controller' => 'FileController',
+                    'action' => 'download',
+                    'params' => ['id' => 1],
+                ],
+                // Front - category list with pagination
+                [
+                    'pattern' => '#^/c/([^/]+)/page/([1-9][0-9]*)$#',
+                    'controller' => null,
+                    'action' => 'index',
+                    'params' => ['slug' => 1, 'page' => 2],
+                    'handler' => 'handleCategoryRoute',
+                ],
+                // Front - category list
+                [
+                    'pattern' => '#^/c/([^/]+)$#',
+                    'controller' => null,
+                    'action' => 'index',
+                    'params' => ['slug' => 1],
+                    'handler' => 'handleCategoryRoute',
+                ],
+            ],
+            'POST' => [
+                // Admin - article delete
+                [
+                    'pattern' => '#^/admin/article/delete/([0-9]+)$#',
+                    'controller' => 'Admin\\ArticleController',
+                    'action' => 'delete',
+                    'params' => ['id' => 1],
+                ],
+                // Admin - page delete
+                [
+                    'pattern' => '#^/admin/page/delete/([0-9]+)$#',
+                    'controller' => 'Admin\\PageController',
+                    'action' => 'delete',
+                    'params' => ['id' => 1],
+                ],
+                // Admin - file delete
+                [
+                    'pattern' => '#^/admin/file/delete/([0-9]+)$#',
+                    'controller' => 'Admin\\FileController',
+                    'action' => 'delete',
+                    'params' => ['id' => 1],
+                ],
+            ],
+        ];
+
+        // 生产环境缓存到文件
+        if (!App::isDebug()) {
+            $cacheDir = dirname(__DIR__, 2) . '/storage/cache';
+            if (!is_dir($cacheDir)) {
+                @mkdir($cacheDir, 0755, true);
+            }
+            file_put_contents(
+                $cacheDir . '/dynamic_routes.php',
+                '<?php return ' . var_export($config, true) . ';'
+            );
+        }
+
+        self::$dynamicRouteConfig = $config;
+        return $config;
+    }
+    
+    /**
+     * 匹配动态路由（优化版）
      *
      * @param string $uri
      * @param string $method
@@ -369,65 +556,33 @@ class Router
      */
     private function matchDynamicRoute(string $uri, string $method): array
     {
-        // GET 请求的动态路由
-        if ($method === 'GET') {
-            // Admin - page edit (GET /admin/page/edit/{id})
-            if (preg_match('#^/admin/page/edit/([0-9]+)/?$#', $uri, $matches)) {
-                $_GET['category_id'] = (int)$matches[1];
-                $_GET['id'] = (int)$matches[1];
-                return ['controller' => 'Admin\\PageController', 'action' => 'edit'];
-            }
+        $config = $this->getDynamicRouteConfig();
 
-            // Admin - article edit (GET /admin/article/edit/{id})
-            if (preg_match('#^/admin/article/edit/([0-9]+)/?$#', $uri, $matches)) {
-                $_GET['id'] = (int)$matches[1];
-                return ['controller' => 'Admin\\ArticleController', 'action' => 'edit'];
-            }
-
-            // Front - article detail (GET /article/{id})
-            if (preg_match('#^/article/([1-9][0-9]*)$#', $uri, $matches)) {
-                $_GET['id'] = (int)$matches[1];
-                return ['controller' => 'ArticleController', 'action' => 'index'];
-            }
-            
-            // Front - file download (GET /file/download/{id})
-            if (preg_match('#^/file/download/([0-9]+)$#', $uri, $matches)) {
-                $_GET['id'] = (int)$matches[1];
-                return ['controller' => 'FileController', 'action' => 'download'];
-            }
-            
-            // Front - category list with pagination (GET /c/{slug}/page/{page})
-            if (preg_match('#^/c/([^/]+)/page/([1-9][0-9]*)$#', $uri, $matches)) {
-                return $this->handleCategoryRoute($matches[1], (int)$matches[2]);
-            }
-
-            // Front - category list (GET /c/{slug})
-            if (preg_match('#^/c/([^/]+)$#', $uri, $matches)) {
-                $slug = $matches[1];
-                if ($slug !== '' && !preg_match('#[<>"]#', $slug)) {
-                    return $this->handleCategoryRoute($slug);
-                }
-            }
+        if (!isset($config[$method])) {
+            throw new RouterException("路由未配置: {$method} {$uri}");
         }
 
-        // POST 请求的动态路由
-        if ($method === 'POST') {
-            // Admin - article delete (POST /admin/article/delete/{id})
-            if (preg_match('#^/admin/article/delete/([0-9]+)$#', $uri, $matches)) {
-                $_POST['id'] = (int)$matches[1];
-                return ['controller' => 'Admin\\ArticleController', 'action' => 'delete'];
-            }
-        
-            // Admin - page delete (POST /admin/page/delete/{id})
-            if (preg_match('#^/admin/page/delete/([0-9]+)$#', $uri, $matches)) {
-                $_POST['id'] = (int)$matches[1];
-                return ['controller' => 'Admin\\PageController', 'action' => 'delete'];
-            }
-        
-            // Admin - file delete (POST /admin/file/delete/{id})
-            if (preg_match('#^/admin/file/delete/([0-9]+)$#', $uri, $matches)) {
-                $_POST['id'] = (int)$matches[1];
-                return ['controller' => 'Admin\\FileController', 'action' => 'delete'];
+        foreach ($config[$method] as $route) {
+            if (preg_match($route['pattern'], $uri, $matches)) {
+                // 清空之前的路由参数
+                $this->routeParams = [];
+                
+                // 设置参数到路由参数数组
+                foreach ($route['params'] as $param => $index) {
+                    $this->routeParams[$param] = (int)$matches[$index];
+                }
+
+                // 特殊处理：栏目路由
+                if (isset($route['handler']) && $route['handler'] === 'handleCategoryRoute') {
+                    $slug = $matches[1] ?? '';
+                    $page = $matches[2] ?? null;
+                    return $this->handleCategoryRoute($slug, $page ? (int)$page : null);
+                }
+
+                return [
+                    'controller' => $route['controller'],
+                    'action' => $route['action'],
+                ];
             }
         }
 
@@ -443,10 +598,11 @@ class Router
      */
     private function handleCategoryRoute(string $slug, ?int $page = null): array
     {
+        // 使用路由参数代替直接修改 $_GET
+        $this->routeParams['slug'] = $slug;
         if ($page !== null) {
-            $_GET['page'] = $page;
+            $this->routeParams['page'] = $page;
         }
-        $_GET['slug'] = $slug;
 
         // 根据栏目类型决定使用哪个控制器
         $db = \App\Core\Database::get();
@@ -486,12 +642,44 @@ class Router
 
         // 创建请求处理闭包
         $requestHandler = function () use ($controller, $actionName) {
+            // 将路由参数注入控制器
+            if (!empty($this->routeParams)) {
+                if (method_exists($controller, 'setRouteParams')) {
+                    $controller->setRouteParams($this->routeParams);
+                }
+                // 同时也保留到 $_GET，保证向后兼容
+                foreach ($this->routeParams as $key => $value) {
+                    $_GET[$key] = $value;
+                }
+            }
             $controller->$actionName();
             return true;
         };
 
         // 执行中间件链
         $this->executeMiddlewareChain($requestHandler);
+    }
+    
+    /**
+     * 获取路由参数
+     *
+     * @param string $key 参数名
+     * @param mixed $default 默认值
+     * @return mixed
+     */
+    public function getRouteParam(string $key, mixed $default = null): mixed
+    {
+        return $this->routeParams[$key] ?? $default;
+    }
+    
+    /**
+     * 获取所有路由参数
+     *
+     * @return array<string, mixed>
+     */
+    public function getRouteParams(): array
+    {
+        return $this->routeParams;
     }
     
     /**

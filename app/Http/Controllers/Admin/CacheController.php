@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Core\Security;
 use App\Services\LogService;
+use App\Http\Router;
 
 /**
  * 缓存管理控制器
@@ -135,6 +136,9 @@ class CacheController extends AdminBaseController
                     $this->clearDirectory($cacheDir . '/' . $dir);
                 }
             }
+            
+            // 清除路由缓存文件
+            Router::clearRouteCache();
 
             // 记录日志
             LogService::record(

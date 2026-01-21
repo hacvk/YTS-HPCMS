@@ -32,6 +32,14 @@ class AlertService
         try {
             $db = Database::get();
             
+            // 检查数据库连接是否正常以及所需表是否存在
+            $tableExists = $db->query('SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "performance_metrics" LIMIT 1')->fetchAll();
+            
+            if (empty($tableExists)) {
+                // 如果表不存在，跳过性能监控检查
+                return;
+            }
+            
             // 检查最近5分钟的错误率
             $now = time();
             $fiveMinutesAgo = $now - 5 * 60;
@@ -70,7 +78,13 @@ class AlertService
                 self::sendAlert('High Average Response Time', "Average response time is {$avgResponseTime}ms in the last 5 minutes");
             }
         } catch (\Exception $e) {
-            LogService::error($e, 'alert_check_failed');
+            // 添加更详细的错误日志，帮助排查问题
+            // 获取管理员ID用于日志记录，并确保类型安全
+            $sessionAdminId = $_SESSION['admin_id'] ?? null;
+            $adminId = is_int($sessionAdminId) ? $sessionAdminId : (is_numeric($sessionAdminId) ? (int)$sessionAdminId : null);
+            $username = $_SESSION['admin_username'] ?? 'unknown';
+            
+            LogService::error($e, 'alert_check_failed', $adminId, $username);
         }
     }
     

@@ -23,6 +23,13 @@ abstract class BaseController
      * @var array<string, mixed>
      */
     protected array $viewData = [];
+    
+    /**
+     * 路由参数（从 Router 注入）
+     *
+     * @var array<string, mixed>
+     */
+    protected array $routeParams = [];
 
     /**
      * 构造函数
@@ -193,6 +200,30 @@ abstract class BaseController
     protected function post(string $key, mixed $default = null): mixed
     {
         return $_POST[$key] ?? $default;
+    }
+
+    /**
+     * 设置路由参数
+     *
+     * @param array<string, mixed> $params 路由参数
+     * @return self
+     */
+    public function setRouteParams(array $params): self
+    {
+        $this->routeParams = $params;
+        return $this;
+    }
+    
+    /**
+     * 获取路由参数
+     *
+     * @param string $key 键名
+     * @param mixed $default 默认值
+     * @return mixed
+     */
+    protected function routeParam(string $key, mixed $default = null): mixed
+    {
+        return $this->routeParams[$key] ?? $default;
     }
 
     /**
