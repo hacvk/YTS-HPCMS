@@ -17,7 +17,8 @@
       "Bash(php /var/www/yycms.com/test_db.php:*)",
       "Bash(php /var/www/yycms.com/test_router.php:*)",
       "Bash(php /var/www/yycms.com/test_db2.php:*)",
-      "Bash(dos2unix:*)"
+      "Bash(dos2unix:*)",
+      "Bash(ls:*)"
     ]
   }
 }

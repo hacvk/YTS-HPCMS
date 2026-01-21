@@ -332,6 +332,46 @@ class FileService
             ];
         }
 
+        // 第五步：检查文件内容是否包含 PHP 代码 (新增)
+        $content = file_get_contents($uploadedFile['tmp_name']);
+        if (preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $content)) {
+            return [
+                'valid' => false,
+                'message' => '文件内容包含危险代码'
+            ];
+        }
+
+        // 第六步：验证文件头是否为有效图片 (新增)
+        $imageInfo = @getimagesize($uploadedFile['tmp_name']);
+        if ($imageInfo === false) {
+            return [
+                'valid' => false,
+                'message' => '文件不是有效图片'
+            ];
+        }
+
+        // 第七步：检查图片尺寸 (新增)
+        $w = (int)($imageInfo[0] ?? 0);
+        $h = (int)($imageInfo[1] ?? 0);
+        if ($w > 4000 || $h > 4000) {
+            return [
+                'valid' => false,
+                'message' => '图片尺寸过大，最大 4000x4000'
+            ];
+        }
+
+        // 第八步：检查内存使用 (新增)
+        $estimatedMemory = $w * $h * 4;  // RGBA 每个像素 4 字节
+        $memoryLimitStr = ini_get('memory_limit');
+        // 解析 memory_limit 设置，处理 K/M/G 单位
+        $memoryLimitBytes = self::parseMemoryLimit($memoryLimitStr);
+        if ($estimatedMemory > $memoryLimitBytes * 0.8) {  // 使用 80% 作为阈值
+            return [
+                'valid' => false,
+                'message' => '图片过大，内存不足'
+            ];
+        }
+
         return ['valid' => true];
     }
  
@@ -389,6 +429,15 @@ class FileService
             ];
         }
  
+        // 检查文件内容 (新增)
+        $content = file_get_contents($uploadedFile['tmp_name']);
+        if (preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $content)) {
+            return [
+                'valid' => false,
+                'message' => '文件内容包含危险代码'
+            ];
+        }
+ 
         return ['valid' => true];
     }
  
@@ -401,6 +450,38 @@ class FileService
     public static function calculateFileHash(string $filePath): string
     {
         return hash_file('sha256', $filePath);
+    }
+
+    /**
+     * 解析内存限制配置字符串
+     * 将类似 '128M', '2G', '512K' 这样的字符串转换为字节数
+     *
+     * @param string $limit 内存限制字符串
+     * @return int 字节数
+     */
+    private static function parseMemoryLimit(string $limit): int
+    {
+        $limit = trim($limit);
+        $lastChar = strtolower(substr($limit, -1));
+        $value = (int)substr($limit, 0, -1);
+        
+        switch ($lastChar) {
+            case 'g':
+                $value *= 1024 * 1024 * 1024;
+                break;
+            case 'm':
+                $value *= 1024 * 1024;
+                break;
+            case 'k':
+                $value *= 1024;
+                break;
+            default:
+                // 如果没有单位，则值本身就是字节数
+                $value = (int)$limit;
+                break;
+        }
+        
+        return $value;
     }
 
     /**
