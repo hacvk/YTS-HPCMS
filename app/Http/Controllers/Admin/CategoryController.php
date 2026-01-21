@@ -280,8 +280,8 @@ class CategoryController extends AdminBaseController
                 }
             }
             
-            // 获取裁剪功能设置
-        $allowCrop = (int)$this->post('allow_crop', 1);
+            // 获取裁剪功能设置 - 使用 isset 检查字段是否存在
+        $allowCrop = isset($_POST['allow_crop']) ? 1 : 0;
         
         // 保存数据
         $categoryService = $this->categoryService;
@@ -566,6 +566,48 @@ class CategoryController extends AdminBaseController
                 'code' => 1,
                 'message' => '获取文章选项失败：' . $e->getMessage(),
                 'data' => [],
+            ]);
+        }
+    }
+    
+    /**
+     * 获取栏目裁剪设置
+     *
+     * @return void
+     */
+    public function getAllowCrop(): void
+    {
+        try {
+            $id = (int)($this->get('id') ?? 0);
+            
+            if ($id <= 0) {
+                $this->json([
+                    'code' => 1,
+                    'message' => '栏目ID无效'
+                ]);
+                return;
+            }
+            
+            // 获取栏目信息
+            $categoryModel = $this->categoryModel;
+            $category = $categoryModel->getById($id);
+            
+            if (!$category) {
+                $this->json([
+                    'code' => 1,
+                    'message' => '栏目不存在'
+                ]);
+                return;
+            }
+            
+            $this->json([
+                'code' => 0,
+                'allow_crop' => (int)($category['allow_crop'] ?? 0)
+            ]);
+        } catch (\Exception $e) {
+            $this->json([
+                'code' => 1,
+                'message' => '获取栏目裁剪设置失败：' . $e->getMessage()
             ]);
         }
     }

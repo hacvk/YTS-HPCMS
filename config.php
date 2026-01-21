@@ -1,4 +1,7 @@
 <?php
+// 设置时区为上海
+date_default_timezone_set('Asia/Shanghai');
+
 /**
  * 应用配置文件
  * 

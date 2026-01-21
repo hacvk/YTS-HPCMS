@@ -238,6 +238,7 @@ class Router
             'GET /admin/category/tree' => ['Admin\CategoryController', 'tree'],
             'GET /admin/category/getCategoryOptions' => ['Admin\CategoryController', 'getCategoryOptions'],
             'GET /admin/category/getContentOptions' => ['Admin\CategoryController', 'getContentOptions'],
+            'GET /admin/category/getAllowCrop' => ['Admin\CategoryController', 'getAllowCrop'],
 
             // Admin - page
             'GET /admin/page' => ['Admin\\PageController', 'index'],

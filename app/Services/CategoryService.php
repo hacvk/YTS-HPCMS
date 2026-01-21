@@ -272,7 +272,7 @@ class CategoryService
             'is_hidden' => isset($data['is_hidden']) ? (int)$data['is_hidden'] : 0,
             'is_shortcut' => isset($data['is_shortcut']) ? (int)$data['is_shortcut'] : 0,
             'is_channel' => isset($data['is_channel']) ? (int)$data['is_channel'] : 0,
-            'allow_crop' => isset($data['allow_crop']) ? (int)$data['allow_crop'] : 1,
+            'allow_crop' => isset($data['allow_crop']) ? (int)$data['allow_crop'] : 0,
             'banner' => $banner,
             'update_time' => date('Y-m-d H:i:s')
         ];

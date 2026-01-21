@@ -416,35 +416,65 @@
                         // 找到父li元素
                         const navItem = this.parentElement;
                         
+                        // 检查当前点击的是否是快捷导航或快捷内容管理
+                        const isShortcutItem = navItem.classList.contains('sidebar-nav-shortcut');
+                        const isContentManagementTitle = this.querySelector('span') && this.querySelector('span').textContent.trim() === '快捷内容管理';
+                        const isShortcutOrContentManagement = isShortcutItem || isContentManagementTitle;
+                        
                         // 找到对应的子菜单
                         const submenu = navItem.querySelector('.sidebar-submenu');
                         
                         if (submenu) {
                             const isExpanding = !submenu.classList.contains('show');
                             
-                            // 可选：手风琴效果（一次只展开一个菜单组）
-                            // 如果启用，先收起其他所有菜单组
-                            const enableAccordion = true; // 设置为 false 可禁用互斥逻辑
-                            if (enableAccordion && isExpanding) {
-                                document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
-                                    if (otherSubmenu !== submenu) {
-                                        otherSubmenu.classList.remove('show');
-                                        const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
-                                        if (otherNavItem) {
-                                            const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
-                                            const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
-                                            // 移除其他菜单组的 active 类
-                                            if (otherToggle) {
-                                                otherToggle.classList.remove('active');
-                                            }
-                                            if (otherArrow) {
-                                                otherArrow.style.transform = 'rotate(0deg)';
-                                                otherArrow.classList.remove('bi-chevron-up');
-                                                otherArrow.classList.add('bi-chevron-down');
+                            // 如果是快捷导航或快捷内容管理展开，收起其他所有非快捷菜单组
+                            // 如果是其他菜单组展开，收起所有快捷菜单组
+                            if (isExpanding) {
+                                if (isShortcutOrContentManagement) {
+                                    // 如果展开快捷导航或快捷内容管理，收起其他所有菜单组
+                                    document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
+                                        if (otherSubmenu !== submenu) {
+                                            const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
+                                            if (otherNavItem) {
+                                                const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
+                                                const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
+                                                const isOtherShortcut = otherNavItem.classList.contains('sidebar-nav-shortcut');
+                                                const isOtherContentManagement = otherToggle && otherToggle.querySelector('span') && otherToggle.querySelector('span').textContent.trim() === '快捷内容管理';
+                                                
+                                                // 收起所有菜单，无论是否为快捷菜单
+                                                otherSubmenu.classList.remove('show');
+                                                if (otherArrow) {
+                                                    otherArrow.style.transform = 'rotate(0deg)';
+                                                    otherArrow.classList.remove('bi-chevron-up');
+                                                    otherArrow.classList.add('bi-chevron-down');
+                                                }
                                             }
                                         }
-                                    }
-                                });
+                                    });
+                                } else {
+                                    // 如果展开其他菜单组，收起快捷导航和快捷内容管理
+                                    document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
+                                        if (otherSubmenu !== submenu) {
+                                            const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
+                                            if (otherNavItem) {
+                                                const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
+                                                const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
+                                                const isOtherShortcut = otherNavItem.classList.contains('sidebar-nav-shortcut');
+                                                const isOtherContentManagement = otherToggle && otherToggle.querySelector('span') && otherToggle.querySelector('span').textContent.trim() === '快捷内容管理';
+                                                
+                                                // 如果是快捷导航或快捷内容管理，则收起
+                                                if (isOtherShortcut || isOtherContentManagement) {
+                                                    otherSubmenu.classList.remove('show');
+                                                    if (otherArrow) {
+                                                        otherArrow.style.transform = 'rotate(0deg)';
+                                                        otherArrow.classList.remove('bi-chevron-up');
+                                                        otherArrow.classList.add('bi-chevron-down');
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    });
+                                }
                             }
                             
                             // 切换子菜单的显示状态

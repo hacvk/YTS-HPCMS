@@ -101,7 +101,7 @@
                                     <input type="text" class="form-control" id="cover_img" name="cover_img" value="{if isset($article['cover_img'])}{$article['cover_img']}{/if}" placeholder="请输入图片URL">
                                     <div class="input-group-append">
                                         <button type="button" class="btn btn-outline-secondary" onclick="selectImage()">选择图片</button>
-                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()">裁剪上传</button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()" id="cropButton">裁剪上传</button>
                                     </div>
                                 </div>
                                 {if isset($article['cover_img']) && $article['cover_img']}

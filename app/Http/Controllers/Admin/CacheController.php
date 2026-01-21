@@ -83,7 +83,7 @@ class CacheController extends AdminBaseController
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache/latte';
 
             if (!is_dir($cacheDir)) {
-                $this->successJson('缓存目录不存在', null, '/admin/cache');
+                $this->successJson('Latte缓存目录不存在或已清空', null, '/admin/cache');
             }
 
             // 清空目录
@@ -125,7 +125,7 @@ class CacheController extends AdminBaseController
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache';
 
             if (!is_dir($cacheDir)) {
-                $this->successJson('缓存目录不存在', null, '/admin/cache');
+                $this->successJson('缓存目录不存在或已清空', null, '/admin/cache');
             }
 
             // 清空所有缓存子目录
@@ -160,7 +160,7 @@ class CacheController extends AdminBaseController
     private function clearDirectory(string $directory): void
     {
         if (!is_dir($directory)) {
-            throw new \Exception('目录不存在 ' . $directory);
+            return; // 如果目录不存在，直接返回
         }
 
         $files = scandir($directory);
@@ -172,13 +172,20 @@ class CacheController extends AdminBaseController
             $filepath = $directory . '/' . $file;
 
             if (is_file($filepath)) {
-                if (!unlink($filepath)) {
-                    throw new \Exception('无法删除文件: ' . $file);
+                // 检查文件是否可写
+                if (is_writable($filepath)) {
+                    if (!unlink($filepath)) {
+                        // 记录无法删除的文件，但不抛出异常，避免中断整个清理过程
+                        error_log('无法删除缓存文件: ' . $filepath);
+                    }
                 }
             } elseif (is_dir($filepath)) {
                 $this->clearDirectory($filepath);
-                if (!rmdir($filepath)) {
-                    throw new \Exception('无法删除目录: ' . $file);
+                // 尝试删除空目录
+                if (is_writable($filepath)) {
+                    if (!rmdir($filepath)) {
+                        error_log('无法删除缓存目录: ' . $filepath);
+                    }
                 }
             }
         }

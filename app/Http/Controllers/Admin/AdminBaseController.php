@@ -453,7 +453,68 @@ abstract class AdminBaseController extends BaseController
     protected function isActive(string $route): bool
     {
         $currentUri = $_SERVER['REQUEST_URI'] ?? '/';
-        return str_starts_with($currentUri, $route);
+        return $this->isRouteMatch($currentUri, $route);
+    }
+    
+    /**
+     * 检查路由是否匹配（支持参数化路由匹配）
+     *
+     * @param string $currentUri 当前URI
+     * @param string $route 路由
+     * @return bool
+     */
+    private function isRouteMatch(string $currentUri, string $route): bool
+    {
+        // 解析当前URI和目标路由
+        $currentPath = parse_url($currentUri, PHP_URL_PATH) ?: '';
+        $routeParams = parse_url($route, PHP_URL_QUERY) ? explode('?', $route, 2) : [$route, null];
+        $routePath = $routeParams[0];
+        $routeQuery = $routeParams[1] ?? '';
+        
+        // 基本路径匹配
+        if (!str_starts_with($currentPath, $routePath)) {
+            return false;
+        }
+        
+        // 如果路由没有参数，只需检查路径前缀
+        if (empty($routeQuery)) {
+            // 特殊处理：对于带参数的路径，例如 /admin/article/add?cid=5 应该匹配 /admin/article?cid=5
+            if (strpos($currentUri, '?') !== false && strpos($route, '?') === false) {
+                $currentQuery = parse_url($currentUri, PHP_URL_QUERY) ?: '';
+                if (!empty($currentQuery)) {
+                    // 检查是否为编辑页面，如 /admin/article/edit/78
+                    // 如果目标路由是带分类参数的文章列表页（如 /admin/article?cid=5），而当前是编辑页面，则匹配
+                    if (preg_match('#^/admin/article/edit/#', $currentPath) && $routePath === '/admin/article' && strpos($route, 'cid=') !== false) {
+                        // 解析目标路由的分类ID
+                        parse_str(parse_url($route, PHP_URL_QUERY) ?: '', $routeQueryParams);
+                        $targetCid = $routeQueryParams['cid'] ?? null;
+                        
+                        // 由于编辑页面URL中不包含cid，我们只能通过路径模式判断
+                        // 如果目标路由是特定分类的文章列表，则认为匹配
+                        return $targetCid !== null;
+                    }
+                    // 检查是否为添加页面，如 /admin/article/add?cid=5
+                    if (preg_match('#^/admin/article/add#', $currentPath) && $routePath === '/admin/article' && strpos($currentUri, 'cid=') !== false) {
+                        return true;
+                    }
+                }
+            }
+            return str_starts_with($currentUri, $route);
+        }
+        
+        // 如果路由有参数，解析参数进行比较
+        parse_str($routeQuery, $routeParamsArray);
+        $currentQuery = parse_url($currentUri, PHP_URL_QUERY) ?: '';
+        parse_str($currentQuery, $currentParamsArray);
+        
+        // 检查路由参数是否匹配
+        foreach ($routeParamsArray as $key => $value) {
+            if (!isset($currentParamsArray[$key]) || $currentParamsArray[$key] !== $value) {
+                return false;
+            }
+        }
+        
+        return true;
     }
     
     /**
@@ -619,7 +680,7 @@ abstract class AdminBaseController extends BaseController
                     $shouldExpand = true;
                 } else {
                     // 如果当前 URI 匹配父级菜单项的路由前缀，也需要展开
-                    if (isset($item['route']) && str_starts_with($currentUri, $item['route'])) {
+                    if (isset($item['route']) && $this->isRouteMatch($currentUri, $item['route'])) {
                         $shouldExpand = true;
                     }
                 }
@@ -630,8 +691,12 @@ abstract class AdminBaseController extends BaseController
                     $isShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
                     $isShortcutContent = isset($item['title']) && $item['title'] === '快捷内容管理';
                     
-                    // 如果是快捷导航或快捷内容管理，优先级更高
-                    if (($isShortcut || $isShortcutContent) && !$isShortcutExpanded) {
+                    // 如果是快捷内容管理，优先级最高
+                    if ($isShortcutContent && !$isShortcutExpanded) {
+                        $targetIndex = $index;
+                        $isShortcutExpanded = true;
+                    } elseif ($isShortcut && !$isShortcutExpanded) {
+                        // 如果是快捷导航，优先级次之
                         $targetIndex = $index;
                         $isShortcutExpanded = true;
                     } elseif (!$isShortcutExpanded) {
@@ -646,7 +711,12 @@ abstract class AdminBaseController extends BaseController
                 $isShortcut = isset($item['is_shortcut']) && $item['is_shortcut'];
                 $isShortcutContent = isset($item['title']) && $item['title'] === '快捷内容管理';
                 
-                if (($isShortcut || $isShortcutContent) && !$isShortcutExpanded) {
+                // 如果是快捷内容管理，优先级最高
+                if ($isShortcutContent && !$isShortcutExpanded) {
+                    $targetIndex = $index;
+                    $isShortcutExpanded = true;
+                } elseif ($isShortcut && !$isShortcutExpanded) {
+                    // 如果是快捷导航，优先级次之
                     $targetIndex = $index;
                     $isShortcutExpanded = true;
                 } elseif (!$isShortcutExpanded) {
@@ -661,6 +731,25 @@ abstract class AdminBaseController extends BaseController
         foreach ($menu as $index => $item) {
             $processedItem = $item;
             
+            // 如果有子菜单，先处理子菜单中的激活状态
+            if (isset($processedItem['children']) && is_array($processedItem['children'])) {
+                $processedItem['children'] = $this->processMenu($processedItem['children'], $currentUri);
+                
+                // 检查子菜单是否有激活项
+                $hasActiveChild = false;
+                foreach ($processedItem['children'] as $child) {
+                    if (isset($child['is_active']) && $child['is_active']) {
+                        $hasActiveChild = true;
+                        break;
+                    }
+                }
+                
+                // 如果子菜单有激活项，父菜单也应标记为激活
+                if ($hasActiveChild) {
+                    $processedItem['is_active'] = true;
+                }
+            }
+            
             // 检查是否是顶级菜单项并激活
             if (isset($item['route']) && $this->isActive($item['route'])) {
                 $processedItem['is_active'] = true;
@@ -672,11 +761,6 @@ abstract class AdminBaseController extends BaseController
             } else {
                 // 其他菜单组关闭
                 $processedItem['should_expand'] = false;
-            }
-            
-            // 如果有子菜单，递归处理子菜单
-            if (isset($processedItem['children']) && is_array($processedItem['children'])) {
-                $processedItem['children'] = $this->processMenu($processedItem['children'], $currentUri);
             }
             
             $processedMenu[] = $processedItem;
