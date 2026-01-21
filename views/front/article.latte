@@ -1,0 +1,324 @@
+﻿{extends 'layout.latte'}
+
+{block head}
+<link rel="stylesheet" href="{asset('static/css/fontawesome/all.min.css')}" />
+{/block}
+
+{block content}
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('/uploads/images/nullbanner.jpg')) : asset('/uploads/images/nullbanner.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+
+<div class="crumbs">
+    <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > 文章详情 </div>
+</div>
+
+<div class="auto auto_1150">
+  <div class="w22 fl"> 
+    {include 'sidebar.latte'}
+  </div>
+  <div class="w75 fr"> 
+    <!--Artinfo star-->
+    <div class="Artinfo">
+      <div class="auto auto_1150">
+        <article class="news-details auto w_96">
+          <div id="print-area">
+            <div class="title">
+              <h1>{$article['title']}</h1>
+              <aside>
+                <span>发布时间：{date('Y-m-d H:i', strtotime($article['published_at']))}</span>
+                <span>阅读次数：{$article['views'] ?? 0} 次</span>
+                <span>【字号：<a href="javascript:SetFont(20)">大</a> <a href="javascript:SetFont(18)">中</a> <a href="javascript:SetFont(16)">小</a>】</span>
+              </aside>
+            </div>
+            <div class="edit-info" id="news_content">
+              {if isset($article['content'])}
+                {$article['content']|noescape}
+              {else}
+                <p>暂无内容</p>
+              {/if}
+            </div>
+            
+            {if isset($attachments) && $attachments && count($attachments)}
+              <div class="article-attachments mt-4">
+                <h4 class="title">相关附件</h4>
+                <div class="attachments-container">
+                  {foreach $attachments as $file}
+                    {var $ext = pathinfo($file['original_name'], \PATHINFO_EXTENSION)}
+                    {var $sizeKb = round($file['size'] / 1024, 2)}
+                    <div class="attachment-item">
+                      <div class="attachment-icon">
+                        {if $ext === 'pdf'}
+                          <i class="fas fa-file-pdf text-danger"></i>
+                        {elseif $ext === 'doc' || $ext === 'docx'}
+                          <i class="fas fa-file-word text-blue"></i>
+                        {elseif $ext === 'xls' || $ext === 'xlsx'}
+                          <i class="fas fa-file-excel text-green"></i>
+                        {elseif $ext === 'ppt' || $ext === 'pptx'}
+                          <i class="fas fa-file-powerpoint text-orange"></i>
+                        {elseif $ext === 'zip' || $ext === 'rar' || $ext === '7z'}
+                          <i class="fas fa-file-archive text-purple"></i>
+                        {else}
+                          <i class="fas fa-file text-gray"></i>
+                        {/if}
+                      </div>
+                      <div class="attachment-info">
+                        <div class="attachment-name">
+                          <a href="/file/download/{$file['id']}" target="_blank" class="attachment-link">{$file['original_name']}</a>
+                        </div>
+                        <div class="attachment-meta">
+                          <span class="file-ext">.{$ext}</span>
+                          <span class="file-size">{$sizeKb} KB</span>
+                          {if $file['description']}
+                            <span class="file-desc">{$file['description']}</span>
+                          {/if}
+                        </div>
+                      </div>
+                      <div class="attachment-actions">
+                        <a href="/file/download/{$file['id']}" target="_blank" class="btn btn-sm btn-outline-primary">
+                          <i class="fas fa-download"></i> 下载
+                        </a>
+                      </div>
+                    </div>
+                    {if $ext === 'pdf'}
+                      <div class="attachment-preview-pdf mt-3">
+                        <div class="preview-header">
+                          <i class="fas fa-eye"></i> PDF预览
+                        </div>
+                        <iframe src="/pdfjs/web/viewer.html?file=/{$file['path']}" style="width:100%;height:600px;border:1px solid #dee2e6;border-radius: 0.375rem;" frameborder="0"></iframe>
+                      </div>
+                    {/if}
+                  {/foreach}
+                </div>
+              </div>
+            {/if}
+          </div>
+          
+          <div class="pn-page">
+            <div class="operating">
+              <a class="a-print" href="javascript:void(0);">打印本页</a>
+              <a class="a-close" href="javascript:void(0);" onClick="closeWindow();">关闭窗口</a>
+            </div>
+            
+            <!-- 上下篇链接 - 需要在控制器中获取 -->
+            {ifset $prevArticle}
+              <aside class="dot">上一篇:<a href="/article/{$prevArticle['id']}">{$prevArticle['title']}</a></aside>
+            {/ifset}
+            
+            {ifset $nextArticle}
+              <aside class="dot">下一篇: <a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
+            {/ifset}
+            
+            {if isset($tags) && $tags && count($tags)}
+              <div class="article-tags mt-3">
+                <em>标签：</em>
+                {foreach $tags as $index => $tag}
+                  <a href="/search?tag={$tag['name']|urlencode}" class="tag-link">{$tag['name']}</a>{if !$index == count($tags) - 1}, {/if}
+                {/foreach}
+              </div>
+            {/if}
+            
+            {if isset($relatedArticles) && $relatedArticles && count($relatedArticles)}
+              <div class="related-articles mt-4">
+                <h4 class="related-title">相关文章</h4>
+                <ul class="related-list">
+                  {foreach $relatedArticles as $related}
+                    <li>
+                      <a href="/article/{$related['id']}" title="{$related['title']}">
+                        {$related['title']}
+                      </a>
+                      <span class="related-date">{date('Y-m-d', strtotime($related['published_at']))}</span>
+                    </li>
+                  {/foreach}
+                </ul>
+              </div>
+            {/if}
+          </div>
+        </article>
+      </div>
+    </div>
+    <!--Artinfo end--> 
+  </div>
+  <div class="clear"></div>
+</div>
+
+<script>
+//设置字体 
+function SetFont(size)
+{
+  var divBody = document.getElementById("news_content");
+  if(!divBody)
+  {
+    return;
+  }
+  divBody.style.fontSize = size + "px";
+  var divChildBody = divBody.childNodes;
+  for(var i = 0; i < divChildBody.length; i++)
+  {
+    if (divChildBody[i].nodeType==1)
+    {
+      divChildBody[i].style.fontSize = size + "px";
+    }
+  }
+}
+$(".a-print").click(function(){
+    $("#print-area").printArea();
+});
+ function closeWindow() {
+    var userAgent = navigator.userAgent;
+    if (userAgent.indexOf("Firefox") != -1 || userAgent.indexOf("Chrome") != -1) {
+        location.href = "about:blank";
+    } else {
+        window.opener = null;
+        window.open('', '_self');
+    }
+    window.close();
+}
+</script>
+<style>
+.article-attachments {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    border: 1px solid #e9ecef;
+}
+
+.article-attachments .title {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.attachments-container {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.attachment-item:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.attachment-icon {
+    font-size: 24px;
+    margin-right: 15px;
+    min-width: 30px;
+}
+
+.attachment-info {
+    flex: 1;
+}
+
+.attachment-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.attachment-meta {
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.attachment-actions {
+    margin-left: 15px;
+}
+
+.attachment-preview-pdf {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.attachment-preview-pdf .preview-header {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #2c3e50;
+}
+
+.article-tags {
+    padding: 15px 0;
+    border-top: 1px dashed #dee2e6;
+    color: #6c757d;
+}
+
+.article-tags .tag-link {
+    display: inline-block;
+    padding: 3px 10px;
+    background: #e9ecef;
+    color: #495057;
+    border-radius: 15px;
+    text-decoration: none;
+    margin: 2px;
+    font-size: 12px;
+    transition: all 0.3s ease;
+}
+
+.article-tags .tag-link:hover {
+    background: #3498db;
+    color: white;
+}
+
+.related-articles {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+.related-articles .related-title {
+    color: #2c3e50;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #3498db;
+}
+
+.related-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.related-list li {
+    padding: 10px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.related-list li:last-child {
+    border-bottom: none;
+}
+
+.related-list a {
+    color: #495057;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.related-list a:hover {
+    color: #3498db;
+}
+
+.related-date {
+    float: right;
+    color: #6c757d;
+    font-size: 12px;
+}
+</style>
+{/block}

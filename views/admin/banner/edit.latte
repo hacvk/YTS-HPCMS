@@ -1,0 +1,148 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
+    <form method="post" action="/admin/banner/save" id="bannerForm">
+        <input type="hidden" name="csrf_token" value="{$csrf_token}">
+        <input type="hidden" name="id" value="{$banner['id'] ?? 0}">
+
+        <div class="form-group">
+            <label>类型</label>
+            <select class="form-control" name="type" required>
+                <option value="banner" {if !isset($banner['type']) || $banner['type'] == 'banner'}selected{/if}>轮播图</option>
+                <option value="indexFast" {if isset($banner['type']) && $banner['type'] == 'indexFast'}selected{/if}>首页快捷方式</option>
+                <option value="indexZt" {if isset($banner['type']) && $banner['type'] == 'indexZt'}selected{/if}>首页专题</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label>标题</label>
+            <input class="form-control" name="title" value="{$banner['title'] ?? ''}" required>
+        </div>
+
+        <div class="form-group">
+            <label>图片 URL</label>
+            <div class="input-group">
+                <input class="form-control" id="pic" name="pic" value="{$banner['image_path'] ?? ''}" required>
+                <div class="input-group-append">
+                    <button type="button" class="btn btn-outline-secondary" onclick="selectImage()"><i class="fas fa-image"></i> 选择图片</button>
+                </div>
+            </div>
+            <img src="{$banner['image_path'] ?? ''}" id="preview" class="mt-2" style="height:80px;{if !isset($banner['image_path']) || !$banner['image_path']}display:none;{/if}">
+        </div>
+
+        <div class="form-group">
+            <label>链接</label>
+            <input class="form-control" name="url" value="{$banner['url'] ?? ''}">
+        </div>
+
+        <div class="form-group">
+            <label>排序</label>
+            <input class="form-control" type="number" name="sort" value="{$banner['sort'] ?? 0}">
+        </div>
+
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" name="is_enabled" value="1" id="enabledCheck" {if isset($banner['status']) && $banner['status']}checked{/if}>
+            <label class="form-check-label" for="enabledCheck">启用</label>
+        </div>
+
+        <button type="submit" class="btn btn-primary">保存</button>
+        <a class="btn btn-secondary" href="/admin/banner">返回</a>
+    </form>
+</div>
+
+<script n:syntax="off">
+// 表单提交处理
+document.getElementById('bannerForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  
+  const formData = new FormData(this);
+  const submitBtn = this.querySelector('button[type="submit"]');
+  const originalText = submitBtn.innerHTML;
+  
+  // 禁用按钮并显示加载状态
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 保存中...';
+  
+  fetch('/admin/banner/save', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.code === 0) {
+      alert(d.message || '保存成功');
+      // 跳转到列表页
+      window.location.href = d.url || '/admin/banner';
+    } else {
+      alert(d.message || '保存失败');
+      // 恢复按钮状态
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  })
+  .catch(err => {
+    console.error('保存错误:', err);
+    alert('保存失败，请重试');
+    // 恢复按钮状态
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalText;
+  });
+});
+
+// 图片上传函数
+function selectImage() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 验证文件类型
+    if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/)) {
+      alert('请选择图片文件（jpg、png、gif、webp）');
+      return;
+    }
+
+    // 验证文件大小（最大 5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      alert('图片大小不能超过 5MB');
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('module', 'banner'); // 添加模块标识
+    
+    // 从 meta 标签或 input 获取 CSRF Token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content 
+                   || document.querySelector('input[name="csrf_token"]')?.value 
+                   || '';
+    fd.append('csrf_token', csrfToken);
+
+    // 使用正确的上传路径
+    fetch('/admin/upload/do', { method: 'POST', body: fd })
+      .then(r => r.json())
+      .then(d => {
+        if (d.errno === 0 && d.data && d.data.length) {
+          document.getElementById('pic').value = d.data[0];
+          const pv = document.getElementById('preview');
+          pv.src = d.data[0];
+          pv.style.display = 'block';
+        } else {
+          alert(d.message || '上传失败');
+        }
+      })
+      .catch(err => {
+        console.error('上传错误:', err);
+        alert('上传失败，请重试');
+      });
+  };
+  input.click();
+}
+</script>
+{/block}

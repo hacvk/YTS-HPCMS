@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Cache-Control" content="no-transform" />
+    <meta http-equiv="Cache-Control" content="no-siteapp" />
+    <meta name="applicable-device" content="mobile" />
+    <meta name="renderer" content="webkit" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta content="email=no" name="format-detection" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{$title ?? '默认标题'}</title>
+    <meta name="keywords" content="{$keywords ?? ''}"/>
+    <meta name="description" content="{$description ?? ''}"/>
+    <link rel="canonical" href="{$canonicalUrl ?? $baseUrl ?? $appBaseUrl}" />
+    {if isset($ogTags)}
+    {$ogTags|noescape}
+    {/if}
+    {if isset($jsonLdSchema)}
+    {$jsonLdSchema|noescape}
+    {/if}
+
+    <!-- Styles -->
+    <link href="{asset('static/front/css/index.css')}" rel="stylesheet" type="text/css"/>
+    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/responsive.css')}" />
+    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/jquery.mcustomscrollbar.css')}" />
+    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/jquery.slick.css')}">
+    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/style.css')}" />
+
+    <!-- Scripts -->
+    <script type="text/javascript" src="{asset('static/front/js/jquery-3.3.1.min.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/jquery.bxslider.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/carousel.min.2.3.4.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/jquery.slick.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/a.whir.menu.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/jquery.mcustomscrollbar.concat.min.3.1.13.js')}"></script>
+    <script type="text/javascript" src="{asset('static/front/js/jquery.SuperSlide.2.1.3.js')}"></script>
+
+    <!--[if lt IE 9]>
+    <script type="text/javascript" src="{asset('static/front/js/html5shiv.v3.72.min.js')}"></script>
+    <![endif]-->
+
+    {block head}{/block}
+</head>
+<body>
+
+{include 'header.latte'}
+
+<main>
+    {block content}
+    {/block}
+</main>
+
+{include 'footer.latte'}
+
+{block scripts}{/block}
+
+</body>
+</html>

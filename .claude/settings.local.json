@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(curl:*)",
+      "Bash(php -r:*)",
+      "Bash(php /var/www/yycms.com/test_env.php:*)",
+      "Bash(sudo sh:*)",
+      "Bash(tee:*)",
+      "Bash(nginx -T:*)",
+      "Bash(systemctl status mysql:*)",
+      "Bash(systemctl status mariadb:*)",
+      "Bash(systemctl list-units:*)",
+      "Bash(ping:*)",
+      "Bash(nc:*)",
+      "Bash(php /var/www/yycms.com/test_db.php:*)",
+      "Bash(php /var/www/yycms.com/test_router.php:*)",
+      "Bash(php /var/www/yycms.com/test_db2.php:*)",
+      "Bash(dos2unix:*)"
+    ]
+  }
+}

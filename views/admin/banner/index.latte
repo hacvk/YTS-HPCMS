@@ -1,0 +1,80 @@
+{extends '../layout.latte'}
+{block title}{$title}{/block}
+{block content}
+<script>
+  var bannerCsrfToken = {$csrf_token};
+</script>
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <a class="btn btn-primary mr-2" href="/admin/banner/edit"><i class="fas fa-plus"></i> 新增 Banner</a>
+            <a class="btn btn-success" href="/admin/banner/edit?type=indexFast"><i class="fas fa-plus"></i> 新增首页快捷方式</a>
+            <a class="btn btn-warning" href="/admin/banner/edit?type=indexZt"><i class="fas fa-plus"></i> 新增首页专题</a>
+        </div>
+        <div class="col-md-6 text-right">
+            <a class="btn btn-{if $current_type == ''}primary{else}secondary{/if} mr-1" href="/admin/banner">全部</a>
+            <a class="btn btn-{if $current_type == 'banner'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=banner">轮播图</a>
+            <a class="btn btn-{if $current_type == 'indexFast'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=indexFast">首页快捷方式</a>
+            <a class="btn btn-{if $current_type == 'indexZt'}primary{else}secondary{/if}" href="/admin/banner?type=indexZt">首页专题</a>
+        </div>
+    </div>
+    <table class="table table-bordered table-hover">
+        <thead>
+        <tr>
+            <th>ID</th><th>标题</th><th>类型</th><th>图片</th><th>链接</th><th>排序</th><th>启用</th><th>操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        {foreach $banners as $b}
+        <tr>
+            <td>{$b['id']}</td>
+            <td>{$b['title']}</td>
+            <td>
+                {if $b['type'] == 'indexFast'}
+                    <span class="badge bg-success rounded-pill">首页快捷方式</span>
+                {elseif $b['type'] == 'banner'}
+                    <span class="badge bg-info rounded-pill">轮播图</span>
+                {elseif $b['type'] == 'indexZt'}
+                    <span class="badge bg-warning rounded-pill">首页专题</span>
+                {else}
+                    <span class="badge bg-secondary rounded-pill">未知</span>
+                {/if}
+            </td>
+            <td><img src="{$b['image_path']}" style="height:40px"></td>
+            <td>{$b['url']}</td>
+            <td>{$b['sort']}</td>
+            <td>{if $b['status']}✔{/if}</td>
+            <td>
+                <a class="btn btn-sm btn-info" href="/admin/banner/edit?id={$b['id']}">编辑</a>
+                <button class="btn btn-sm btn-danger" onclick="delBanner({$b['id']})">删除</button>
+            </td>
+        </tr>
+        {/foreach}
+        </tbody>
+    </table>
+</div>
+<script>
+function delBanner(id){
+  if(!confirm('确定删除?'))return;
+  
+  const f = new FormData();
+  f.append('id', id);
+  
+  // 使用页面中定义的 CSRF Token
+  const csrfToken = bannerCsrfToken;
+  f.append('csrf_token', csrfToken);
+  
+  fetch('/admin/banner/delete', { method: 'POST', body: f })
+    .then(r => r.json())
+    .then(d => {
+      alert(d.message);
+      if(d.code === 0) location.reload();
+    })
+    .catch(err => {
+      console.error('删除错误:', err);
+      alert('删除失败，请重试');
+    });
+}
+</script>
+{/block}

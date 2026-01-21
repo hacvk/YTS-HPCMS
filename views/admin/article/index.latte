@@ -1,0 +1,179 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部操作栏 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+        {var $addUrl = '/admin/article/add'}
+        {if isset($cid) && $cid > 0}
+            {var $addUrl = '/admin/article/add?cid=' . $cid}
+        {/if}
+        <a href="{$addUrl}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> 添加文章
+        </a>
+    </div>
+    
+    <!-- 筛选搜索框 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form class="form-inline" method="get" action="/admin/article">
+                <div class="form-group mr-3 mb-2">
+                    <label for="cid" class="mr-2">栏目：</label>
+                    <select class="form-control" id="cid" name="cid">
+                        <option value="0">全部栏目</option>
+                        {foreach $categories as $category}
+                        <option value="{$category['id']}" {if isset($category['id']) && $category['id'] == $cid}selected{/if}>
+                            {$category['name']}
+                        </option>
+                        {/foreach}
+                    </select>
+                </div>
+                
+                <div class="form-group mr-3 mb-2">
+                    <label for="keyword" class="mr-2">关键词：</label>
+                    <input type="text" class="form-control" id="keyword" name="keyword" placeholder="请输入标题关键词" value="{$keyword}">
+                </div>
+                
+                <button type="submit" class="btn btn-primary mb-2">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 文章列表表格 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">文章列表</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>封面</th>
+                            <th>标题</th>
+                            <th>所属栏目</th>
+                            <th>浏览量</th>
+                            <th>发布时间</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($articles) > 0}
+                        {foreach $articles as $article}
+                        <tr>
+                            <td>{$article['id']}</td>
+                            <td>
+                                {if isset($article['cover_img']) && $article['cover_img']}
+                                <img src="{$article['cover_img']}" width="60" height="40" class="img-thumbnail">
+                                {else}
+                                <span class="text-muted">无</span>
+                                {/if}
+                            </td>
+                            <td>{$article['title']}</td>
+                            <td>{$article['category_name'] ?? '未分类'}</td>
+                            <td>{$article['views'] ?? 0}</td>
+                            <td>{if isset($article['published_at']) && $article['published_at']}{date('Y-m-d', strtotime($article['published_at']))}{else}未发布{/if}</td>
+                            <td>
+                                {if isset($article['status']) && $article['status'] == 1}
+                                <span class="badge badge-success">已发布</span>
+                                {else}
+                                <span class="badge badge-warning">草稿</span>
+                                {/if}
+                            </td>
+                            <td>
+                                <a href="/admin/article/edit/{$article['id']}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </a>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteArticle({$article['id']})">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="8" class="text-center">暂无数据</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 分页 -->
+            {if $total > 0}
+            <div class="pagination justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {if $page == 1}disabled{/if}">
+                        <a class="page-link" href="/admin/article?page={$page-1}&cid={$cid}&keyword={$keyword}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+                    
+                    {var $totalPages = ceil($total / $limit)}
+                    {var $startPage = max(1, $page - 4)}
+                    {var $endPage = min($totalPages, $startPage + 8)} 
+                    {if $startPage > 1}
+                    <li class="page-item"><a class="page-link" href="/admin/article?page=1&cid={$cid}&keyword={$keyword}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {/if}
+                    
+                    {for $i = $startPage; $i <= $endPage; $i++}
+                    <li class="page-item {if $i == $page}active{/if}">
+                        <a class="page-link" href="/admin/article?page={$i}&cid={$cid}&keyword={$keyword}">{$i}</a>
+                    </li>
+                    {/for}
+                    
+                    {if $endPage < $totalPages}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="/admin/article?page={$totalPages}&cid={$cid}&keyword={$keyword}">{$totalPages}</a></li>
+                    {/if}
+                    
+                    <li class="page-item {if $page == $totalPages}disabled{/if}">
+                        <a class="page-link" href="/admin/article?page={$page+1}&cid={$cid}&keyword={$keyword}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {/if}
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认脚本 -->
+<script>
+function deleteArticle(id) {
+    if (confirm('确定要删除这篇文章吗？')) {
+        // 获取 CSRF Token
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        
+        fetch('/admin/article/delete/' + id, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.code === 0) {
+                alert(data.message);
+                window.location.href = '/admin/article';
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(function(error) {
+            alert('删除失败：' + error.message);
+        });
+    }
+}
+</script>
+{/block}

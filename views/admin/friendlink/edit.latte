@@ -1,0 +1,61 @@
+{extends '../layout.latte'}
+{block title}{$title}{/block}
+{block content}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
+
+    <form id="friendLinkForm">
+        <input type="hidden" name="csrf_token" value="{$csrf_token}">
+        <input type="hidden" name="id" value="{$link['id'] ?? 0}">
+
+        <div class="mb-3">
+            <label class="form-label">名称</label>
+            <input class="form-control" type="text" name="title" value="{$link['title'] ?? ''}">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">链接</label>
+            <input class="form-control" type="text" name="url" value="{$link['url'] ?? ''}" placeholder="https://...">
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Logo（可选）</label>
+            <input class="form-control" type="text" name="logo" value="{$link['logo'] ?? ''}" placeholder="图片URL">
+        </div>
+
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">排序</label>
+                <input class="form-control" type="number" name="sort" value="{$link['sort'] ?? 0}">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">启用</label>
+                <select class="form-select" name="status">
+                    <option value="1" {if ($link['status'] ?? 1) == 1}selected{/if}>启用</option>
+                    <option value="0" {if ($link['status'] ?? 1) == 0}selected{/if}>禁用</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="saveFriendLink()">保存</button>
+        <a class="btn btn-secondary" href="/admin/friendlink">返回</a>
+    </form>
+</div>
+
+<script>
+function saveFriendLink(){
+  const form = document.getElementById('friendLinkForm');
+  const f = new FormData(form);
+  fetch('/admin/friendlink/save', { method: 'POST', body: f })
+    .then(r => r.json())
+    .then(d => {
+      alert(d.message);
+      if(d.code === 0) location.href = (d.url || '/admin/friendlink');
+    })
+    .catch(err => {
+      console.error('保存错误:', err);
+      alert('保存失败，请重试');
+    });
+}
+</script>
+{/block}

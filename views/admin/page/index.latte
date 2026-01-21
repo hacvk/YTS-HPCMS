@@ -1,0 +1,127 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部操作栏 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+        <a href="/admin/page/add" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+            <i class="fas fa-plus fa-sm text-white-50"></i> 添加单页
+        </a>
+    </div>
+    
+    <!-- 单页列表表格 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">单页列表</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>栏目名称</th>
+                            <th>标题</th>
+                            <th>封面</th>
+                            <th>更新时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($pages) > 0}
+                        {foreach $pages as $page}
+                        <tr>
+                            <td>
+                                <strong>{$page['category_name']}</strong>
+                                {if $page['category_slug']}
+                                <br><small class="text-muted">别名: {$page['category_slug']}</small>
+                                {/if}
+                            </td>
+                            <td>
+                                {if $page['has_content']}
+                                {$page['content']['title']}
+                                {else}
+                                <span class="text-muted">未创建</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if $page['has_content'] && isset($page['content']['cover_img']) && $page['content']['cover_img']}
+                                <img src="{$page['content']['cover_img']}" width="60" height="40" class="img-thumbnail">
+                                {else}
+                                <span class="text-muted">无</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if $page['has_content'] && isset($page['content']['updated_at']) && $page['content']['updated_at']}
+                                {date('Y-m-d H:i', strtotime($page['content']['updated_at']))}
+                                {else}
+                                <span class="text-muted">-</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if $page['has_content']}
+                                <a href="/admin/page/edit/{$page['category_id']}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-edit"></i> 编辑
+                                </a>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="deletePage({$page['content']['id']})">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                                {else}
+                                <a href="/admin/page/add?category_id={$page['category_id']}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus"></i> 创建
+                                </a>
+                                {/if}
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <p class="text-muted">暂无单页栏目</p>
+                                <p><small>请先在栏目管理中创建单页类型的栏目</small></p>
+                            </td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认脚本 -->
+<script>
+function deletePage(id) {
+    if (confirm('确定要删除这个单页吗？')) {
+        // 获取 CSRF Token
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        if (!csrfToken) {
+            var csrfInput = document.querySelector('input[name="csrf_token"]');
+            csrfToken = csrfInput ? csrfInput.value : '';
+        }
+        
+        fetch('/admin/page/delete/' + id, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: 'csrf_token=' + encodeURIComponent(csrfToken)
+        })
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
+            if (data.code === 0) {
+                alert(data.message);
+                window.location.href = '/admin/page';
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(function(error) {
+            alert('删除失败：' + error.message);
+        });
+    }
+}
+</script>
+{/block}

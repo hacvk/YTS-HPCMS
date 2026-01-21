@@ -1,0 +1,214 @@
+{extends "layout.latte"}
+
+{block content}
+    <div class="container-fluid">
+        <!-- 欢迎语 -->
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            欢迎回来，<strong>{$user['name'] ?? '管理员'}</strong>！今天是 {date('Y年m月d日')}，祝您工作愉快。
+        </div>
+
+        {if isset($error)}
+            <div class="alert alert-danger mb-4">
+                <i class="bi bi-exclamation-triangle"></i>
+                数据加载失败：{$error}
+            </div>
+        {/if}
+
+        <!-- 统计卡片 -->
+        <div class="row mb-4">
+            <!-- 文章总数 -->
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary mb-1">
+                                    文章总数
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {$stats['articles']}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-file-earmark-text fa-2x text-gray-300" style="font-size: 3rem; color: #4e73df;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 栏目总数 -->
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success mb-1">
+                                    栏目总数
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {$stats['categories']}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-folder fa-2x text-gray-300" style="font-size: 3rem; color: #1cc88a;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日登录 -->
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info mb-1">
+                                    今日登录
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {$stats['today_logins']}
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-people fa-2x text-gray-300" style="font-size: 3rem; color: #36b9cc;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 系统运行 -->
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning mb-1">
+                                    系统运行
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                    {$stats['system_days']} 天
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-clock fa-2x text-gray-300" style="font-size: 3rem; color: #f6c23e;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 详细信息 -->
+        <div class="row">
+            <!-- 用户信息 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-person"></i> 管理员信息
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <th style="width: 30%;">用户名</th>
+                                    <td>{$user['username'] ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>姓名</th>
+                                    <td>{$user['name'] ?? '-'}</td>
+                                </tr>
+                                <tr>
+                                    <th>登录次数</th>
+                                    <td>{$stats['login_count']} 次</td>
+                                </tr>
+                                <tr>
+                                    <th>最后登录</th>
+                                    <td>{$stats['last_login_time']}</td>
+                                </tr>
+                                <tr>
+                                    <th>最后登录IP</th>
+                                    <td>{$user['last_login_ip'] ?? '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最近日志 -->
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">
+                            <i class="bi bi-clock-history"></i> 最近日志
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {if count($recent_logs) > 0}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>管理员</th>
+                                            <th>操作</th>
+                                            <th>时间</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {foreach $recent_logs as $log}
+                                            <tr>
+                                                <td>{$log['admin_name']}</td>
+                                                <td>{$log['message']}</td>
+                                                <td>
+                                                    <small class="text-muted">
+                                                        {$log['create_time']}
+                                                    </small>
+                                                </td>
+                                            </tr>
+                                        {/foreach}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {else}
+                            <p class="text-muted text-center py-4">暂无日志记录</p>
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .card {
+            border: none;
+            border-radius: 0.5rem;
+        }
+        
+        .card-header {
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
+        }
+        
+        .border-left-primary {
+            border-left: 0.25rem solid #4e73df !important;
+        }
+        
+        .border-left-success {
+            border-left: 0.25rem solid #1cc88a !important;
+        }
+        
+        .border-left-info {
+            border-left: 0.25rem solid #36b9cc !important;
+        }
+        
+        .border-left-warning {
+            border-left: 0.25rem solid #f6c23e !important;
+        }
+    </style>
+{/block}

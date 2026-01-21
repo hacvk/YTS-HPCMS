@@ -1,0 +1,754 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+        <a href="/admin/article" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+            <i class="fas fa-arrow-left fa-sm text-white-50"></i> 返回列表
+        </a>
+    </div>
+    
+    <!-- 表单卡片 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form action="{$action}" method="post" enctype="multipart/form-data">
+                <!-- CSRF Token -->
+<input type="hidden" name="csrf_token" id="csrf_token" value="{$csrf_token}">
+                
+                <!-- 文章ID（编辑时使用） -->
+                {if isset($article['id'])}
+                <input type="hidden" name="id" value="{$article['id']}">
+                {/if}
+                
+                <!-- 基础字段 -->
+                <div class="mb-4">
+                    <h5>基础信息</h5>
+                    <hr>
+                    
+                    <!-- 标题 -->
+                    <div class="form-group">
+                        <label for="title">标题 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="title" name="title" value="{if isset($article['title'])}{$article['title']}{/if}" placeholder="请输入文章标题" required>
+                    </div>
+                    
+                    <!-- 摘要 -->
+                    <div class="form-group">
+                        <label for="summary">摘要</label>
+                        <textarea class="form-control" id="summary" name="summary" rows="3" placeholder="请输入文章摘要">{if isset($article['summary'])}{$article['summary']}{/if}</textarea>
+                    </div>
+                    
+                    <!-- 两列布局：所属栏目、发布时间、封面图片、状态 -->
+                    <div class="row">
+                        <!-- 所属栏目 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="category_id">所属栏目 <span class="text-danger">*</span></label>
+                                <select class="form-control" id="category_id" name="category_id" required>
+                                    <option value="">请选择栏目</option>
+                                    {foreach $categories as $category}
+                                    {var $level = (int)($category['level'] ?? 0)}
+                                    {var $indent = str_repeat('&nbsp;&nbsp;', $level)}
+                                    {var $categoryType = $category['type'] ?? 'article'}
+                                    {var $selected = false}
+                                    {if isset($article['category_id']) && $article['category_id'] == $category['id']}
+                                        {var $selected = true}
+                                    {elseif isset($pre_cid) && $pre_cid > 0 && $category['id'] == $pre_cid}
+                                        {var $selected = true}
+                                    {/if}
+                                    <option value="{$category['id']}" data-type="{$categoryType}" {if $selected}selected{/if}>
+                                        {$indent|noescape} - {$category['name']}
+                                    </option>
+                                    {if isset($category['children']) && count($category['children']) > 0}
+                                    {foreach $category['children'] as $child}
+                                    {var $childLevel = (int)($child['level'] ?? 0)}
+                                    {var $childIndent = str_repeat('&nbsp;&nbsp;', $childLevel)}
+                                    {var $childType = $child['type'] ?? 'article'}
+                                    {var $childSelected = false}
+                                    {if isset($article['category_id']) && $article['category_id'] == $child['id']}
+                                        {var $childSelected = true}
+                                    {elseif isset($pre_cid) && $pre_cid > 0 && $child['id'] == $pre_cid}
+                                        {var $childSelected = true}
+                                    {/if}
+                                    <option value="{$child['id']}" data-type="{$childType}" {if $childSelected}selected{/if}>
+                                        {$childIndent|noescape} - {$child['name']}
+                                    </option>
+                                    {/foreach}
+                                    {/if}
+                                    {/foreach}
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- 发布时间 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="published_at">发布时间</label>
+                                <input type="datetime-local" class="form-control" id="published_at" name="published_at" value="{if isset($article['published_at_formatted'])}{$article['published_at_formatted']}{/if}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- 封面图 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="cover_img">封面图片</label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="cover_img" name="cover_img" value="{if isset($article['cover_img'])}{$article['cover_img']}{/if}" placeholder="请输入图片URL">
+                                    <div class="input-group-append">
+                                        <button type="button" class="btn btn-outline-secondary" onclick="selectImage()">选择图片</button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()">裁剪上传</button>
+                                    </div>
+                                </div>
+                                {if isset($article['cover_img']) && $article['cover_img']}
+                                <div class="mt-2" id="cover_img_preview">
+                                    <img src="{$article['cover_img']}" width="200" class="img-thumbnail">
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteCoverImage()">删除封面图</button>
+                                    </div>
+                                </div>
+                                {else}
+                                <div class="mt-2" id="cover_img_preview"></div>
+                                {/if}
+                            </div>
+                        </div>
+                        
+                        <!-- 状态 -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="status">状态</label>
+                                <select class="form-control" id="status" name="status">
+                                    <option value="1" {if (isset($article['status']) && $article['status'] == 1) || !isset($article['status'])}selected{/if}>已发布</option>
+                                    <option value="0" {if isset($article['status']) && $article['status'] == 0}selected{/if}>草稿</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 置顶和图片新闻字段 -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="is_top">是否置顶</label>
+                            <select class="form-control" id="is_top" name="is_top">
+                                <option value="0" {if (isset($article['is_top']) && $article['is_top'] == 0) || !isset($article['is_top'])}selected{/if}>否</option>
+                                <option value="1" {if isset($article['is_top']) && $article['is_top'] == 1}selected{/if}>是</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="is_image_news">是否图片新闻</label>
+                            <select class="form-control" id="is_image_news" name="is_image_news">
+                                <option value="0" {if (isset($article['is_image_news']) && $article['is_image_news'] == 0) || !isset($article['is_image_news'])}selected{/if}>否</option>
+                                <option value="1" {if isset($article['is_image_news']) && $article['is_image_news'] == 1}selected{/if}>是</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 内容编辑器 -->
+                <div class="mb-4">
+                    <h5>文章内容 <span class="text-danger">*</span></h5>
+                    <hr>
+                    <div id="toolbar"></div>
+                    <div id="editor" style="min-height: 500px;"></div>
+                    <textarea id="content" name="content" style="display: none;">{if isset($article['content'])}{$article['content']|noescape}{/if}</textarea>
+                </div>
+                
+                <!-- SEO优化区域 -->
+                <div class="mb-4">
+                    <h5>SEO优化 <button type="button" class="btn btn-sm btn-outline-primary ml-2" id="btnExtractSeo">自动提取</button></h5>
+                    <hr>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_title">SEO标题</label>
+                                <input type="text" class="form-control" id="meta_title" name="meta_title" value="{if isset($article['meta_title'])}{$article['meta_title']}{/if}" placeholder="留空则使用文章标题">
+                                <small class="form-text text-muted">建议长度：30-60字符</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_keywords">SEO关键词</label>
+                                <input type="text" class="form-control" id="meta_keywords" name="meta_keywords" value="{if isset($article['meta_keywords'])}{$article['meta_keywords']}{/if}" placeholder="多个关键词用逗号分隔">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="meta_description">SEO描述</label>
+                                <textarea class="form-control" id="meta_description" name="meta_description" rows="3" placeholder="留空则自动生成">{if isset($article['meta_description'])}{$article['meta_description']}{/if}</textarea>
+                                <small class="form-text text-muted">建议长度：50-155字符</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="og_image">社交分享图片</label>
+                                <input type="text" class="form-control" id="og_image" name="og_image" value="{if isset($article['og_image'])}{$article['og_image']}{/if}" placeholder="请输入图片URL">
+                                {if isset($article['og_image']) && $article['og_image']}
+                                <div class="mt-2">
+                                    <img src="{$article['og_image']}" width="100" class="img-thumbnail">
+                                </div>
+                                {/if}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="tags">标签</label>
+                                <input type="text" class="form-control" id="tags" name="tags" value="{if isset($tags_string)}{$tags_string}{/if}" placeholder="多个标签用逗号分隔">
+                                <small class="form-text text-muted">标签有助于SEO和相关文章推荐</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 扩展字段区域 -->
+                <div class="mb-4">
+                    <h5>扩展信息</h5>
+                    <hr>
+                    <div id="extend-fields">
+                        <!-- 动态生成的扩展字段将插入到这里 -->
+                    </div>
+                </div>
+                
+                <!-- 文章数据JSON，用于扩展字段加载 -->
+                <input type="hidden" id="article_json" value="{if isset($article_json)}{$article_json}{else}null{/if}">
+                                
+                <!-- 文档附件管理 -->
+                <div class="mb-4">
+                    <h5>文档附件</h5>
+                    <hr>
+                    {if isset($article['id'])}
+                        <div class="alert alert-info small">
+                            支持上传的文档类型：PDF、Word、WPS、Excel、PowerPoint、TXT 等（扩展名：pdf, doc, docx, wps, dps, et, xls, xlsx, ppt, pptx, txt），单个文件最大 15MB。
+                        </div>
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnUploadDocument">
+                                <i class="fas fa-upload"></i> 上传文档附件
+                            </button>
+                            <input type="file" id="documentFileInput" name="document_files[]" class="d-none" multiple>
+                        </div>
+                        <div id="article-attachments">
+                            {if isset($attachments) && $attachments && count($attachments)}
+                                <table class="table table-sm table-bordered align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 60px;">ID</th>
+                                            <th>文件名</th>
+                                            <th style="width: 120px;">大小 (KB)</th>
+                                            <th style="width: 90px;">排序</th>
+                                            <th>备注</th>
+                                            <th style="width: 120px;">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {foreach $attachments as $file}
+                                            {var $sizeKb = ceil((int)($file['size'] ?? 0) / 1024)}
+                                            <tr data-id="{$file['id']}">
+                                                <td>{$file['id']}</td>
+                                                <td>
+                                                    <a href="/file/download/{$file['id']}" target="_blank">{$file['original_name']}</a>
+                                                </td>
+                                                <td>{$sizeKb}</td>
+                                                <td>
+                                                    <input type="number" class="form-control form-control-sm attachment-sort" value="{$file['sort'] ?? 0}" data-id="{$file['id']}" min="0">
+                                                </td>
+                                                <td>
+                                                    <input type="text" class="form-control form-control-sm attachment-description" value="{ifset $file['description']}{$file['description']}{/ifset}" data-id="{$file['id']}">
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-attachment-save" data-id="{$file['id']}">保存</button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger btn-attachment-delete" data-id="{$file['id']}">删除</button>
+                                                </td>
+                                            </tr>
+                                        {/foreach}
+                                    </tbody>
+                                </table>
+                            {else}
+                                <p class="text-muted mb-0">当前文章还没有文档附件。</p>
+                            {/if}
+                        </div>
+                    {else}
+                        <div class="alert alert-warning small mb-0">
+                            请先保存文章，保存成功后可在编辑页面上传文档附件。
+                        </div>
+                    {/if}
+                </div>
+                                
+                <!-- 表单按钮 -->
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> 保存
+                    </button>
+                    <a href="/admin/article" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> 取消
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- 图片裁剪模态框 -->
+<div class="modal fade" id="cropperModal" tabindex="-1" role="dialog" aria-labelledby="cropperModalLabel" aria-hidden="true" style="z-index: 20000;">
+    <div class="modal-dialog modal-lg" role="document" style="z-index: 20001;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cropperModalLabel">裁剪图片</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-9 text-center" style="background-color: #333;">
+                        <div class="img-container" style="width: 100%; max-height: 70vh; overflow: hidden;">
+                            <img id="cropperImage" src="" style="max-width: 100%; display: block;">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="preview-lg mb-3" style="width: 150px; height: 210px; border: 1px solid #ddd; background: #f8f8f8; overflow: hidden; position: relative;"></div>
+                        
+                        <div class="form-group">
+                            <label>预设比例</label>
+                            <select class="form-control form-control-sm" id="aspectRatioSelect">
+                                <option value="0">自由比例</option>
+                                <option value="0.7143">150×210 (专家)</option>
+                                <option value="1.7778">16×9 横图</option>
+                                <option value="0.5625">9×16 竖图</option>
+                                <option value="1">1×1 正方形</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>目标尺寸</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="targetWidth" placeholder="宽" value="150">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" id="targetHeight" placeholder="高" value="210">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="d-flex align-items-center">
+                                <input type="checkbox" id="lockAspectRatio" checked> 
+                                <span class="ml-2">锁定比例</span>
+                            </label>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>缩放操作</label>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button type="button" class="btn btn-outline-secondary" onclick="zoomCropper(-0.1)" title="缩小">
+                                    <i class="fas fa-minus"></i> 缩小
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="zoomCropper(0.1)" title="放大">
+                                    <i class="fas fa-plus"></i> 放大
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="rotateCropper(-90)" title="左旋">
+                                    <i class="fas fa-undo"></i> 左旋
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="rotateCropper(90)" title="右旋">
+                                    <i class="fas fa-redo"></i> 右旋
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetCropper()" title="重置">
+                                    <i class="fas fa-sync-alt"></i> 重置
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info py-2 small">
+                            <strong>操作提示：</strong><br>
+                            • 滚轮缩放图片<br>
+                            • 拖拽移动位置<br>
+                            • 拖拽裁剪框调整大小
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-primary" id="cropConfirmBtn">确认裁剪</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* 扩大裁剪模态框宽度，高度自适应 */
+    #cropperModal .modal-dialog { max-width: 60vw; }
+    #cropperModal .img-container { width:100%; height:70vh; max-height:70vh; }
+    #cropperModal .img-container img { width:auto; height:100%; max-height:100%; object-fit:contain; }
+</style>
+
+<!-- WangEditor 富文本编辑器 CSS -->
+<style>
+    /* 修复编辑器层级过高的问题 */
+    .w-e-toolbar { z-index: 1000 !important; }
+    .w-e-text-container { z-index: 900 !important; }
+    /* 确保模态框背景也在正确层级 */
+    .modal-backdrop { z-index: 19999 !important; }
+</style>
+<link rel="stylesheet" href="/static/wangeditor/cdn/wangEditor.min.css">
+<!-- Cropper.js CSS -->
+<link rel="stylesheet" href="/static/cropperjs/cropper.min.css">
+
+<!-- jQuery（部分第三方库依赖） -->
+<script src="/static/front/js/jquery-3.3.1.min.js"></script>
+<!-- WangEditor 富文本编辑器 JS -->
+<script src="/static/wangeditor/cdn/wangEditor.min.js"></script>
+<!-- Cropper.js JS -->
+<script src="/static/cropperjs/cropper.min.js"></script>
+<!-- Image Crop JS -->
+<script src="/static/js/image-crop.js"></script>
+<!-- 文章编辑器功能 -->
+<script src="/static/js/admin/article-editor.js"></script>
+<!-- 扩展字段功能 -->
+<script src="/static/js/admin/extend-fields.js"></script>
+
+<!-- 文章文档附件管理 -->
+<script n:syntax="off">
+(function () {
+    // SEO自动提取功能
+    var btnExtractSeo = document.getElementById('btnExtractSeo');
+    if (btnExtractSeo) {
+        btnExtractSeo.addEventListener('click', function () {
+            // 从wangEditor获取内容
+            var content = '';
+            var editorElement = document.getElementById('editor');
+            if (editorElement) {
+                // 尝试获取wangEditor的内容
+                if (typeof editorElement.innerHTML !== 'undefined') {
+                    content = editorElement.innerHTML.trim();
+                }
+            }
+            // 如果编辑器内容为空，尝试从隐藏字段获取
+            if (!content) {
+                var hiddenContent = document.getElementById('content');
+                if (hiddenContent) {
+                    content = hiddenContent.value || '';
+                }
+            }
+            
+            // 清理HTML标签，只保留纯文本用于关键词提取
+            var textContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            
+            console.log('SEO提取 - 原始内容长度:', content.length);
+            console.log('SEO提取 - 清理后内容:', textContent.substring(0, 100));
+            
+            if (!textContent || textContent.length < 10) {
+                alert('请先输入足够的文章内容（至少10个字符）');
+                return;
+            }
+            
+            btnExtractSeo.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 提取中...';
+            btnExtractSeo.disabled = true;
+            
+            var csrfToken = document.getElementById('csrf_token') ? document.getElementById('csrf_token').value : '';
+            
+            // 本地备用提取器（后端不可用时使用）
+            function extractSeoLocally(text) {
+                // 生成描述：截取前 155 字符
+                var description = text.substring(0, 155);
+
+                // 生成关键词：按中文/英文/数字分词，过滤停用词和单字符
+                var stopwords = ['的','是','了','在','和','与','或','及','等','为','之','于','以','而','但','若','则','因','所','从','对','把','被','让','给','向','到','过','来','去','这','那','他','她','它','们','你','我','自己','不','有','没','无','可','能','要','会','就','也','都','且','如','因为','所以','虽然','但是','然而','并且','或者','还是','一个','一些','这个','那个','什么','怎样','如何','可以','应该','需要','必须','可能','应当','值得'];
+                var tokens = text.match(/[\u4e00-\u9fa5]{2,}|[a-zA-Z]{2,}|[0-9]{2,}/g) || [];
+                var freq = {};
+                tokens.forEach(function(t){
+                    var w = t.toLowerCase();
+                    if (stopwords.indexOf(w) >= 0) return;
+                    freq[w] = (freq[w] || 0) + 1;
+                });
+                var keywords = Object.keys(freq).sort(function(a,b){return freq[b]-freq[a];}).slice(0, 10);
+
+                return { keywords: keywords, description: description };
+            }
+
+            // 关键词筛选：2-4 字/字符，随机取 3-4 个
+            function pickKeywords(keywords, text) {
+                if (!Array.isArray(keywords)) return [];
+                var dictionary = [
+                    '微创','治疗','手术','康复','诊疗','麻醉','护理','技术','设备','影像','肿瘤','心血管','消化','内镜',
+                    '骨科','关节','神经','介入','血管','腔镜','术式','方案','风险','预后','方案','方案优化','管理','流程'
+                ];
+                var filtered = keywords
+                    .map(function(k){ return (k || '').trim(); })
+                    .filter(function(k){
+                        var len = k.length;
+                        return len >= 2 && len <= 4;
+                    });
+                // 去重
+                var uniq = Array.from(new Set(filtered));
+                var textLower = (text || '').toLowerCase();
+                var dictHit = dictionary.filter(function(k){
+                    return text.indexOf(k) !== -1 || textLower.indexOf(k.toLowerCase()) !== -1;
+                });
+                if (dictHit.length) {
+                    uniq = dictHit.concat(uniq);
+                    uniq = Array.from(new Set(uniq));
+                }
+                // 洗牌
+                for (var i = uniq.length - 1; i > 0; i--) {
+                    var j = Math.floor(Math.random() * (i + 1));
+                    var tmp = uniq[i]; uniq[i] = uniq[j]; uniq[j] = tmp;
+                }
+                return uniq.slice(0, Math.floor(Math.random() * 2) + 3); // 取 3-4 个
+            }
+
+            fetch('/api/seo/extract-keywords', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                },
+                body: 'content=' + encodeURIComponent(textContent) + '&csrf_token=' + encodeURIComponent(csrfToken),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                console.log('SEO提取 - 响应状态:', response.status);
+                if (!response.ok) {
+                    throw new Error('服务器错误: ' + response.status);
+                }
+                return response.text().then(function (text) {
+                    if (!text) {
+                        return { success: false, message: '服务器未返回数据' };
+                    }
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.error('SEO提取 - JSON解析失败，原始内容:', text);
+                        throw new Error('响应解析失败');
+                    }
+                });
+            }).then(function (data) {
+                console.log('SEO提取 - 响应数据:', data);
+                if (data.success) {
+                    // 自动填充关键词
+                    var picked = pickKeywords(data.keywords || [], textContent);
+                    if (picked.length) {
+                        document.getElementById('meta_keywords').value = picked.join(', ');
+                    }
+                    // 自动填充描述
+                    if (data.description) {
+                        document.getElementById('meta_description').value = data.description;
+                    }
+                    alert('SEO信息提取成功！请根据需要进行调整。');
+                } else {
+                    // 后端失败，使用本地备用提取
+                    var local = extractSeoLocally(textContent);
+                    var pickedLocal = pickKeywords(local.keywords || [], textContent);
+                    if (pickedLocal.length) {
+                        document.getElementById('meta_keywords').value = pickedLocal.join(', ');
+                    }
+                    if (local.description) {
+                        document.getElementById('meta_description').value = local.description;
+                    }
+                    console.warn('SEO提取后端未返回有效数据，已使用本地提取。原因:', data.message || '未知');
+                }
+            }).catch(function (error) {
+                console.error('提取异常:', error);
+                // 网络/解析异常，使用本地备用提取
+                var localResult = extractSeoLocally(textContent);
+                var pickedFallback = pickKeywords(localResult.keywords || [], textContent);
+                if (pickedFallback.length) {
+                    document.getElementById('meta_keywords').value = pickedFallback.join(', ');
+                }
+                if (localResult.description) {
+                    document.getElementById('meta_description').value = localResult.description;
+                }
+                console.warn('SEO提取异常，已使用本地提取。', error);
+            }).finally(function () {
+                btnExtractSeo.innerHTML = '自动提取';
+                btnExtractSeo.disabled = false;
+            });
+        });
+    }
+    
+    var uploadBtn = document.getElementById('btnUploadDocument');
+    var fileInput = document.getElementById('documentFileInput');
+
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', function () {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function () {
+            if (!this.files || !this.files.length) {
+                return;
+            }
+
+            var csrfInput = document.getElementById('csrf_token');
+            var csrfToken = csrfInput ? csrfInput.value : '';
+            var idInput = document.querySelector('input[name="id"]');
+            var articleId = idInput ? idInput.value : '';
+
+            if (!articleId) {
+                alert('请先保存文章后再上传附件');
+                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> 上传文档附件';
+                uploadBtn.disabled = false;
+                return;
+            }
+            
+            var files = this.files;
+            var uploadedCount = 0;
+            var totalCount = files.length;
+
+            for (var i = 0; i < files.length; i++) {
+                var formData = new FormData();
+                formData.append('file', files[i]);
+                formData.append('module', 'document');
+                formData.append('related_type', 'article');
+                formData.append('related_id', articleId);
+                formData.append('file_usage', 'document');
+                formData.append('csrf_token', csrfToken);
+
+                fetch('/admin/upload/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    // WangEditor upload response format - errno: 0, data: [url]
+                    if (data && data.errno === 0) {
+                        uploadedCount++;
+                        // 显示进度
+                        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中... (' + uploadedCount + '/' + totalCount + ')';
+                    } else {
+                        console.error('上传失败:', data && data.message ? data.message : '未知错误');
+                        alert(data && data.message ? data.message : '上传失败: ' + files[i].name);
+                    }
+                }).catch(function (error) {
+                    console.error('上传异常:', error);
+                    alert('上传失败，请稍后重试: ' + files[i].name);
+                }).finally(function() {
+                    // 全部上传完成后刷新页面
+                    if (uploadedCount === totalCount) {
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 500);
+                    }
+                });
+            }
+
+            // 重置 input，避免同一文件无法再次选择
+            this.value = '';
+        });
+    }
+
+    // 附件管理（移除 jQuery 依赖，改用原生 JS）
+    document.addEventListener('click', function (event) {
+        var saveBtn = event.target.closest('.btn-attachment-save');
+        if (saveBtn) {
+            var row = saveBtn.closest('tr');
+            var originalText = saveBtn.innerHTML;
+
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            saveBtn.disabled = true;
+
+            var sortInput = row.querySelector('.attachment-sort');
+            var descInput = row.querySelector('.attachment-description');
+            var sort = sortInput ? sortInput.value || 0 : 0;
+            var description = descInput ? descInput.value || '' : '';
+            var articleIdInput = document.querySelector('input[name="id"]');
+            var articleId = articleIdInput ? articleIdInput.value || 0 : 0;
+            var csrfInput = document.getElementById('csrf_token');
+            var csrfToken = csrfInput ? csrfInput.value : '';
+            var id = saveBtn.getAttribute('data-id') || 0;
+
+            var payload = new URLSearchParams({
+                id: id,
+                related_type: 'article',
+                related_id: articleId,
+                file_usage: 'document',
+                is_primary: '0',
+                sort: sort,
+                description: description,
+                csrf_token: csrfToken
+            });
+
+            fetch('/admin/file/update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: payload.toString(),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (res) {
+                if (res && res.code === 0) {
+                    alert('保存成功');
+                } else {
+                    alert(res && res.message ? res.message : '保存失败');
+                }
+            }).catch(function () {
+                alert('保存失败，请稍后重试');
+            }).finally(function () {
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            });
+
+            return;
+        }
+
+        var deleteBtn = event.target.closest('.btn-attachment-delete');
+        if (deleteBtn) {
+            if (!confirm('确定要删除该附件吗？')) {
+                return;
+            }
+
+            var originalDeleteText = deleteBtn.innerHTML;
+            deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            deleteBtn.disabled = true;
+
+            var deleteId = deleteBtn.getAttribute('data-id') || 0;
+            var csrfInputDel = document.getElementById('csrf_token');
+            var csrfTokenDel = csrfInputDel ? csrfInputDel.value : '';
+
+            var delPayload = new URLSearchParams({
+                csrf_token: csrfTokenDel
+            });
+
+            fetch('/admin/file/delete/' + deleteId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: delPayload.toString(),
+                credentials: 'same-origin'
+            }).then(function (response) {
+                return response.json();
+            }).then(function (res) {
+                if (res && res.code === 0) {
+                    window.location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '删除失败');
+                    deleteBtn.innerHTML = originalDeleteText;
+                    deleteBtn.disabled = false;
+                }
+            }).catch(function () {
+                alert('删除失败，请稍后重试');
+                deleteBtn.innerHTML = originalDeleteText;
+                deleteBtn.disabled = false;
+            });
+        }
+    });
+})();
+</script>
+{/block}

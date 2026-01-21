@@ -1,0 +1,275 @@
+{extends 'layout.latte'}
+
+{block content}
+<!--indexbanner star-->
+<div class="indexbanner">
+    <ul class="ul">
+        {ifset $bannerItems}
+            {if is_array($bannerItems) && count($bannerItems) > 0}
+                {foreach $bannerItems as $a}
+                    <li><a href="{$a['url']}"><img src="{$a['image_path']}"></a></li>
+                {/foreach}
+            {else}
+                <!-- 当没有banner数据时的占位图片 -->
+                <li><img src="{asset('static/picture/banner-placeholder.jpg')}" alt="banner placeholder"></li>
+            {/if}
+        {else}
+            <!-- 当没有banner数据时的占位图片 -->
+            <li><img src="{asset('static/picture/banner-placeholder.jpg')}" alt="banner placeholder"></li>
+        {/ifset}
+    </ul>
+    <script>
+        $('.indexbanner ul').bxSlider({ auto: true, mode: 'fade'});
+    </script>
+</div>
+<!--indexbanner end-->
+
+<!--首页通知公告 star-->
+<div class="newsbox">
+    <div class="auto auto_1150">
+        <section class="ytable">
+
+            <section class="ytable-cell left">
+                <div class="fullSlide">
+                    <div class="bd">
+                        <ul>
+                            {ifset $newsSliderItems}
+                                {foreach $newsSliderItems as $a}
+                                    <li>
+                                        <a href="{$a['url']}">
+                                            <div class="item">
+                                                <div class="pic"><img src="{$a['pic']}" /></div>
+                                                <div class="txt"><h5>{$a['title']}</h5></div>
+                                            </div>
+                                        </a>
+                                    </li>
+                                {/foreach}
+                            {/ifset}
+                        </ul>
+                    </div>
+                    <div class="hd"><ul></ul></div>
+                </div>
+
+                <script type="text/javascript">
+                    jQuery(".fullSlide").slide({ titCell:".hd ul", mainCell:".bd ul", effect:"leftLoop", vis:"auto", autoPlay:true, autoPage:true, trigger:"click"});
+                </script>
+            </section>
+
+            <section class="ytable-cell no"></section>
+
+            <section class="ytable-cell center">
+                <div class="inner">
+                    <div class="tab-ul">
+                        <ul class="ul clearfix">
+                            <li>
+                                <span>院务公开
+                                    <a href="{$hospitalNewsMoreUrl ?? '/'}" class="more">&nbsp;»</a>
+                                </span>
+                            </li>
+                            <li>
+                                <span>招标信息
+                                    <a href="{$noticeMoreUrl ?? '/'}" class="more">&nbsp;»</a>
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="tab-list">
+                        <dl>
+                            {ifset $hospitalNewsItems}
+                                {foreach $hospitalNewsItems as $item}
+                                    <dd>
+                                        <time>{date('Y-m-d', strtotime($item['published_at']))}</time>
+                                        <a href="/article/{$item['id']}" class="dot">{$item['title']}</a>
+                                    </dd>
+                                {/foreach}
+                            {/ifset}
+                        </dl>
+                        <dl>
+                            {ifset $noticeItems}
+                                {foreach $noticeItems as $item}
+                                    <dd>
+                                        <time>{date('Y-m-d', strtotime($item['published_at']))}</time>
+                                        <a href="/article/{$item['id']}" class="dot">{$item['title']}</a>
+                                    </dd>
+                                {/foreach}
+                            {/ifset}
+                        </dl>
+                    </div>
+                </div>
+            </section>
+
+            <section class="ytable-cell no"></section>
+
+            <section class="ytable-cell right">
+                <div class="inner">
+                    <div class="title">
+                        <h3 class="h3"><span class="st"><i class="i i1"></i><i class="i i2"></i> 快捷导航</span></h3>
+                    </div>
+                    <div class="fast-link">
+                        <dl class="clearfix">
+                            {ifset $indexFastItems}
+                                {if is_array($indexFastItems) && count($indexFastItems) > 0}
+                                    {foreach $indexFastItems as $item}
+                                        <dt>
+                                            <a href="{$item['url']}">
+                                                <div class="icon"><img src="{$item['image_path']}"></div>
+                                                <aside class="dot">{$item['title']}</aside>
+                                            </a>
+                                        </dt>
+                                    {/foreach}
+                                {else}
+                                    <!-- 当没有首页快捷方式数据时的占位内容 -->
+                                    <dt>
+                                        <a href="#">
+                                            <div class="icon"><img src="{asset('static/picture/fastlink-placeholder.jpg')}" alt="快捷方式占位图"></div>
+                                            <aside class="dot">暂无快捷方式</aside>
+                                        </a>
+                                    </dt>
+                                {/if}
+                            {else}
+                                <!-- 当没有indexFastItems变量时的占位内容 -->
+                                <dt>
+                                    <a href="#">
+                                        <div class="icon"><img src="{asset('static/picture/fastlink-placeholder.jpg')}" alt="快捷方式占位图"></div>
+                                        <aside class="dot">暂无快捷方式</aside>
+                                    </a>
+                                </dt>
+                            {/ifset}
+                        </dl>
+                    </div>
+                </div>
+            </section>
+
+        </section>
+    </div>
+
+    <script>
+        newsbox(".newsbox")
+        function newsbox(v){
+            var _this=$(v)
+            var li=_this.find(".tab-ul li")
+            var info=_this.find(".tab-list dl")
+            li.click(function(){
+                var e=$(this).index()
+                $(this).addClass("on").siblings().removeClass("on")
+                info.eq(e).show().siblings().hide();
+            });
+            li.eq(0).click();
+        }
+    </script>
+</div>
+<!--newsbox end-->
+
+<!--科室列表 star-->
+<div class="debox">
+    <div class="auto auto_1150">
+        <div class="inner">
+            <div class="tab">
+                <ul class="ul clearfix">
+                    {ifset $departmentTabs}
+                        {foreach $departmentTabs as $t}
+                            <li><a>{$t}</a></li>
+                        {/foreach}
+                    {/ifset}
+                </ul>
+            </div>
+
+            <div class="tab-info">
+                {ifset $departmentGroups}
+                    {foreach $departmentGroups as $group}
+                        <div class="box">
+                            <div class="mCustomScrollbar">
+                                <div class="list clearfix">
+                                    {foreach $group as $a}
+                                        <div class="item">
+                                            <a href="{$a['url']}"></a>
+                                            <ul class="ul ytable">
+                                                <ol class="ytable-cell"><img src="{$a['pic']}"></ol>
+                                                <li class="ytable-cell"><aside class="dot">{$a['title']}</aside></li>
+                                            </ul>
+                                        </div>
+                                    {/foreach}
+                                </div>
+                            </div>
+                        </div>
+                    {/foreach}
+                {/ifset}
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(".debox .tab li").click(function(){
+        var e=$(this).index()
+        $(this).addClass("active").siblings().removeClass("active");
+        $(".debox .tab-info .box").eq(e).show().siblings().hide();
+    });
+    $(".debox .tab li").eq(0).click();
+</script>
+<!--debox end-->
+
+<!--Doctor_box star-->
+<div class="Doctor_box">
+    <div class="auto auto_1150">
+        <section class="inner clearfix">
+            <div class="title"><b>专家介绍</b><span> / Expert Introduction</span></div>
+            <div class="slider">
+                <div class="list">
+                    <ul class="ul">
+                        {ifset $doctorItems}
+                            {foreach $doctorItems as $a}
+                                <li>
+                                    <div class="ytable">
+                                        <div class="pic ytable-cell"><a href="{$a['url']}"><img src="{$a['pic']}"></a></div>
+                                        <div class="txt ytable-cell">
+                                            <h3 class="dot">
+                                                <a href="{$a['url']}">{$a['name']}</a>
+                                                {var $d = $a['dept'] ?? ''}
+                                                {if is_string($d)}{var $d = json_decode($d, true)}{/if}
+                                                <span>{if is_array($d)}{$d[2] ?? ($d[0] ?? '')}{else}{$d}{/if}</span>
+                                            </h3>
+                                            <aside>{$a['title'] ?? ''}</aside>
+                                            <div class="word"><p>{$a['desc'] ?? $a['summary'] ?? $a['shanchang'] ?? ''}</p></div>
+                                        </div>
+                                    </div>
+                                </li>
+                            {/foreach}
+                        {/ifset}
+                    </ul>
+                </div>
+                <div class="controls"></div>
+            </div>
+        </section>
+    </div>
+</div>
+<script n:syntax="off">
+    $('.Doctor_box .slider .ul').slick({
+        slidesToShow: 3,
+        autoplay:true,
+        appendArrows:$(".Doctor_box .controls"),
+        responsive: [
+            {breakpoint: 1150, settings: {slidesToShow: 2}},
+            {breakpoint: 420, settings: {slidesToShow: 1}}
+        ]
+    });
+</script>
+<!--Doctor_box end-->
+
+<!--ipic_box star-->
+<div class="ipic_box">
+    <ul class="ul auto auto_1150 clearfix">
+    
+        {ifset $indexZtItems}
+            {foreach $indexZtItems as $item}
+                <li>
+                    <a href="{$item['url']}">
+                        <img src="{$item['image_path']}">
+                        <aside class="dot">{$item['title']}</aside>
+                    </a>
+                </li>
+            {/foreach}
+        {/ifset}
+    </ul>
+</div>
+<!--ipic_box end-->
+{/block}

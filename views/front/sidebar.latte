@@ -1,0 +1,55 @@
+<!-- Sidebar Navigation -->
+<div class="leftmenu">
+    <div class="tit"><i class="wap-open"></i><b>栏目导航</b></div>
+    <ul class="ul">
+        {ifset $sidebarItems}
+            {if count($sidebarItems) > 0}
+                {foreach $sidebarItems as $item}
+                    <li pagename="{$item['name']}">
+                        <a href="{$item['url']}">{$item['name']}</a>
+                    </li>
+                {/foreach}
+            {else}
+                <!-- 如果没有子栏目，则显示当前顶级栏目本身 -->
+                {ifset $category}
+                    <li pagename="{$category['name']}">
+                        <a href="/c/{$category['slug']}">{$category['name']}</a>
+                    </li>
+                {/ifset}
+            {/if}
+        {/ifset}
+    </ul>
+</div>
+
+<script n:syntax="off">
+  // 移动端菜单
+  leftmenu();
+  function leftmenu() {
+      var btn = $(".leftmenu .wap-open"),
+          _this = $(".leftmenu ul")
+      btn.click(function (e) {
+          $(this).toggleClass("on");
+          _this.stop(true, true).fadeToggle();
+          $(document).on("click", function () {
+              _this.stop(true, true).fadeOut();
+              btn.removeClass("on");
+          });
+          e.stopPropagation();
+      });
+      _this.on("click", function (e) {
+          e.stopPropagation();
+      });
+  }
+  $('.leftmenu ul li').each(function () {
+      var isPageName = $(this).attr('pagename');
+      if (location.href.indexOf(isPageName) >= 0 || location.href.indexOf(isPageName.toLowerCase()) >= 0) {
+          $(this).addClass('aon');
+      }
+  })
+</script>
+    <div class="menubox_l">
+        <a href=""><img src="{asset('uploads/images/menu1.png')}"></a>
+        <a href=""><img src="{asset('uploads/images/menu2.png')}"></a>
+        <a href=""><img src="{asset('uploads/images/menu3.png')}"></a>
+        <a href=""><img src="{asset('uploads/images/menu4.png')}"></a>
+    </div>

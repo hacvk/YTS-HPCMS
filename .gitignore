@@ -1,0 +1,74 @@
+# 忽略所有 .sql 后缀的文件
+*.sql
+*.sh
+*.ps1
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.tar.lzma
+*.tar.lz
+*.tar.lzo
+*.tar.lz4
+*.tar.zstd
+*.tar.z
+*.bz2
+*.xz
+*.lzma
+*.lz
+*.lzo
+*.lz4
+*.zstd
+*.z
+*.gz
+*.bz
+*.bz2
+*.xz
+*.lzma
+*.lz
+*.lzo
+*.lz4
+*.zstd
+*.z
+*.gz
+*.bz
+*.bz2
+*.xz
+*.lzma
+*.lz
+*.lzo
+*.lz4
+*.zstd
+*.z
+*.bak
+*.bat
+*.log
+*.log.*
+*.log.*.*
+*.log.*.*.*
+*.log.*.*.*.*
+*.log.*.*.*.*.*
+*.log.*.*.*.*.*.*
+*.log.*.*.*.*.*.*.*
+*.log.*.*.*.*.*.*.*.*
+
+# 忽略名称中包含 test 的所有文件/目录（区分大小写，如 test.php、user_test.txt、test_dir/ 都被忽略）
+*test*
+*.example*
+
+# 忽略 oldhtml 整个目录（包括目录下所有文件/子目录）
+oldhtml/
+
+# 忽略 data/cache 目录（包括目录下所有缓存文件）
+data/cache/
+database/
+sql/
+storage/cache/
+/cache/
+old-*/
+doc/
+
+# 可选：避免忽略名称中 test 是正常业务的文件（如果有例外，比如 TestService.php 不想忽略，加 ! 排除）
+# !app/Service/TestService.php
+

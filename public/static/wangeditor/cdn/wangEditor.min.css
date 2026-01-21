@@ -1,0 +1,12 @@
+﻿/* wangeditor 鍩虹鏍峰紡 */
+.w-e-text-container {
+    height: 500px !important;
+}
+.w-e-toolbar {
+    border: 1px solid #ccc;
+    border-bottom: none;
+}
+.w-e-text-container {
+    border: 1px solid #ccc;
+    border-top: none;
+}

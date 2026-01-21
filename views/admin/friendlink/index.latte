@@ -1,0 +1,75 @@
+{extends '../layout.latte'}
+{block title}{$title}{/block}
+{block content}
+<script>
+  var friendLinkCsrfToken = {$csrf_token};
+</script>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+        {if $can_save}
+            <a class="btn btn-primary" href="/admin/friendlink/edit">新增友情链接</a>
+        {/if}
+    </div>
+
+    <table class="table table-bordered table-hover align-middle">
+        <thead>
+        <tr>
+            <th style="width:70px;">ID</th>
+            <th>名称</th>
+            <th>链接</th>
+            <th style="width:120px;">Logo</th>
+            <th style="width:90px;">排序</th>
+            <th style="width:80px;">启用</th>
+            <th style="width:140px;">操作</th>
+        </tr>
+        </thead>
+        <tbody>
+        {ifset $links}
+            {foreach $links as $l}
+            <tr>
+                <td>{$l['id']}</td>
+                <td>{$l['title']}</td>
+                <td><a href="{$l['url']}" target="_blank">{$l['url']}</a></td>
+                <td>
+                    {if $l['logo'] ?? ''}
+                        <img src="{$l['logo']}" style="height:32px;max-width:100px;object-fit:contain;">
+                    {/if}
+                </td>
+                <td>{$l['sort']}</td>
+                <td>{if $l['status']}✔{/if}</td>
+                <td>
+                    {if $can_save}
+                        <a class="btn btn-sm btn-info" href="/admin/friendlink/edit?id={$l['id']}">编辑</a>
+                    {/if}
+                    {if $can_delete}
+                        <button class="btn btn-sm btn-danger" onclick="delFriendLink({$l['id']})">删除</button>
+                    {/if}
+                </td>
+            </tr>
+            {/foreach}
+        {/ifset}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function delFriendLink(id){
+  if(!confirm('确定删除?'))return;
+  const f = new FormData();
+  f.append('id', id);
+  f.append('csrf_token', friendLinkCsrfToken);
+  fetch('/admin/friendlink/delete', { method: 'POST', body: f })
+    .then(r => r.json())
+    .then(d => {
+      alert(d.message);
+      if(d.code === 0) location.reload();
+    })
+    .catch(err => {
+      console.error('删除错误:', err);
+      alert('删除失败，请重试');
+    });
+}
+</script>
+{/block}

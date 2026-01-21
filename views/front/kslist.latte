@@ -1,0 +1,46 @@
+{extends 'layout.latte'}
+
+{block content}
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('uploads/images/nullbanner.jpg')) : asset('uploads/images/nullbanner.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+
+<div class="crumbs">
+    <div class="auto auto_1150"> 
+        <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&raquo;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{/ifset} 
+    </div>
+</div>
+
+<div class="auto auto_1150">
+    <div class="w22 fl"> 
+        {include 'sidebar.latte'}
+    </div>
+    <div class="w75 fr"> 
+        <!--k_list star-->
+        <div class="k_list">
+            <div class="auto">
+                <dl class="clearfix">
+                    {ifset $subCategories}
+                        {foreach $subCategories as $subCategory}
+                            {if isset($subCategoryArticles[$subCategory['id']])}
+                                <dd>
+                                    <div class="title">{$subCategory['name']}</div>
+                                    <ul class="ul clearfix">
+                                        {foreach $subCategoryArticles[$subCategory['id']] as $article}
+                                            <li><a href="/article/{$article['id']}" class="dot">{$article['title']}</a></li>
+                                        {/foreach}
+                                    </ul>
+                                </dd>
+                            {/if}
+                        {/foreach}
+                    {/ifset}
+                </dl>
+            </div>
+        </div>
+        <!--k_list end-->
+    </div>
+    <div class="clear"></div>
+</div>
+{/block}

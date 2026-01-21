@@ -1,0 +1,48 @@
+{extends 'layout.latte'}
+
+{block content}
+<!-- banner Start -->
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('uploads/images/nullbanner.jpg')) : asset('uploads/images/nullbanner.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+<!-- Banner End -->
+
+<div class="crumbs">
+    <div class="auto auto_1150"> 
+        <em>您的当前位置：</em>
+        {for $i = 0; $i < count($breadcrumbs); $i++}
+            {var $breadcrumb = $breadcrumbs[$i]}
+            <a href="{$breadcrumb['url']}">{$breadcrumb['title']}</a>
+            {if $i < count($breadcrumbs) - 1} > {/if}
+        {/for}
+    </div>
+</div>
+
+<div class="auto auto_1150">
+    <div class="w22 fl"> 
+        {include 'sidebar.latte'}
+    </div>
+    
+    <div class="w75 fr">
+        <!--publictxt star-->
+        <div class="publictxt">
+            <div class="auto">
+                <div class="img-ban">
+                    <img src="{$page['cover_img']|noescape}" class="img-block" alt="{$page['title']|noescape}">
+                </div>
+                <div class="detail">
+                    <h1 class="title">{$page['title']|noescape}</h1>
+                    <article class="edit-info">
+                        {$page['content']|noescape}
+                    </article>
+                </div>
+            </div>
+        </div>
+        <!--publictxt end-->
+    </div>
+    
+    <div class="clear"></div>
+</div>
+{/block}

@@ -1,0 +1,272 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Core;
+
+use App\Services\LogService;
+
+/**
+ * 应用核心类
+ */
+class App
+{
+    /**
+     * 应用配置（静态属性，在初始化后不应直接修改）
+     * 注意：由于是静态属性，无法使用 readonly，但通过 private 访问控制保护
+     *
+     * @var array<string, mixed>
+     */
+    private static array $config = [];
+
+    /**
+     * 构造函数（使用 PHP 8.0 构造函数属性提升）
+     * 注意：实例属性$initialConfig 与静态属性$config 不同名，避免冲突
+     *
+     * @param array<string, mixed> $initialConfig 初始配置数组
+     */
+    public function __construct(
+        private readonly array $initialConfig = []
+    ) {
+        // 如果传入配置，则保存到静态属性
+        if (!empty($this->initialConfig)) {
+            self::$config = $this->initialConfig;
+        }
+    }
+
+    /**
+     * 运行应用
+     *
+     * @return void
+     */
+    public function run(): void
+    {
+        // 注册全局异常处理器
+        set_exception_handler([self::class, 'handleException']);
+        set_error_handler([self::class, 'handleError']);
+        register_shutdown_function([self::class, 'handleShutdown']);
+        
+        // 初始化依赖注入容器
+        $container = new Container();
+
+        // 注册数据库单例（Medoo）
+        $container->singleton(\Medoo\Medoo::class, Database::get());
+
+        // 实例化路由器并分发请求（通过容器解析控制器依赖）
+        $router = new \App\Http\Router($container);
+        
+        // 注册中间件
+        $router->registerMiddleware(\App\Http\Middleware\LogMiddleware::class);
+        $router->registerMiddleware(\App\Http\Middleware\PerformanceMiddleware::class);
+        
+        $router->dispatch();
+    }
+    
+    /**
+     * 异常处理方法
+     *
+     * @param \Throwable $e 异常对象
+     * @return void
+     */
+    public static function handleException(\Throwable $e): void
+    {
+        $statusCode = 500;
+        $message = 'Internal Server Error';
+        
+        if (self::isDebug()) {
+            $message = $e->getMessage();
+        }
+        
+        // 记录错误日志
+        $errorData = [
+            'request_id' => $_SERVER['REQUEST_ID'] ?? uniqid('req_'),
+            'error_type' => get_class($e),
+            'error_message' => $e->getMessage(),
+            'error_stack' => $e->getTraceAsString(),
+            'uri' => $_SERVER['REQUEST_URI'] ?? '',
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'admin_id' => $_SESSION['admin_id'] ?? null,
+            'timestamp' => time(),
+        ];
+        
+        try {
+            $db = Database::get();
+            $db->insert('error_logs', $errorData);
+        } catch (\Exception $dbEx) {
+            LogService::error($dbEx, 'error_logging_failed');
+        }
+        
+        // 记录到文件日志
+        LogService::error($e, 'exception');
+        
+        // 返回错误响应
+        http_response_code($statusCode);
+        
+        if (self::isAjaxRequest()) {
+            header('Content-Type: application/json');
+            echo json_encode([
+                'code' => $statusCode,
+                'message' => $message,
+            ]);
+        } else {
+            // 使用简单的错误页面，不依赖模板文件
+            if (self::isDebug()) {
+                echo '<!DOCTYPE html><html><head><title>Error</title><style>body{font-family:Arial,sans-serif;margin:40px;background-color:#f5f5f5;}h1{color:#e74c3c;}pre{background:#fff;padding:20px;border-radius:5px;box-shadow:0 2px 5px rgba(0,0,0,0.1);overflow:auto;}code{font-family:Monaco,Consolas,"Courier New",monospace;}</style></head><body>';
+                echo '<h1>Error: ' . htmlspecialchars($message) . '</h1>';
+                echo '<h2>Details:</h2>';
+                echo '<pre><code>';
+                echo 'Type: ' . htmlspecialchars(get_class($e)) . '<br>';
+                echo 'Message: ' . htmlspecialchars($e->getMessage()) . '<br>';
+                echo 'File: ' . htmlspecialchars($e->getFile()) . ':' . (int)$e->getLine() . '<br>';
+                echo 'Trace:<br>';
+                echo htmlspecialchars($e->getTraceAsString());
+                echo '</code></pre>';
+                echo '</body></html>';
+            } else {
+                echo '<!DOCTYPE html><html><head><title>Internal Server Error</title><style>body{font-family:Arial,sans-serif;margin:40px;text-align:center;color:#333;}h1{color:#e74c3c;font-size:48px;}p{font-size:18px;margin-top:20px;}</style></head><body>';
+                echo '<h1>500</h1>';
+                echo '<p>Internal Server Error</p>';
+                echo '<p>We\'re sorry, but something went wrong on our end. Please try again later.</p>';
+                echo '</body></html>';
+            }
+        }
+        
+        exit;
+    }
+    
+    /**
+     * 错误处理方法
+     *
+     * @param int $errno 错误号
+     * @param string $errstr 错误信息
+     * @param string $errfile 错误文件
+     * @param int $errline 错误行号
+     * @return bool
+     */
+    public static function handleError(int $errno, string $errstr, string $errfile, int $errline): bool
+    {
+        // 忽略警告和通知，只处理错误
+        if (!(error_reporting() & $errno)) {
+            return false;
+        }
+        
+        $e = new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+        self::handleException($e);
+        
+        return true;
+    }
+    
+    /**
+     * 脚本终止处理
+     *
+     * @return void
+     */
+    public static function handleShutdown(): void
+    {
+        $error = error_get_last();
+        if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+            $e = new \ErrorException(
+                $error['message'],
+                0,
+                $error['type'],
+                $error['file'],
+                $error['line']
+            );
+            self::handleException($e);
+        }
+    }
+    
+    /**
+     * 检查是否为 AJAX 请求
+     *
+     * @return bool
+     */
+    private static function isAjaxRequest(): bool
+    {
+        return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
+
+    /**
+     * 获取配置
+     *
+     * 支持点语法访问嵌套配置，如getConfig('db.host')
+     *
+     * @param string $key 配置键名（支持点语法）
+     * @param mixed $default 默认值
+     * @return mixed
+     */
+    public static function getConfig(string $key, mixed $default = null): mixed
+    {
+        // 支持点语法访问嵌套配置
+        $segments = explode('.', $key);
+        $value = self::$config;
+
+        foreach ($segments as $segment) {
+            if (!is_array($value) || !array_key_exists($segment, $value)) {
+                return $default;
+            }
+            $value = $value[$segment];
+        }
+
+        return $value;
+    }
+
+    /**
+     * 设置配置
+     *
+     * @param string $key 配置键名
+     * @param mixed $value 配置值
+     * @return void
+     */
+    public static function setConfig(string $key, mixed $value): void
+    {
+        $segments = explode('.', $key);
+        $config = &self::$config;
+
+        foreach ($segments as $i => $segment) {
+            if (!isset($config[$segment]) || !is_array($config[$segment])) {
+                $config[$segment] = [];
+            }
+            if ($i === count($segments) - 1) {
+                $config[$segment] = $value;
+                break;
+            }
+            $config = &$config[$segment];
+        }
+    }
+
+    /**
+     * 获取所有配置
+     *
+     * @return array<string, mixed>
+     */
+    public static function getAllConfig(): array
+    {
+        return self::$config;
+    }
+
+    /**
+     * 判断是否为调试模式
+     *
+     * @return bool
+     */
+    public static function isDebug(): bool
+    {
+        return (bool)self::getConfig('app.debug', false);
+    }
+
+    /**
+     * 获取配置文件路径
+     * 避免硬编码路径，提高代码可维护性
+     *
+     * @param string $filename 配置文件名（如：menu.php, models.php）
+     * @return string 完整的配置文件路径
+     */
+    public static function getConfigPath(string $filename): string
+    {
+        // 移除可能的路径分隔符和相对路径
+        $filename = basename($filename);
+        
+        // 配置文件统一放在 config 目录
+        return dirname(__DIR__, 2) . '/config/' . $filename;
+    }
+}

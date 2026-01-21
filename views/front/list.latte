@@ -1,0 +1,81 @@
+{extends 'layout.latte'}
+
+{block content}
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('uploads/images/nullbanner.jpg')) : asset('static/picture/20210322110902915.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+
+<div class="crumbs">
+    <div class="auto auto_1150"> <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&gt;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{else}首页 > {$category['name']}{/ifset} </div>
+</div>
+
+<div class="auto auto_1150">
+  <div class="w22 fl"> 
+    {include 'sidebar.latte'}
+  </div>
+  <div class="w75 fr"> 
+    <!--Artlist star-->
+    <div class="Artlist">
+      <ul class="ul">
+        {ifset $articles}
+          {foreach $articles['list'] as $a}
+          <li>
+            <time>{date('Y-m-d', strtotime($a['published_at']))}</time>
+            <a href='/article/{$a['id']}' class="dot">{$a['title']}</a>
+          </li>
+          {/foreach}
+        {/ifset}
+      </ul>
+    </div>
+    <!--Artlist end--> 
+    
+    <!--分页开始-->
+    <div class="pagelist">
+      {ifset $pagination}
+        {$pagination|noescape}
+      {else}
+        <!-- 如果没有现成的分页HTML，根据数据生成简单分页 -->
+        {ifset $totalPages}
+          <div class="pagination">
+            {if $currentPage > 1}
+              <a href="/c/{$category['slug']}/page/{=$currentPage - 1}" class="prev">&laquo; 上一页</a>
+            {/if}
+            
+            {var $startPage = max(1, $currentPage - 2)}
+            {var $endPage = min($totalPages, $currentPage + 2)}
+            
+            {if $startPage > 1}
+              <a href="/c/{$category['slug']}/page/1">1</a>
+              {if $startPage > 2}
+                <span class="ellipsis">...</span>
+              {/if}
+            {/if}
+            
+            {for $i = $startPage; $i <= $endPage; $i++}
+              {if $i == $currentPage}
+                <span class="current">{$i}</span>
+              {else}
+                <a href="/c/{$category['slug']}/page/{$i}">{$i}</a>
+              {/if}
+            {/for}
+            
+            {if $endPage < $totalPages}
+              {if $endPage < $totalPages - 1}
+                <span class="ellipsis">...</span>
+              {/if}
+              <a href="/c/{$category['slug']}/page/{$totalPages}">{$totalPages}</a>
+            {/if}
+            
+            {if $currentPage < $totalPages}
+              <a href="/c/{$category['slug']}/page/{=$currentPage + 1}" class="next">下一页 &raquo;</a>
+            {/if}
+          </div>
+        {/ifset}
+      {/ifset}
+    </div>
+  </div>
+  <div class="clear"></div>
+</div>
+{/block}

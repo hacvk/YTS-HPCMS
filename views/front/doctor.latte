@@ -1,0 +1,150 @@
+{extends 'layout.latte'}
+
+{block title}{$article['title']} - {$config['site']['title'] ?? ''}{/block}
+
+{block head}
+    {if isset($article['keywords'])}
+        <meta name="keywords" content="{$article['keywords']}">
+    {/if}
+    {if isset($article['description'])}
+        <meta name="description" content="{$article['description']}">
+    {/if}
+{/block}
+
+{block content}
+<!-- Banner -->
+<div class="Banner_dy">
+    {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('static/picture/20210322110902915.jpg')) : asset('static/picture/20210322110902915.jpg')}
+    <span style="background-image:url({$bannerUrl})"></span>
+    <img src="{$bannerUrl}" alt="">
+</div>
+<!-- Banner End -->
+
+<div class="crumbs">
+    <div class="auto auto_1150"> 
+        <em>您的当前位置：</em>{ifset $breadcrumbs}{foreach $breadcrumbs as $crumb}{if $iterator->first}{else}&nbsp;&raquo;&nbsp;{/if}<a href="{$crumb['url']}">{$crumb['title']}</a>{/foreach}{/ifset} 
+    </div>
+</div>
+
+<div class="auto auto_1150">
+    <div class="w22 fl"> 
+        {include 'sidebar.latte'}
+    </div>
+    <div class="w75 fr"> 
+        <!--Artinfo star-->
+        <div class="Artinfo">
+            <div class="auto auto_1150">
+                <article class="news-details auto w_96">
+                    <!-- 专家介绍开始 -->
+                    <div class="Doctor_info edit-info">
+                        <div class="auto">
+                            <div class="txt-list">
+                                <div class="box">
+                                    <div class="ytable">
+                                        <div class="ytable-cell pic">
+                                            <img width="200px" src="{$article['cover_img'] ?? $article['pic'] ?? asset('static/picture/default-doctor.jpg')}">
+                                        </div>
+                                        <div class="ytable-cell info">
+                                            <div class="content">
+                                                <b class="yname">{$article['title']}</b><br>
+                                                <b>科室：</b>
+                                                {if isset($article['keshi']) && is_array($article['keshi'])}
+                                                    {foreach $article['keshi'] as $dept}
+                                                        {if is_array($dept) && isset($dept[2])}
+                                                            {$dept[2]}<br>
+                                                        {/if}
+                                                    {/foreach}
+                                                {elseif isset($article['keshi'])}
+                                                    {$article['keshi']}<br>
+                                                {else}
+                                                    暂无科室信息<br>
+                                                {/if}
+                                                <b>职称：</b>
+                                                {var $title = isset($article['zhicheng']) ? $article['zhicheng'] : (isset($article['title_other']) ? $article['title_other'] : null)}
+                                                {if $title}
+                                                    {$title}<br>
+                                                {else}
+                                                    暂无职称信息<br>
+                                                {/if}
+                                                <b>任职职务：</b>
+                                                {var $pos = isset($article['position']) ? $article['position'] : (isset($article['zhiwu']) ? $article['zhiwu'] : null)}
+                                                {if $pos}
+                                                    {$pos}<br>
+                                                {else}
+                                                    暂无任职职务信息<br>
+                                                {/if}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="txt-info">
+                                <div class="inner">
+                                    <h3>专业擅长</h3>
+                                    {if isset($article['summary']) && $article['summary']}
+                                        {$article['summary']|noescape}
+                                    {else}
+                                        暂无专业擅长信息
+                                    {/if}
+                                    <p></p>
+                                    <h3>专家履历</h3>
+                                    {if isset($article['content']) && $article['content']}
+                                        {$article['content']|noescape}
+                                    {else}
+                                        暂无专家履历信息
+                                    {/if}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 专家介绍结束 -->
+                    
+                    <div class="pn-page">
+                        <div class="operating">
+                            <a class="a-print" href="javascript:void(0);" onclick="window.print();">打印本页</a>
+                            <a class="a-close" href="javascript:void(0);" onclick="closeWindow();">关闭窗口</a>
+                        </div>
+                        
+                        {ifset $prevArticle}
+                            <aside class="dot">上一篇:<a href="/article/{$prevArticle['id']}">{$prevArticle['title']}</a></aside>
+                        {/ifset}
+                        
+                        {ifset $nextArticle}
+                            <aside class="dot">下一篇:<a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
+                        {/ifset}
+                    </div>
+                </article>
+            </div>
+        </div>
+        <!--Artinfo end--> 
+    </div>
+    <div class="clear"></div>
+</div>
+
+<script>
+function SetFont(size) {
+    var divBody = document.getElementById("news_content");
+    if(!divBody) {
+        return;
+    }
+    divBody.style.fontSize = size + "px";
+    var divChildBody = divBody.childNodes;
+    for(var i = 0; i < divChildBody.length; i++) {
+        if (divChildBody[i].nodeType==1) {
+            divChildBody[i].style.fontSize = size + "px";
+        }
+    }
+}
+
+function closeWindow() {
+    var userAgent = navigator.userAgent;
+    if (userAgent.indexOf("Firefox") != -1 || userAgent.indexOf("Chrome") != -1) {
+        location.href = "about:blank";
+    } else {
+        window.opener = null;
+        window.open('', '_self');
+    }
+    window.close();
+}
+</script>
+{/block}
