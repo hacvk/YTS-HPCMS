@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\AdminBaseController;
 use App\Core\App;
-use App\Core\Security;
+use App\Services\SecurityService;
 use App\Models\Content;
 use App\Models\Category;
 use App\Services\ContentService;
@@ -21,7 +21,8 @@ class ArticleController extends AdminBaseController
         private readonly ContentService $contentService,
         private readonly CategoryService $categoryService,
         private readonly Content $contentModel,
-        private readonly Category $categoryModel
+        private readonly Category $categoryModel,
+        private readonly SecurityService $securityService
     ) {
         parent::__construct();
     }
@@ -47,6 +48,13 @@ class ArticleController extends AdminBaseController
                 $where['cid'] = $cid;
             }
             if (!empty($keyword)) {
+                // 限制长度
+                if (strlen($keyword) > 100) {
+                    $this->errorJson('关键词过长');
+                    return;
+                }
+                // 转义特殊字符
+                $keyword = htmlspecialchars($keyword, ENT_QUOTES, 'UTF-8');
                 $where['keyword'] = $keyword;
             }
             
@@ -249,7 +257,7 @@ class ArticleController extends AdminBaseController
                 'title' => $this->post('title', ''),
                 'cover_img' => $this->post('cover_img', ''),
                 'summary' => $this->post('summary', ''),
-                'content' => Security::sanitizeHtml($this->post('content', '')),
+                'content' => $this->securityService->sanitizeHtml($this->post('content', '')),
                 'published_at' => $this->post('published_at', ''),
                 'status' => (int)$this->post('status', 1),
                 'is_top' => (int)$this->post('is_top', 0),

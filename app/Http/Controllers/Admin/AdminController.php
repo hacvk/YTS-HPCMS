@@ -10,7 +10,8 @@ use App\Services\LogService;
 class AdminController extends AdminBaseController
 {
     public function __construct(
-        private readonly \Medoo\Medoo $db
+        private readonly \Medoo\Medoo $db,
+        private readonly \App\Services\SecurityService $securityService
     ) {
         parent::__construct();
     }
@@ -164,7 +165,7 @@ class AdminController extends AdminBaseController
             ];
 
             if ($password !== '') {
-                $data['password'] = Security::passwordHash($password);
+                $data['password'] = $this->securityService->passwordHash($password);
             }
 
             $db->update('sys_admin', $data, ['id' => $id]);
@@ -182,7 +183,7 @@ class AdminController extends AdminBaseController
 
             $db->insert('sys_admin', [
                 'username' => $username,
-                'password' => Security::passwordHash($password),
+                'password' => $this->securityService->passwordHash($password),
                 'name' => $name,
                 'email' => $email,
                 'phone' => $phone,

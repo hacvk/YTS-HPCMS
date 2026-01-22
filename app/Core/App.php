@@ -50,6 +50,9 @@ class App
 
         // 注册数据库单例（Medoo）
         $container->singleton(\Medoo\Medoo::class, Database::get());
+        
+        // 注册安全服务
+        $container->singleton(\App\Services\SecurityService::class, new \App\Services\SecurityService());
 
         // 实例化路由器并分发请求（通过容器解析控制器依赖）
         $router = new \App\Http\Router($container);
@@ -57,6 +60,7 @@ class App
         // 注册中间件
         $router->registerMiddleware(\App\Http\Middleware\LogMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\PerformanceMiddleware::class);
+        $router->registerMiddleware(\App\Http\Middleware\SecurityMiddleware::class);
         
         $router->dispatch();
     }

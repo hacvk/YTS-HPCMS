@@ -19,7 +19,8 @@ class LoginController extends BaseController
 {
     public function __construct(
         private readonly \Medoo\Medoo $db,
-        private readonly CaptchaService $captchaService
+        private readonly CaptchaService $captchaService,
+        private readonly \App\Services\SecurityService $securityService
     ) {
         parent::__construct();
         $this->view = new View();
@@ -48,7 +49,7 @@ class LoginController extends BaseController
     public function index(): void
     {
         // 生成 CSRF Token
-        $csrfToken = Security::generateCsrfToken();
+        $csrfToken = $this->securityService->generateCsrfToken();
 
         $this->view->render('admin/login', [
             'title' => '后台登录',
@@ -94,7 +95,7 @@ class LoginController extends BaseController
 
             // 验证 CSRF Token
             $csrfToken = $this->post('csrf_token', '');
-            if (!Security::checkCsrfToken($csrfToken)) {
+            if (!$this->securityService->checkCsrfToken($csrfToken)) {
                 $this->errorJson('CSRF Token 验证失败');
             }
 
@@ -154,13 +155,13 @@ class LoginController extends BaseController
             }
 
             // 验证密码
-            if (!Security::passwordVerify($password, $admin['password'])) {
+            if (!$this->securityService->passwordVerify($password, $admin['password'])) {
                 $this->errorJson('用户名或密码错误');
             }
 
             // 检查密码是否需要重新哈希
-            if (Security::passwordNeedsRehash($admin['password'])) {
-                $newHash = Security::passwordHash($password);
+            if ($this->securityService->passwordNeedsRehash($admin['password'])) {
+                $newHash = $this->securityService->passwordHash($password);
                 $db->update('sys_admin', [
                     'password' => $newHash
                 ], [
@@ -194,9 +195,15 @@ class LoginController extends BaseController
             $this->successJson('登录成功', null, '/admin/dashboard');
 
         } catch (\Exception $e) {
-            // 记录错误日志
-            error_log("登录失败: " . $e->getMessage());
-            $this->errorJson('登录失败：' . $e->getMessage());
+            // 记录详细错误日志
+            \App\Services\LogService::error($e, 'login_failed');
+            
+            // 根据环境返回适当的错误消息
+            if (\App\Core\App::isDebug()) {
+                $this->errorJson('登录失败：' . $e->getMessage());
+            } else {
+                $this->errorJson('登录失败，请稍后重试');
+            }
         }
     }
 

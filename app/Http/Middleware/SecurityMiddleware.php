@@ -1,0 +1,85 @@
+<?php
+// app/Http/Middleware/SecurityMiddleware.php
+
+declare(strict_types=1);
+
+namespace App\Http\Middleware;
+
+use App\Core\App;
+use App\Services\SessionService;
+
+/**
+ * 安全中间件 - 防止调试脚本暴露
+ */
+class SecurityMiddleware
+{
+    /**
+     * 处理请求
+     *
+     * @param callable $next 下一个中间件或控制器
+     * @return mixed
+     */
+    public function handle(callable $next)
+    {
+        // 检查是否为调试脚本
+        $scriptName = basename($_SERVER['SCRIPT_NAME'] ?? '');
+        $debugScripts = [
+            'phpinfo_check.php',
+            'debug_info.php',
+            'test_sidebar_logic.php',
+            'test_timezone.php',
+            'db_test.php',
+            'simple_router_test.php',
+        ];
+
+        if (in_array($scriptName, $debugScripts, true)) {
+            // 生产环境直接拒绝
+            if (!App::isDebug()) {
+                http_response_code(404);
+                die('Not Found');
+            }
+
+            // 开发环境检查 IP
+            $allowedIps = ['127.0.0.1', '::1'];
+            $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
+
+            if (!in_array($clientIp, $allowedIps, true)) {
+                http_response_code(403);
+                die('Access denied');
+            }
+        }
+
+        // 添加安全 HTTP 头
+        $this->addSecurityHeaders();
+
+        // 继续执行
+        return $next();
+    }
+
+    /**
+     * 添加安全 HTTP 头
+     */
+    private function addSecurityHeaders(): void
+    {
+        // 防止点击劫持
+        header('X-Frame-Options: DENY');
+
+        // 防止 MIME 类型嗅探
+        header('X-Content-Type-Options: nosniff');
+
+        // Referrer 策略
+        header('Referrer-Policy: strict-origin-when-cross-origin');
+
+        // 权限策略
+        header('Permissions-Policy: geolocation=(), microphone=(), camera=(), clipboard-read=(), clipboard-write=()');
+
+        // CSP (根据环境调整)
+        if (App::isDebug()) {
+            // 开发环境宽松的 CSP
+            header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'");
+        } else {
+            // 生产环境严格的 CSP
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'");
+        }
+    }
+}
