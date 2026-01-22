@@ -1,7 +1,7 @@
 {* views/front/doctorlist.latte *}
 {extends 'layout.latte'}
 
-{block title}{ifset $category}{($category['name'] ?? '专家列表')}{else}专家列表{/ifset} - {$config['site']['title'] ?? ''}{/block}
+
 
 {block head}
     <meta name="keywords" content="{ifset $category}{$category['keywords'] ?? ''}{/ifset}" />

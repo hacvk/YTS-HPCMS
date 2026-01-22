@@ -1,7 +1,5 @@
 {extends 'layout.latte'}
 
-{block title}{$article['title']} - {$config['site']['title'] ?? ''}{/block}
-
 {block head}
     {if isset($article['keywords'])}
         <meta name="keywords" content="{$article['keywords']}">

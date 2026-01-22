@@ -13,44 +13,42 @@
     <div class="card shadow mb-4">
         <div class="card-body">
             <form class="form-inline" method="get" action="/admin/visitor/alerts">
-                <div class="form-group mr-3 mb-2">
-                    <label for="risk_level" class="mr-2">风险等级：</label>
-                    <select class="form-control" id="risk_level" name="risk_level">
-                        <option value="">全部</option>
-                        <option value="critical" {if $riskLevel == 'critical'}selected{/if}>严重</option>
-                        <option value="high" {if $riskLevel == 'high'}selected{/if}>高</option>
-                        <option value="medium" {if $riskLevel == 'medium'}selected{/if}>中</option>
-                        <option value="low" {if $riskLevel == 'low'}selected{/if}>低</option>
-                    </select>
+                <div class="row w-100">
+                    <div class="col-md-2 mb-2">
+                        <select class="form-control" id="risk_level" name="risk_level">
+                            <option value="" {if !$riskLevel}selected{/if}>风险等级</option>
+                            <option value="critical" {if $riskLevel == 'critical'}selected{/if}>严重</option>
+                            <option value="high" {if $riskLevel == 'high'}selected{/if}>高</option>
+                            <option value="medium" {if $riskLevel == 'medium'}selected{/if}>中</option>
+                            <option value="low" {if $riskLevel == 'low'}selected{/if}>低</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <select class="form-control" id="alert_type" name="alert_type">
+                            <option value="" {if !$alertType}selected{/if}>告警类型</option>
+                            <option value="high_frequency" {if $alertType == 'high_frequency'}selected{/if}>高频访问</option>
+                            <option value="suspicious_ip" {if $alertType == 'suspicious_ip'}selected{/if}>可疑IP</option>
+                            <option value="bot_detection" {if $alertType == 'bot_detection'}selected{/if}>爬虫检测</option>
+                            <option value="abnormal_referrer" {if $alertType == 'abnormal_referrer'}selected{/if}>异常来源</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{$startDate}" placeholder="开始日期">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{$endDate}" placeholder="结束日期">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <div class="btn-group w-100">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 搜索
+                            </button>
+                            <a href="/admin/visitor/alerts" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i> 重置
+                            </a>
+                        </div>
+                    </div>
                 </div>
-
-                <div class="form-group mr-3 mb-2">
-                    <label for="alert_type" class="mr-2">告警类型：</label>
-                    <select class="form-control" id="alert_type" name="alert_type">
-                        <option value="">全部</option>
-                        <option value="high_frequency" {if $alertType == 'high_frequency'}selected{/if}>高频访问</option>
-                        <option value="suspicious_ip" {if $alertType == 'suspicious_ip'}selected{/if}>可疑IP</option>
-                        <option value="bot_detection" {if $alertType == 'bot_detection'}selected{/if}>爬虫检测</option>
-                        <option value="abnormal_referrer" {if $alertType == 'abnormal_referrer'}selected{/if}>异常来源</option>
-                    </select>
-                </div>
-
-                <div class="form-group mr-3 mb-2">
-                    <label for="start_date" class="mr-2">开始日期：</label>
-                    <input type="date" class="form-control" id="start_date" name="start_date" value="{$startDate}">
-                </div>
-
-                <div class="form-group mr-3 mb-2">
-                    <label for="end_date" class="mr-2">结束日期：</label>
-                    <input type="date" class="form-control" id="end_date" name="end_date" value="{$endDate}">
-                </div>
-
-                <button type="submit" class="btn btn-primary mb-2">
-                    <i class="fas fa-search"></i> 搜索
-                </button>
-                <a href="/admin/visitor/alerts" class="btn btn-secondary mb-2 ml-2">
-                    <i class="fas fa-redo"></i> 重置
-                </a>
             </form>
         </div>
     </div>

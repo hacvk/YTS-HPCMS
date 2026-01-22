@@ -1,7 +1,7 @@
 {* views/front/eqlist.latte - 设备展示图文列表页 *}
 {extends 'layout.latte'}
 
-{block title}{ifset $category}{($category['name'] ?? '设备展示')}{else}设备展示{/ifset} - {$config['site']['title'] ?? ''}{/block}
+
 
 {block head}
     <meta name="keywords" content="{ifset $category}{$category['keywords'] ?? ''}{/ifset}" />

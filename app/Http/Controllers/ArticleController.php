@@ -10,6 +10,7 @@ use App\Services\CategoryService;
 use App\Services\DoctorService;
 use App\Services\SeoService;
 use App\Services\RecommendationService;
+use App\Services\SettingService;
 use Medoo\Medoo;
 
 /**
@@ -33,6 +34,7 @@ class ArticleController extends BaseController
         private readonly DoctorService $doctorService,
         private readonly SeoService $seoService,
         private readonly RecommendationService $recommendationService,
+        private readonly SettingService $settingService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -149,8 +151,13 @@ class ArticleController extends BaseController
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $appBaseUrl = $protocol . '://' . $host;
 
+            // 获取网站配置并设置标题
+            $siteConfig = $this->settingService->getSiteConfig();
+            $siteTitle = $siteConfig['site_title'] ?? '默认网站标题';
+            $pageTitle = ($processedArticle['title'] ?? '') . ' - ' . $siteTitle;
+            
             $this->render($detailTemplate, [
-                'title' => $processedArticle['title'] ?? '',
+                'title' => $pageTitle,
                 'article' => $processedArticle,
                 'category' => $category,
                 'prevArticle' => $prevArticle,

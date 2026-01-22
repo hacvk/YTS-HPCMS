@@ -9,6 +9,7 @@ use App\Services\ContentService;
 use App\Services\SiteService;
 use App\Services\CategoryService;
 use App\Services\SeoService;
+use App\Services\SettingService;
 use Medoo\Medoo;
 
 /**
@@ -34,6 +35,7 @@ class PageController extends BaseController
         private readonly SiteService $siteService,
         private readonly CategoryService $categoryService,
         private readonly SeoService $seoService,
+        private readonly SettingService $settingService,
         private readonly Medoo $db
     ) {
         parent::__construct();
@@ -156,9 +158,14 @@ class PageController extends BaseController
             $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
             $appBaseUrl = $protocol . '://' . $host;
             
+            // 获取网站配置并设置标题
+            $siteConfig = $this->settingService->getSiteConfig();
+            $siteTitle = $siteConfig['site_title'] ?? '默认网站标题';
+            $pageTitle = (string)($category['name'] ?? '') . ' - ' . $siteTitle;
+            
             // 渲染模板
             $this->render($template, [
-                'title' => (string)($category['name'] ?? ''),
+                'title' => $pageTitle,
                 'category' => $category,
                 'page' => $pageContent,
                 'navItems' => $navItems,
