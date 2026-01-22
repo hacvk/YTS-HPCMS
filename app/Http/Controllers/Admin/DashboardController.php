@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Services\CacheService;
+use App\Services\SettingService;
 
 /**
  * 后台首页控制器
@@ -12,7 +13,8 @@ class DashboardController extends AdminBaseController
 {
     public function __construct(
         private readonly \Medoo\Medoo $db,
-        private readonly CacheService $cacheService
+        private readonly CacheService $cacheService,
+        private readonly SettingService $settingService
     ) {
         parent::__construct();
     }
@@ -33,19 +35,37 @@ class DashboardController extends AdminBaseController
             // 获取最近的操作日志
             $recentLogs = $this->getRecentLogs($db);
 
+            // 获取站点配置
+            $siteConfig = $this->settingService->getSiteConfig();
+            
+            // 合并系统信息和站点配置
+            $systemInfo = array_merge($this->getSystemInfo(), $siteConfig);
+            
             $this->render('admin/dashboard', [
                 'title' => '控制台',
                 'stats' => $stats,
                 'recent_logs' => $recentLogs,
+                'user' => $this->getUserInfo(),
+                'system_info' => $this->getSystemInfo(),
+                'site_config' => $siteConfig,
             ]);
 
         } catch (\Exception $e) {
+            // 获取站点配置
+            $siteConfig = $this->settingService->getSiteConfig();
+            
+            // 合并系统信息和站点配置
+            $systemInfo = array_merge($this->getSystemInfo(), $siteConfig);
+            
             // 数据库查询失败，显示错误或使用默认数据
             $this->render('admin/dashboard', [
                 'title' => '控制台',
                 'stats' => $this->getDefaultStats(),
                 'recent_logs' => [],
+                'user' => $this->getUserInfo(),
+                'system_info' => $this->getSystemInfo(),
                 'error' => $e->getMessage(),
+                'site_config' => $siteConfig,
             ]);
         }
     }
@@ -228,5 +248,63 @@ class DashboardController extends AdminBaseController
             'today_logins' => 0,
             'system_days' => 0,
         ];
+    }
+
+    /**
+     * 获取系统信息
+     *
+     * @return array
+     */
+    private function getSystemInfo(): array
+    {
+        // 从 config/system.php 加载系统信息
+        $systemConfig = require APP_ROOT . '/config/system.php';
+        return $systemConfig['system'] ?? [];
+    }
+
+    /**
+     * 获取用户角色信息
+     *
+     * @param \Medoo\Medoo $db
+     * @return array
+     */
+    private function getUserRoleInfo(\Medoo\Medoo $db): array
+    {
+        try {
+            if (empty($this->admin['role_id'])) {
+                return ['role_name' => '未知角色'];
+            }
+            
+            // 查询角色名称
+            $role = $db->get('sys_role', 'name', ['id' => $this->admin['role_id']]);
+            return ['role_name' => $role ?? '普通管理员'];
+        } catch (\Throwable $e) {
+            return ['role_name' => '普通管理员'];
+        }
+    }
+    
+    /**
+     * 获取完整用户信息
+     *
+     * @return array
+     */
+    private function getUserInfo(): array
+    {
+        try {
+            $db = $this->db;
+            $userInfo = $this->admin ?? [];
+            
+            // 添加角色信息
+            $roleInfo = $this->getUserRoleInfo($db);
+            $userInfo = array_merge($userInfo, $roleInfo);
+            
+            // 添加最后登录IP
+            $userInfo['last_login_ip'] = $this->admin['last_login_ip'] ?? '-';
+            
+            return $userInfo;
+        } catch (\Exception $e) {
+            // 出错时返回基础用户信息
+            return $this->admin ?? [];
+        }
     }
 }
