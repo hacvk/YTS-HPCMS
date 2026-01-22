@@ -99,16 +99,16 @@ class AnomalyDetectionService
         $thresholds = self::getThresholds();
 
         // 按IP统计每分钟请求数
-        $highFrequencyIPs = $db->query("
-            SELECT ip, COUNT(*) as request_count,
+        $highFrequencyIPs = $db->query(
+            "SELECT ip, COUNT(*) as request_count,
                    MIN(timestamp) as first_request,
                    MAX(timestamp) as last_request
             FROM visitor_logs
-            WHERE timestamp >= ? AND timestamp <= ?
+            WHERE timestamp >= :start AND timestamp <= :end
             GROUP BY ip
-            HAVING request_count >= ?
+            HAVING request_count >= :threshold
             ORDER BY request_count DESC
-        ", [$timestampStart, $timestampEnd, $thresholds['high_frequency']['requests_per_hour']])->fetchAll();
+        ", [':start' => $timestampStart, ':end' => $timestampEnd, ':threshold' => $thresholds['high_frequency']['requests_per_hour']])->fetchAll();
 
         $alerts = [];
         foreach ($highFrequencyIPs as $ip) {
@@ -142,21 +142,21 @@ class AnomalyDetectionService
         $thresholds = self::getThresholds();
 
         // 统计每个IP的错误率
-        $suspiciousIPs = $db->query("
-            SELECT ip,
+        $suspiciousIPs = $db->query(
+            "SELECT ip,
                    COUNT(*) as total_requests,
                    SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) as error_requests,
                    ROUND(SUM(CASE WHEN status_code >= 400 THEN 1 ELSE 0 END) / COUNT(*), 2) as error_rate
             FROM visitor_logs
-            WHERE timestamp >= ? AND timestamp <= ?
+            WHERE timestamp >= :start AND timestamp <= :end
             GROUP BY ip
-            HAVING total_requests >= ? AND error_rate >= ?
+            HAVING total_requests >= :min_requests AND error_rate >= :error_rate
             ORDER BY error_rate DESC
         ", [
-            $timestampStart,
-            $timestampEnd,
-            $thresholds['suspicious_ip']['min_requests'],
-            $thresholds['suspicious_ip']['error_rate']
+            ':start' => $timestampStart,
+            ':end' => $timestampEnd,
+            ':min_requests' => $thresholds['suspicious_ip']['min_requests'],
+            ':error_rate' => $thresholds['suspicious_ip']['error_rate']
         ])->fetchAll();
 
         $alerts = [];
@@ -191,17 +191,17 @@ class AnomalyDetectionService
         $thresholds = self::getThresholds();
 
         // 统计爬虫请求
-        $bots = $db->query("
-            SELECT ip, user_agent, COUNT(*) as request_count
+        $bots = $db->query(
+            "SELECT ip, user_agent, COUNT(*) as request_count
             FROM visitor_logs
-            WHERE timestamp >= ? AND timestamp <= ? AND is_bot = 1
+            WHERE timestamp >= :start AND timestamp <= :end AND is_bot = 1
             GROUP BY ip, user_agent
-            HAVING request_count >= ?
+            HAVING request_count >= :min_requests
             ORDER BY request_count DESC
         ", [
-            $timestampStart,
-            $timestampEnd,
-            $thresholds['bot_detection']['min_requests']
+            ':start' => $timestampStart,
+            ':end' => $timestampEnd,
+            ':min_requests' => $thresholds['bot_detection']['min_requests']
         ])->fetchAll();
 
         $alerts = [];
@@ -235,21 +235,21 @@ class AnomalyDetectionService
         $thresholds = self::getThresholds();
 
         // 检测异常来源URL
-        $abnormalReferrers = $db->query("
-            SELECT referrer, COUNT(*) as request_count
+        $abnormalReferrers = $db->query(
+            "SELECT referrer, COUNT(*) as request_count
             FROM visitor_logs
-            WHERE timestamp >= ? AND timestamp <= ?
+            WHERE timestamp >= :start AND timestamp <= :end
                   AND referrer != ''
                   AND referrer NOT LIKE '%yycms.com%'
                   AND referrer NOT LIKE '%google.com%'
                   AND referrer NOT LIKE '%baidu.com%'
             GROUP BY referrer
-            HAVING request_count >= ?
+            HAVING request_count >= :min_requests
             ORDER BY request_count DESC
         ", [
-            $timestampStart,
-            $timestampEnd,
-            $thresholds['abnormal_referrer']['min_requests']
+            ':start' => $timestampStart,
+            ':end' => $timestampEnd,
+            ':min_requests' => $thresholds['abnormal_referrer']['min_requests']
         ])->fetchAll();
 
         $alerts = [];
@@ -396,32 +396,32 @@ class AnomalyDetectionService
             $db = Database::get();
 
             // 按告警类型统计
-            $byType = $db->query("
-                SELECT alert_type, COUNT(*) as count, risk_level
+            $byType = $db->query(
+                "SELECT alert_type, COUNT(*) as count, risk_level
                 FROM visitor_alerts
-                WHERE created_at >= ? AND created_at <= ?
+                WHERE created_at >= :start AND created_at <= :end
                 GROUP BY alert_type, risk_level
                 ORDER BY count DESC
-            ", [$startDate, $endDate])->fetchAll();
+            ", [':start' => $startDate, ':end' => $endDate])->fetchAll();
 
             // 按风险等级统计
-            $byRisk = $db->query("
-                SELECT risk_level, COUNT(*) as count
+            $byRisk = $db->query(
+                "SELECT risk_level, COUNT(*) as count
                 FROM visitor_alerts
-                WHERE created_at >= ? AND created_at <= ?
+                WHERE created_at >= :start AND created_at <= :end
                 GROUP BY risk_level
                 ORDER BY risk_level DESC
-            ", [$startDate, $endDate])->fetchAll();
+            ", [':start' => $startDate, ':end' => $endDate])->fetchAll();
 
             // 按IP统计
-            $byIP = $db->query("
-                SELECT ip, COUNT(*) as count, MAX(risk_level) as max_risk
+            $byIP = $db->query(
+                "SELECT ip, COUNT(*) as count, MAX(risk_level) as max_risk
                 FROM visitor_alerts
-                WHERE created_at >= ? AND created_at <= ?
+                WHERE created_at >= :start AND created_at <= :end
                 GROUP BY ip
                 ORDER BY count DESC
                 LIMIT 20
-            ", [$startDate, $endDate])->fetchAll();
+            ", [':start' => $startDate, ':end' => $endDate])->fetchAll();
 
             return [
                 'by_type' => $byType,
