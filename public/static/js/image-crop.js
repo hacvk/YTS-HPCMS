@@ -113,6 +113,11 @@
                     fd.append("target_width", parseInt(document.getElementById("targetWidth").value) || 0);
                     fd.append("target_height", parseInt(document.getElementById("targetHeight").value) || 0);
                     fd.append("csrf_token", document.getElementById("csrf_token").value);
+                    
+                    // 获取文章ID
+                    const articleIdInput = document.querySelector('input[name="id"]');
+                    const articleId = articleIdInput ? articleIdInput.value : 0;
+                    fd.append("article_id", articleId);
 
                     const resp = await fetch("/admin/upload/uploadCrop", { method: "POST", body: fd });
                     const json = await resp.json();

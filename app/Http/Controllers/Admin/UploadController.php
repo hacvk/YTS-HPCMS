@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\AdminBaseController;
+use App\Models\Category;
 use App\Models\File;
 use App\Services\FileService;
 use App\Core\Security;
@@ -14,6 +15,7 @@ use App\Core\Security;
 class UploadController extends AdminBaseController
 {
     public function __construct(
+        private readonly Category $categoryModel,
         private readonly File $fileModel
     ) {
         parent::__construct();
@@ -277,7 +279,7 @@ class UploadController extends AdminBaseController
      */
     public function crop(): void
     {
-        // 验证权限
+        // 验证角色权限
         $this->requirePerm('admin:upload:crop');
         
         if (!$this->isPost()) {
@@ -297,6 +299,17 @@ class UploadController extends AdminBaseController
             $height = (int)$this->post('height', 0);
             $targetWidth = (int)$this->post('target_width', 0) ?: null;
             $targetHeight = (int)$this->post('target_height', 0) ?: null;
+            // 获取文章ID（从参数中）
+            $articleId = (int)$this->post('article_id', 0);
+
+            // 检查栏目裁剪权限
+            if ($articleId > 0) {
+                $category = $this->categoryModel->getByArticleId($articleId);
+                if ($category && isset($category['allow_crop']) && $category['allow_crop'] == 0) {
+                    $this->errorJson('该栏目不允许使用图片裁剪功能');
+                    return;
+                }
+            }
 
             if (empty($sourceUrl)) {
                 $this->errorJson('请选择要裁剪的图片');
@@ -336,7 +349,7 @@ class UploadController extends AdminBaseController
      */
     public function uploadCrop(): void
     {
-        // 验证权限
+        // 验证角色权限
         $this->requirePerm('admin:upload:crop');
         
         if (!$this->isPost()) {
@@ -356,6 +369,17 @@ class UploadController extends AdminBaseController
             $height = (int)$this->post('height', 0);
             $targetWidth = (int)$this->post('target_width', 0) ?: null;
             $targetHeight = (int)$this->post('target_height', 0) ?: null;
+            // 获取文章ID（从参数中）
+            $articleId = (int)$this->post('article_id', 0);
+
+            // 检查栏目裁剪权限
+            if ($articleId > 0) {
+                $category = $this->categoryModel->getByArticleId($articleId);
+                if ($category && isset($category['allow_crop']) && $category['allow_crop'] == 0) {
+                    $this->errorJson('该栏目不允许使用图片裁剪功能');
+                    return;
+                }
+            }
 
             if (empty($base64Data)) {
                 $this->errorJson('请上传图片');

@@ -101,7 +101,7 @@
                                     <input type="text" class="form-control" id="cover_img" name="cover_img" value="{if isset($article['cover_img'])}{$article['cover_img']}{/if}" placeholder="请输入图片URL">
                                     <div class="input-group-append">
                                         <button type="button" class="btn btn-outline-secondary" onclick="selectImage()">选择图片</button>
-                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()" id="cropButton">裁剪上传</button>
+                                        <button type="button" class="btn btn-outline-primary" onclick="selectImageWithCrop()" id="cropButton" style="display: none;">裁剪上传</button>
                                     </div>
                                 </div>
                                 {if isset($article['cover_img']) && $article['cover_img']}
@@ -747,6 +747,47 @@
                 deleteBtn.innerHTML = originalDeleteText;
                 deleteBtn.disabled = false;
             });
+        }
+    });
+
+    // 监听栏目选择变化
+    document.getElementById('category_id')?.addEventListener('change', function(e) {
+        const categoryId = e.target.value;
+        const cropButton = document.getElementById('cropButton');
+
+        if (categoryId && categoryId > 0) {
+            // 调用API获取栏目裁剪设置
+            fetch('/admin/category/getAllowCropByCategory?category_id=' + categoryId)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.code === 0) {
+                        // 根据设置显示/隐藏裁剪按钮
+                        if (data.allow_crop === 1) {
+                            cropButton.style.display = '';
+                        } else {
+                            cropButton.style.display = 'none';
+                        }
+                    } else {
+                        // 默认隐藏裁剪按钮
+                        cropButton.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('获取栏目裁剪设置失败:', error);
+                    cropButton.style.display = 'none';
+                });
+        } else {
+            // 未选择栏目时隐藏裁剪按钮
+            cropButton.style.display = 'none';
+        }
+    });
+
+    // 页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        const categoryId = document.getElementById('category_id')?.value;
+        if (categoryId && categoryId > 0) {
+            // 触发一次变化事件，初始化裁剪按钮显示状态
+            document.getElementById('category_id').dispatchEvent(new Event('change'));
         }
     });
 })();

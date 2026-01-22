@@ -60,6 +60,7 @@ return [
     'GET /admin/category/getCategoryOptions' => ['Admin\\CategoryController', 'getCategoryOptions'],
     'GET /admin/category/getContentOptions' => ['Admin\\CategoryController', 'getContentOptions'],
     'GET /admin/category/getAllowCrop' => ['Admin\\CategoryController', 'getAllowCrop'],
+    'GET /admin/category/getAllowCropByCategory' => ['Admin\\CategoryController', 'getAllowCropByCategory'],
 
     // 单页管理
     'GET /admin/page' => ['Admin\\PageController', 'index'],

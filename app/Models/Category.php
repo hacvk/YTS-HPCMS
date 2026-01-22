@@ -182,6 +182,40 @@ class Category
     }
 
     /**
+     * 根据文章ID获取栏目信息
+     *
+     * @param int $articleId 文章ID
+     * @return array|null
+     */
+    public function getByArticleId(int $articleId): ?array
+    {
+        try {
+            $db = $this->db;
+
+            // 首先通过文章ID获取栏目ID
+            $contentResult = $db->get('sys_content', 'category_id', [
+                'id' => $articleId
+            ]);
+
+            if (!$contentResult) {
+                return null;
+            }
+
+            $categoryId = $contentResult;
+
+            // 根据栏目ID获取栏目信息
+            $category = $db->get(self::TABLE, '*', [
+                'id' => $categoryId
+            ]);
+
+            return $category ? $category : null;
+        } catch (\Exception $e) {
+            error_log('根据文章ID获取栏目失败: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 检查栏目是否为频道
      *
      * @param int $id 栏目ID

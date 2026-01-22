@@ -611,4 +611,46 @@ class CategoryController extends AdminBaseController
             ]);
         }
     }
+
+    /**
+     * 获取栏目裁剪设置（AJAX接口）
+     *
+     * @return void
+     */
+    public function getAllowCropByCategory(): void
+    {
+        try {
+            $categoryId = (int)$this->get('category_id', 0);
+
+            if ($categoryId <= 0) {
+                $this->json([
+                    'code' => 1,
+                    'message' => '栏目ID无效'
+                ]);
+                return;
+            }
+
+            // 获取栏目信息
+            $categoryModel = $this->categoryModel;
+            $category = $categoryModel->getById($categoryId);
+
+            if (!$category) {
+                $this->json([
+                    'code' => 1,
+                    'message' => '栏目不存在'
+                ]);
+                return;
+            }
+
+            $this->json([
+                'code' => 0,
+                'allow_crop' => (int)($category['allow_crop'] ?? 0)
+            ]);
+        } catch (\Exception $e) {
+            $this->json([
+                'code' => 1,
+                'message' => '获取栏目裁剪设置失败：' . $e->getMessage()
+            ]);
+        }
+    }
 }
