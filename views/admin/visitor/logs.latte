@@ -1,0 +1,178 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+    </div>
+
+    <!-- 筛选搜索框 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form class="form-inline" method="get" action="/admin/visitor/logs">
+                <div class="row w-100">
+                    <div class="col-md-2 mb-2">
+                        <input type="text" class="form-control" id="ip" name="ip" value="{$ip}" placeholder="IP地址">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="text" class="form-control" id="url" name="url" value="{$url}" placeholder="URL">
+                    </div>
+                    <div class="col-md-1 mb-2">
+                        <select class="form-control" id="status_code" name="status_code">
+                            <option value="0" {if $status_code == 0}selected{/if}>状态码</option>
+                            <option value="200" {if $status_code == 200}selected{/if}>200</option>
+                            <option value="301" {if $status_code == 301}selected{/if}>301</option>
+                            <option value="302" {if $status_code == 302}selected{/if}>302</option>
+                            <option value="400" {if $status_code == 400}selected{/if}>400</option>
+                            <option value="403" {if $status_code == 403}selected{/if}>403</option>
+                            <option value="404" {if $status_code == 404}selected{/if}>404</option>
+                            <option value="500" {if $status_code == 500}selected{/if}>500</option>
+                        </select>
+                    </div>
+                    <div class="col-md-1 mb-2">
+                        <select class="form-control" id="is_bot" name="is_bot">
+                            <option value="-1" {if $is_bot == -1}selected{/if}>访客类型</option>
+                            <option value="0" {if $is_bot == 0}selected{/if}>正常</option>
+                            <option value="1" {if $is_bot == 1}selected{/if}>爬虫</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{$start_date}" placeholder="开始日期">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{$end_date}" placeholder="结束日期">
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <div class="btn-group w-100">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> 搜索
+                            </button>
+                            <a href="/admin/visitor/logs" class="btn btn-secondary">
+                                <i class="fas fa-redo"></i> 重置
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 访客日志列表表格 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">访客日志列表</h6>
+            <div class="btn-group" role="group">
+                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                    <i class="fas fa-list"></i> 日志列表
+                </a>
+                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                    <i class="fas fa-chart-bar"></i> 统计
+                </a>
+                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                    <i class="fas fa-exclamation-triangle"></i> 告警
+                </a>
+                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                    <i class="fas fa-file-alt"></i> 检测报告
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 80px; width: 80px;">ID</th>
+                            <th style="min-width: 120px; width: 120px;">IP地址</th>
+                            <th style="min-width: 150px; width: 150px;">URL</th>
+                            <th style="min-width: 100px; width: 100px;">状态码</th>
+                            <th style="min-width: 80px; width: 80px;">耗时(ms)</th>
+                            <th style="min-width: 100px; width: 100px;">访客类型</th>
+                            <th style="min-width: 160px; width: 160px;">时间</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($logs) > 0}
+                        {foreach $logs as $log}
+                        <tr>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['id']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['ip']}</td>
+                            <td style="word-break: break-word; max-width: 150px;">
+                                <div style="overflow: hidden; text-overflow: ellipsis; white-space: normal; max-height: 3em; line-height: 1.5em;">
+                                    {$log['url']}
+                                </div>
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $log['status_code'] >= 500}
+                                <span class="badge badge-pill bg-danger">{$log['status_code']}</span>
+                                {elseif $log['status_code'] >= 400}
+                                <span class="badge badge-pill bg-warning text-dark">{$log['status_code']}</span>
+                                {elseif $log['status_code'] >= 300}
+                                <span class="badge badge-pill bg-info text-dark">{$log['status_code']}</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">{$log['status_code']}</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['duration']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $log['is_bot'] == 1}
+                                <span class="badge badge-pill bg-danger">爬虫</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">正常</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$log['timestamp']|date:'Y-m-d H:i:s'}</td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="7" class="text-center">暂无数据</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 分页 -->
+            {if $total > 0}
+            <div class="pagination justify-content-center mt-4">
+                <ul class="pagination">
+                    <li class="page-item {if $page == 1}disabled{/if}">
+                        <a class="page-link" href="/admin/visitor/logs?page={$page-1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+
+                    {var $totalPages = ceil($total / $limit)}
+                    {var $startPage = max(1, $page - 4)}
+                    {var $endPage = min($totalPages, $startPage + 8)}
+                    {if $startPage > 1}
+                    <li class="page-item"><a class="page-link" href="/admin/visitor/logs?page=1&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">1</a></li>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {/if}
+
+                    {for $i = $startPage; $i <= $endPage; $i++}
+                    <li class="page-item {if $i == $page}active{/if}">
+                        <a class="page-link" href="/admin/visitor/logs?page={$i}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
+                    </li>
+                    {/for}
+
+                    {if $endPage < $totalPages}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="/admin/visitor/logs?page={$totalPages}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
+                    {/if}
+
+                    <li class="page-item {if $page == $totalPages}disabled{/if}">
+                        <a class="page-link" href="/admin/visitor/logs?page={$page+1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            {/if}
+        </div>
+    </div>
+</div>
+{/block}

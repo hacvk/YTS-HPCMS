@@ -131,35 +131,38 @@ class FileLogDriver implements LogDriverInterface
      */
     private function formatLogLine(array $logData): string
     {
-        $timestamp = $logData['create_time'] ?? date('Y-m-d H:i:s');
-        $level = $logData['level'] ?? 'info';
-        $message = $logData['message'] ?? '';
+        // 访客日志格式：时间戳 级别 消息 JSON数据
+        // 示例：[2026-01-22 10:30:45] INFO: Visitor log {"request_id":"req_123","session_id":"sess_456",...}
+
+        $timestamp = date('Y-m-d H:i:s', $logData['timestamp'] ?? time());
+        $level = 'INFO';
+        $message = 'Visitor log';
+
+        // 构建访客日志数据
         $context = [
-            'admin_id' => $logData['admin_id'] ?? 0,
-            'admin_name' => $logData['admin_name'] ?? 'system',
-            'action' => $logData['action'] ?? '',
-            'target' => $logData['target'] ?? null,
+            'request_id' => $logData['request_id'] ?? '',
+            'session_id' => $logData['session_id'] ?? '',
             'ip' => $logData['ip'] ?? '',
             'user_agent' => $logData['user_agent'] ?? '',
+            'url' => $logData['url'] ?? '',
+            'referrer' => $logData['referrer'] ?? '',
+            'method' => $logData['method'] ?? 'GET',
+            'status_code' => $logData['status_code'] ?? 200,
+            'duration' => $logData['duration'] ?? 0,
+            'memory_used' => $logData['memory_used'] ?? 0,
+            'device_type' => $logData['device_type'] ?? 'unknown',
+            'browser' => $logData['browser'] ?? 'unknown',
+            'os' => $logData['os'] ?? 'unknown',
+            'is_bot' => $logData['is_bot'] ?? 0,
+            'timestamp' => $logData['timestamp'] ?? time(),
         ];
 
-        // 如果有异常堆栈，添加到上下文
-        if (isset($logData['exception_trace'])) {
-            $context['exception_trace'] = $logData['exception_trace'];
-        }
-        if (isset($logData['file'])) {
-            $context['file'] = $logData['file'];
-        }
-        if (isset($logData['line'])) {
-            $context['line'] = $logData['line'];
-        }
-
         $contextJson = json_encode($context, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        
+
         return sprintf(
             "[%s] %s: %s %s\n",
             $timestamp,
-            strtoupper($level),
+            $level,
             $message,
             $contextJson
         );

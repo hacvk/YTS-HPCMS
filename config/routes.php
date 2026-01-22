@@ -129,6 +129,13 @@ return [
     'GET /admin/system/logs' => ['Admin\\SystemController', 'logs'],
     'POST /admin/system/clean-logs' => ['Admin\\SystemController', 'cleanLogs'],
 
+    // 访客日志
+    'GET /admin/visitor/logs' => ['Admin\\VisitorController', 'logs'],
+    'GET /admin/visitor/stats' => ['Admin\\VisitorController', 'stats'],
+    'GET /admin/visitor/alerts' => ['Admin\\VisitorController', 'alerts'],
+    'POST /admin/visitor/alerts/handle' => ['Admin\\VisitorController', 'handleAlert'],
+    'GET /admin/visitor/anomaly-report' => ['Admin\\VisitorController', 'anomalyReport'],
+
     // 缓存管理
     'GET /admin/cache' => ['Admin\\CacheController', 'index'],
     'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],

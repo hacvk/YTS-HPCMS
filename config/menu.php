@@ -53,6 +53,7 @@ return [
         'children' => [
             ['title' => '关于系统', 'route' => '/admin/system/about', 'perm' => 'admin:system:view'],
             ['title' => '系统日志', 'route' => '/admin/system/logs', 'perm' => 'admin:system:logs:view'],
+            ['title' => '访客日志', 'route' => '/admin/visitor/logs', 'perm' => 'admin:visitor:logs:view'],
         ]
     ]
 ];

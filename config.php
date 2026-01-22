@@ -12,10 +12,10 @@ $baseConfig = [
      * 数据库配置
      */
     'db' => [
-		'host' => getenv('DB_HOST') ?: 'localhost',
-		'database' => getenv('DB_DATABASE') ?: 'yycms',
-		'username' => getenv('DB_USERNAME') ?: 'yycms',
-		'password' => getenv('DB_PASSWORD') ?: '',
+		'host' => '127.0.0.1',
+		'database' => 'yycms',
+		'username' => 'yycms',
+		'password' => 'YOUR_DB_PASSWORD',
 		'charset' => 'utf8mb4',
 		'collation' => 'utf8mb4_unicode_ci',
 			],

@@ -1,0 +1,317 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+    </div>
+
+    <!-- 筛选搜索框 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form class="form-inline" method="get" action="/admin/visitor/alerts">
+                <div class="form-group mr-3 mb-2">
+                    <label for="risk_level" class="mr-2">风险等级：</label>
+                    <select class="form-control" id="risk_level" name="risk_level">
+                        <option value="">全部</option>
+                        <option value="critical" {if $riskLevel == 'critical'}selected{/if}>严重</option>
+                        <option value="high" {if $riskLevel == 'high'}selected{/if}>高</option>
+                        <option value="medium" {if $riskLevel == 'medium'}selected{/if}>中</option>
+                        <option value="low" {if $riskLevel == 'low'}selected{/if}>低</option>
+                    </select>
+                </div>
+
+                <div class="form-group mr-3 mb-2">
+                    <label for="alert_type" class="mr-2">告警类型：</label>
+                    <select class="form-control" id="alert_type" name="alert_type">
+                        <option value="">全部</option>
+                        <option value="high_frequency" {if $alertType == 'high_frequency'}selected{/if}>高频访问</option>
+                        <option value="suspicious_ip" {if $alertType == 'suspicious_ip'}selected{/if}>可疑IP</option>
+                        <option value="bot_detection" {if $alertType == 'bot_detection'}selected{/if}>爬虫检测</option>
+                        <option value="abnormal_referrer" {if $alertType == 'abnormal_referrer'}selected{/if}>异常来源</option>
+                    </select>
+                </div>
+
+                <div class="form-group mr-3 mb-2">
+                    <label for="start_date" class="mr-2">开始日期：</label>
+                    <input type="date" class="form-control" id="start_date" name="start_date" value="{$startDate}">
+                </div>
+
+                <div class="form-group mr-3 mb-2">
+                    <label for="end_date" class="mr-2">结束日期：</label>
+                    <input type="date" class="form-control" id="end_date" name="end_date" value="{$endDate}">
+                </div>
+
+                <button type="submit" class="btn btn-primary mb-2">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+                <a href="/admin/visitor/alerts" class="btn btn-secondary mb-2 ml-2">
+                    <i class="fas fa-redo"></i> 重置
+                </a>
+            </form>
+        </div>
+    </div>
+
+    <!-- 告警统计 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">告警统计 (最近7天)</h6>
+        </div>
+        <div class="card-body">
+            {if $alertStats}
+            <div class="row">
+                <div class="col-xl-6 col-md-12 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">按类型统计</div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table table-sm" width="100%" cellspacing="0">
+                                            <thead>
+                                                <tr>
+                                                    <th>类型</th>
+                                                    <th>数量</th>
+                                                    <th>风险等级</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {foreach $alertStats['by_type'] as $stat}
+                                                <tr>
+                                                    <td>{$stat['alert_type']}</td>
+                                                    <td>{$stat['count']}</td>
+                                                    <td>
+                                                        {if $stat['risk_level'] == 'critical'}
+                                                        <span class="badge badge-pill bg-danger">严重</span>
+                                                        {elseif $stat['risk_level'] == 'high'}
+                                                        <span class="badge badge-pill bg-warning text-dark">高</span>
+                                                        {elseif $stat['risk_level'] == 'medium'}
+                                                        <span class="badge badge-pill bg-info text-dark">中</span>
+                                                        {else}
+                                                        <span class="badge badge-pill bg-success">低</span>
+                                                        {/if}
+                                                    </td>
+                                                </tr>
+                                                {/foreach}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-chart-bar fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-6 col-md-12 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">按风险等级统计</div>
+                                    <div class="table-responsive mt-2">
+                                        <table class="table table-sm" width="100%" cellspacing="0">
+                                            <thead>
+                                                <tr>
+                                                    <th>风险等级</th>
+                                                    <th>数量</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {foreach $alertStats['by_risk'] as $stat}
+                                                <tr>
+                                                    <td>
+                                                        {if $stat['risk_level'] == 'critical'}
+                                                        <span class="badge badge-pill bg-danger">严重</span>
+                                                        {elseif $stat['risk_level'] == 'high'}
+                                                        <span class="badge badge-pill bg-warning text-dark">高</span>
+                                                        {elseif $stat['risk_level'] == 'medium'}
+                                                        <span class="badge badge-pill bg-info text-dark">中</span>
+                                                        {else}
+                                                        <span class="badge badge-pill bg-success">低</span>
+                                                        {/if}
+                                                    </td>
+                                                    <td>{$stat['count']}</td>
+                                                </tr>
+                                                {/foreach}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 按IP统计 -->
+            {if $alertStats['by_ip']}
+            <div class="table-responsive mt-4">
+                <h6 class="font-weight-bold text-primary">按IP统计 (Top 20)</h6>
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>IP地址</th>
+                            <th>告警数</th>
+                            <th>最高风险</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $alertStats['by_ip'] as $stat}
+                        <tr>
+                            <td>{$stat['ip']}</td>
+                            <td>{$stat['count']}</td>
+                            <td>
+                                {if $stat['max_risk'] == 'critical'}
+                                <span class="badge badge-pill bg-danger">严重</span>
+                                {elseif $stat['max_risk'] == 'high'}
+                                <span class="badge badge-pill bg-warning text-dark">高</span>
+                                {elseif $stat['max_risk'] == 'medium'}
+                                <span class="badge badge-pill bg-info text-dark">中</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">低</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+            </div>
+            {/if}
+            {else}
+            <div class="alert alert-info" role="alert">
+                暂无告警统计数据
+            </div>
+            {/if}
+        </div>
+    </div>
+
+    <!-- 告警列表表格 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">待处理告警列表</h6>
+            <div class="btn-group" role="group">
+                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                    <i class="fas fa-list"></i> 日志列表
+                </a>
+                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                    <i class="fas fa-chart-bar"></i> 统计
+                </a>
+                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                    <i class="fas fa-exclamation-triangle"></i> 告警
+                </a>
+                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                    <i class="fas fa-file-alt"></i> 检测报告
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 80px; width: 80px;">ID</th>
+                            <th style="min-width: 120px; width: 120px;">告警类型</th>
+                            <th style="min-width: 120px; width: 120px;">IP地址</th>
+                            <th style="min-width: 100px; width: 100px;">风险等级</th>
+                            <th style="min-width: 80px; width: 80px;">次数</th>
+                            <th style="min-width: 160px; width: 160px;">首次发现</th>
+                            <th style="min-width: 160px; width: 160px;">最后出现</th>
+                            <th style="min-width: 100px; width: 100px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {if count($alerts) > 0}
+                        {foreach $alerts as $alert}
+                        <tr>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['id']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alert['alert_type'] == 'high_frequency'}
+                                <span class="badge badge-pill bg-danger">高频访问</span>
+                                {elseif $alert['alert_type'] == 'suspicious_ip'}
+                                <span class="badge badge-pill bg-warning text-dark">可疑IP</span>
+                                {elseif $alert['alert_type'] == 'bot_detection'}
+                                <span class="badge badge-pill bg-info text-dark">爬虫检测</span>
+                                {elseif $alert['alert_type'] == 'abnormal_referrer'}
+                                <span class="badge badge-pill bg-secondary">异常来源</span>
+                                {else}
+                                <span class="badge badge-pill bg-light text-dark">{$alert['alert_type']}</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['ip']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alert['risk_level'] == 'critical'}
+                                <span class="badge badge-pill bg-danger">严重</span>
+                                {elseif $alert['risk_level'] == 'high'}
+                                <span class="badge badge-pill bg-warning text-dark">高</span>
+                                {elseif $alert['risk_level'] == 'medium'}
+                                <span class="badge badge-pill bg-info text-dark">中</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">低</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['count']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['first_seen']|date:'Y-m-d H:i:s'}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['last_seen']|date:'Y-m-d H:i:s'}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                <button type="button" class="btn btn-sm btn-success" onclick="handleAlert({$alert['id']})">
+                                    <i class="fas fa-check"></i> 处理
+                                </button>
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {else}
+                        <tr>
+                            <td colspan="8" class="text-center">暂无待处理告警</td>
+                        </tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 处理告警确认对话框 -->
+<script n:syntax=off>
+function handleAlert(alertId) {
+    if (!confirm('确定要处理此告警吗？')) {
+        return;
+    }
+
+    // 获取 CSRF Token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ||
+                     document.getElementById('csrf_token')?.value || '';
+
+    // 发送处理请求
+    fetch('/admin/visitor/alerts/handle', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'csrf_token=' + encodeURIComponent(csrfToken) + '&alert_id=' + alertId + '&status=handled'
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        if (data.code === 0) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert(data.message || '处理失败');
+        }
+    })
+    .catch(function(error) {
+        console.error('处理失败:', error);
+        alert('处理失败：' + error.message);
+    });
+}
+</script>
+{/block}

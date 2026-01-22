@@ -61,6 +61,7 @@ class App
         $router->registerMiddleware(\App\Http\Middleware\LogMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\PerformanceMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\SecurityMiddleware::class);
+        $router->registerMiddleware(\App\Http\Middleware\VisitorLogMiddleware::class);
         
         $router->dispatch();
     }

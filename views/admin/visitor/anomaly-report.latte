@@ -1,0 +1,221 @@
+{extends '../layout.latte'}
+
+{block title}{$title}{/block}
+
+{block content}
+<div class="container-fluid">
+    <!-- 页面顶部标题 -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
+    </div>
+
+    <!-- 日期筛选 -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form class="form-inline" method="get" action="/admin/visitor/anomaly-report">
+                <div class="form-group mr-3 mb-2">
+                    <label for="date" class="mr-2">查询日期：</label>
+                    <input type="date" class="form-control" id="date" name="date" value="{$date}">
+                </div>
+
+                <button type="submit" class="btn btn-primary mb-2">
+                    <i class="fas fa-search"></i> 查询
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 总体统计 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">总体统计 ({$date})</h6>
+            <div class="btn-group" role="group">
+                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                    <i class="fas fa-list"></i> 日志列表
+                </a>
+                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                    <i class="fas fa-chart-bar"></i> 统计
+                </a>
+                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                    <i class="fas fa-exclamation-triangle"></i> 告警
+                </a>
+                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                    <i class="fas fa-file-alt"></i> 检测报告
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            {if $report}
+            <div class="row">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-primary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">总请求数</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['total_requests']}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-danger shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">错误请求数</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['error_requests']}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-warning shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">爬虫请求数</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['bot_requests']}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-spider fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">错误率</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['error_rate']}%</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-secondary shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-secondary text-uppercase mb-1">爬虫率</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['bot_rate']}%</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-spider fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-dark shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-dark text-uppercase mb-1">告警数</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$report['alert_count']}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-bell fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {else}
+            <div class="alert alert-info" role="alert">
+                暂无异常检测报告，请先运行异常检测命令：php artisan visitor:detect-anomalies --date={$date}
+            </div>
+            {/if}
+        </div>
+    </div>
+
+    <!-- 告警详情 -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">告警详情</h6>
+        </div>
+        <div class="card-body">
+            {if $report && $report['alerts']}
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th style="min-width: 80px; width: 80px;">ID</th>
+                            <th style="min-width: 120px; width: 120px;">告警类型</th>
+                            <th style="min-width: 120px; width: 120px;">IP地址</th>
+                            <th style="min-width: 100px; width: 100px;">风险等级</th>
+                            <th style="min-width: 80px; width: 80px;">次数</th>
+                            <th style="min-width: 160px; width: 160px;">首次发现</th>
+                            <th style="min-width: 160px; width: 160px;">最后出现</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $report['alerts'] as $alert}
+                        <tr>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['id']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alert['alert_type'] == 'high_frequency'}
+                                <span class="badge badge-pill bg-danger">高频访问</span>
+                                {elseif $alert['alert_type'] == 'suspicious_ip'}
+                                <span class="badge badge-pill bg-warning text-dark">可疑IP</span>
+                                {elseif $alert['alert_type'] == 'bot_detection'}
+                                <span class="badge badge-pill bg-info text-dark">爬虫检测</span>
+                                {elseif $alert['alert_type'] == 'abnormal_referrer'}
+                                <span class="badge badge-pill bg-secondary">异常来源</span>
+                                {else}
+                                <span class="badge badge-pill bg-light text-dark">{$alert['alert_type']}</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['ip']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alert['risk_level'] == 'critical'}
+                                <span class="badge badge-pill bg-danger">严重</span>
+                                {elseif $alert['risk_level'] == 'high'}
+                                <span class="badge badge-pill bg-warning text-dark">高</span>
+                                {elseif $alert['risk_level'] == 'medium'}
+                                <span class="badge badge-pill bg-info text-dark">中</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">低</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['count']}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['first_seen']|date:'Y-m-d H:i:s'}</td>
+                            <td style="word-break: break-word; white-space: nowrap;">{$alert['last_seen']|date:'Y-m-d H:i:s'}</td>
+                        </tr>
+                        {/foreach}
+                    </tbody>
+                </table>
+            </div>
+            {else}
+            <div class="alert alert-info" role="alert">
+                暂无告警详情
+            </div>
+            {/if}
+        </div>
+    </div>
+</div>
+{/block}
