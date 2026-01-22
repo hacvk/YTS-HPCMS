@@ -452,24 +452,20 @@
                                         }
                                     });
                                 } else {
-                                    // 如果展开其他菜单组，收起快捷导航和快捷内容管理
+                                    // 如果展开其他菜单组，收起所有其他菜单组（包括快捷导航和快捷内容管理）
                                     document.querySelectorAll('.sidebar-submenu.show').forEach(otherSubmenu => {
                                         if (otherSubmenu !== submenu) {
                                             const otherNavItem = otherSubmenu.closest('.sidebar-nav-item');
                                             if (otherNavItem) {
                                                 const otherToggle = otherNavItem.querySelector('.sidebar-nav-toggle');
                                                 const otherArrow = otherToggle ? otherToggle.querySelector('.sidebar-nav-arrow') : null;
-                                                const isOtherShortcut = otherNavItem.classList.contains('sidebar-nav-shortcut');
-                                                const isOtherContentManagement = otherToggle && otherToggle.querySelector('span') && otherToggle.querySelector('span').textContent.trim() === '快捷内容管理';
                                                 
-                                                // 如果是快捷导航或快捷内容管理，则收起
-                                                if (isOtherShortcut || isOtherContentManagement) {
-                                                    otherSubmenu.classList.remove('show');
-                                                    if (otherArrow) {
-                                                        otherArrow.style.transform = 'rotate(0deg)';
-                                                        otherArrow.classList.remove('bi-chevron-up');
-                                                        otherArrow.classList.add('bi-chevron-down');
-                                                    }
+                                                // 收起所有其他菜单组，无论是否为快捷菜单
+                                                otherSubmenu.classList.remove('show');
+                                                if (otherArrow) {
+                                                    otherArrow.style.transform = 'rotate(0deg)';
+                                                    otherArrow.classList.remove('bi-chevron-up');
+                                                    otherArrow.classList.add('bi-chevron-down');
                                                 }
                                             }
                                         }
