@@ -142,7 +142,8 @@ return [
     'GET /admin/visitor/anomaly-report' => ['Admin\\VisitorController', 'anomalyReport'],
 
     // 缓存管理
-    'GET /admin/cache' => ['Admin\\CacheController', 'index'],
-    'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],
-    'POST /admin/cache/clear-all' => ['Admin\\CacheController', 'clearAll'],
+    'GET /admin/cache' => ['Admin\CacheController', 'index'],
+    'POST /admin/cache/clear-latte' => ['Admin\CacheController', 'clearLatte'],
+    'POST /admin/cache/clear-all' => ['Admin\CacheController', 'clearAll'],
+    'POST /admin/cache/clear-search' => ['Admin\CacheController', 'clearSearch'],
 ];

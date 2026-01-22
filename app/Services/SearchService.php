@@ -158,12 +158,13 @@ class SearchService
             $processedResults = [];
             foreach ($results as $result) {
                 $processedResults[] = [
-                    'id' => $result['id'],
-                    'title' => $result['title'],
-                    'summary' => $this->highlightKeyword($result['summary'] ?? '', $cleanKeyword),
-                    'url' => '/article/' . $result['id'],
-                    'published_at' => $result['published_at'],
-                    'views' => $result['views'] ?? 0,
+                    'id' => (int)$result['id'],
+                    'title' => (string)($result['title'] ?? ''),
+                    'summary' => (string)$this->highlightKeyword($result['summary'] ?? '', $cleanKeyword),
+                    'url' => '/article/' . (string)$result['id'],
+                    'published_at' => (string)($result['published_at'] ?? ''),
+                    'views' => (int)($result['views'] ?? 0),
+                    'type' => '文章',
                 ];
             }
 
@@ -261,9 +262,9 @@ class SearchService
             $suggestions = [];
             foreach ($results as $result) {
                 $suggestions[] = [
-                    'id' => $result['id'],
-                    'title' => $result['title'],
-                    'url' => '/article/' . $result['id'],
+                    'id' => (int)$result['id'],
+                    'title' => (string)($result['title'] ?? ''),
+                    'url' => '/article/' . (string)$result['id'],
                 ];
             }
 
@@ -334,7 +335,19 @@ class SearchService
 
     public function getHotKeywords(int $days = 7, int $limit = 10): array
     {
-        return $this->logService->getTopKeywords($days, $limit);
+        $keywords = $this->logService->getTopKeywords($days, $limit);
+        
+        // 确保返回的关键词列表只包含字符串类型的关键词
+        $result = [];
+        foreach ($keywords as $item) {
+            if (is_array($item) && isset($item['keyword'])) {
+                $result[] = (string)$item['keyword'];
+            } else {
+                $result[] = (string)$item;
+            }
+        }
+        
+        return $result;
     }
 
     public function getStats(int $days = 7): array

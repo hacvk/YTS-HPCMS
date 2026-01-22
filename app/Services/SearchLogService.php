@@ -265,7 +265,7 @@ class SearchLogService
                 'timestamp[<]' => $cutoff,
             ]);
 
-            return $deleted;
+            return $deleted->rowCount(); // 返回受影响的行数
         } catch (\Exception $e) {
             error_log('[SearchLogService] 清理过期日志失败: ' . $e->getMessage());
             return 0;

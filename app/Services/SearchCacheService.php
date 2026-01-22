@@ -175,7 +175,7 @@ class SearchCacheService
             // 清理内存缓存（通过CacheService的clear方法）
             // 注意：这里只清理数据库缓存，内存缓存会自动过期
 
-            return $deleted;
+            return $deleted->rowCount(); // 返回受影响的行数
         } catch (\Exception $e) {
             error_log('[SearchCacheService] 清理过期缓存失败: ' . $e->getMessage());
             return 0;
@@ -198,7 +198,7 @@ class SearchCacheService
             // 清理内存缓存（通过CacheService的clear方法）
             // 注意：这里只清理数据库缓存，内存缓存会自动过期
 
-            return $deleted;
+            return $deleted->rowCount(); // 返回受影响的行数
         } catch (\Exception $e) {
             error_log('[SearchCacheService] 清理关键词缓存失败: ' . $e->getMessage());
             return 0;

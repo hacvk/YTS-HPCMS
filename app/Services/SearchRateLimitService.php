@@ -367,7 +367,7 @@ class SearchRateLimitService
         $this->cache->delete('search_ip_blacklist');
         $this->cache->delete('search_rate_limit_config');
 
-        return $deleted;
+        return $deleted->rowCount(); // 返回受影响的行数
     }
 
     /**

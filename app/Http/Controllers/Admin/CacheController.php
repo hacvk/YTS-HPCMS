@@ -6,6 +6,10 @@ namespace App\Http\Controllers\Admin;
 use App\Core\Security;
 use App\Services\LogService;
 use App\Http\Router;
+use App\Services\SearchService;
+use App\Services\SearchCacheService;
+use App\Services\SearchLogService;
+use App\Services\SearchRateLimitService;
 
 /**
  * 缓存管理控制器
@@ -147,6 +151,14 @@ class CacheController extends AdminBaseController
                 'cache_clear',
                 '清空所有缓存'
             );
+            
+            // 同时清理搜索缓存
+            try {
+                $searchService = $this->container->get(SearchService::class);
+                $searchService->cleanup();
+            } catch (\Exception $e) {
+                error_log('清理搜索缓存时出错: ' . $e->getMessage());
+            }
 
             $this->successJson('所有缓存清空成功', null, '/admin/cache');
         } catch (\Exception $e) {
@@ -192,6 +204,49 @@ class CacheController extends AdminBaseController
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * 清空搜索缓存
+     *
+     * @return void
+     */
+    public function clearSearch(): void
+    {
+        // 只接受POST请求
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+        }
+
+        try {
+            // 验证 CSRF Token
+            $csrfToken = $this->post('csrf_token', '');
+            if (!Security::checkCsrfToken($csrfToken)) {
+                $this->errorJson('CSRF Token 验证失败');
+            }
+
+            // 获取服务实例
+            $searchCacheService = $this->container->get(SearchCacheService::class);
+            $searchLogService = $this->container->get(SearchLogService::class);
+            $searchRateLimitService = $this->container->get(SearchRateLimitService::class);
+
+            // 清理各类搜索缓存
+            $cacheResult = $searchCacheService->cleanupExpired();
+            $logResult = $searchLogService->cleanupExpired(30); // 清理30天前的日志
+            $blockResult = $searchRateLimitService->cleanupExpiredBlocks();
+
+            // 记录日志
+            LogService::record(
+                $this->getAdminId(),
+                $this->getAdminUsername(),
+                'cache_clear',
+                sprintf('清空搜索缓存 - 缓存项: %d, 日志: %d, 拦截记录: %d', $cacheResult, $logResult, $blockResult)
+            );
+
+            $this->successJson(sprintf('搜索缓存清空成功 - 缓存项: %d, 日志: %d, 拦截记录: %d', $cacheResult, $logResult, $blockResult), null, '/admin/cache');
+        } catch (\Exception $e) {
+            $this->errorJson('清空搜索缓存失败: ' . $e->getMessage());
         }
     }
 
