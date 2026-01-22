@@ -1,173 +1,445 @@
-# Claude Code 开发约束（YYCMS 访客日志系统）v1.0
-
-> 适用范围：YYCMS 访客日志系统（Visitor Log System）全部模块
-> 依据：YYCMS 访客日志系统设计方案 v1.0&#x20;
-
----
-
-## 1. 项目硬约束（必须遵守）
-
-1. **PHP 8.2 only**：所有新增/修改 PHP 文件必须包含：
-
-* `<?php`
-* `declare(strict_types=1);`&#x20;
-
-2. **无 Composer / 无 Node/NPM**：禁止新增依赖、禁止引入前端构建链。
-3. 允许使用既有组件（按现有项目约束）：Medoo、Latte、wangeditor；其他库除非明确手动引入且审计通过。
-
----
-
-## 2. 架构边界（不得偏离设计）
-
-### 2.1 请求链路职责（强制）
-
-* **VisitorLogMiddleware**：仅做轻量采集 + 异步落地（默认文件驱动）。不得在请求线程内做重 IO 或复杂计算。
-* **日志写入层（多驱动架构）**：必须保留“可插拔”概念（File/Redis/Queue），即使当前只实现 File Driver。
-* **Cron/批处理**：日志文件解析、数据清洗、统计聚合、异常检测、清理过期数据必须在命令行任务中完成。
-
-### 2.2 禁止事项（高频跑偏点）
-
-* ❌ 禁止在中间件里直接写 `visitor_logs` 明细表（必须异步写文件→批处理入库）。
-* ❌ 禁止为了“实时”而在后台页面扫描大范围明细表（必须以统计表为主）。
-* ❌ 禁止一次性将日志文件全量读入内存（必须流式/批量）。
-
----
-
-## 3. 性能指标（实现必须对齐）
-
-### 3.1 写入性能目标
-
-* 默认文件写入路径，目标：**>1000 QPS**（设计目标）。
-* 写入失败不得影响主流程：任何异常必须吞掉，仅记录 `error_log`。
-
-### 3.2 查询性能目标
-
-* 后台统计查询目标：**99% < 500ms**。
-* 查询必须优先读取聚合表 `visitor_stats_daily`，仅在明确场景下分页查明细。
-
-### 3.3 批处理性能约束
-
-* 批处理必须支持 **batchSize（建议 1000）**，并采用流式读取（生成器/逐行 fgets）。
-* 必须在批处理中限制内存峰值（设计目标：常驻 < 50MB）。
-
----
-
-## 4. 数据采集规范（字段、长度、清洗）
-
-### 4.1 字段范围（最小化采集）
-
-中间件采集字段必须限定在设计文档范围内：IP、UA、URL、Referrer、时间、停留时长、内存、状态码、设备/浏览器/OS、是否 bot、新老访客、session\_id 等。
-
-### 4.2 日志注入/污染防护（必须实现）
-
-对来自 `$_SERVER` / headers / cookie 的字段必须：
-
-* 去除控制字符（`\0`、`\r`、`\n` 等）
-* 强制长度上限（建议：UA/URL/Referrer ≤ 500；超出截断）
-* 任何写日志序列化必须为 JSON（避免自定义分隔符被注入）
-
----
-
-## 5. 安全红线（必须落实到代码）
-
-### 5.1 SQL 注入防护
-
-* 所有 DB 操作必须参数化/Medoo 参数化；禁止拼接 SQL。
-* ORDER BY / 字段名等无法参数化的必须白名单映射。
-
-### 5.2 Cookie 与会话安全
-
-* `visitor_session` Cookie 必须 `HttpOnly=true`（设计示例如此）。
-* 在 HTTPS 环境应启用 `Secure=true`，并设置 `SameSite=Lax`（或更严格，按站点兼容性）。
-* SessionId 生成必须使用 `random_bytes()`（设计示例如此）。
-
-### 5.3 客户端 IP 信任边界（必须加开关）
-
-设计示例读取了 `X-Forwarded-For`/`X-Real-IP`。实现时必须：
-
-* 增加“可信代理开关/白名单”，仅在可信代理环境才读取 XFF/X-Real-IP；
-* 否则默认使用 `REMOTE_ADDR`。
-
-### 5.4 异常隔离
-
-* 日志链路（采集/写入/聚合）任何失败不得影响主请求响应。
-* 中间件必须在**正常与异常**两条路径都记录（异常按 500）。
-
----
-
-## 6. 隐私与合规约束（必须可配置）
-
-1. 必须提供 IP 隐私策略配置：
-
-* 存原文 / 掩码（如 IPv4 /24）/ hash（三选一或可组合）
-
-2. 后台默认展示脱敏 IP；查看原文（若保存）必须权限控制。
-3. 数据保留策略必须严格执行（见下一节）。
-
----
-
-## 7. 数据库与生命周期（强制执行）
-
-### 7.1 分层存储（必须按设计）
-
-* 明细表 `visitor_logs`：**30 天保留**，按月分区（Range partition by timestamp）。
-* 日统计 `visitor_stats_daily`：永久保留。
-* 会话 `visitor_sessions`：30 天。
-* 告警 `visitor_alerts`：90 天（或方案值）。
-
-### 7.2 清理要求
-
-* 必须提供清理命令/任务：按分区 drop 或按 timestamp 删除，并确保不会锁表/阻塞。
-
----
-
-## 8. 定时任务（Cron）实现约束
-
-必须提供并保持可运行的命令：
-
-* `visitor:aggregate`（每 5 分钟聚合）
-* `visitor:daily-stats`（每日统计）
-* `visitor:detect-anomalies`（异常检测）
-* `visitor:cleanup`（过期清理）
-
-任务实现必须：
-
-* 支持指定日期（如 `--date=`）
-* 输出可审计日志（处理条数、耗时、失败原因）
-* 批量入库，避免单条 insert 的极端低效（必要时使用事务/批插策略）
-
----
-
-## 9. 目录与文件落点（新增代码必须放在这些位置）
-
-必须遵循设计文档给出的关键文件路径（可增补同目录辅助类，但不得散落到 public/）：
-
-* `app/Http/Middleware/VisitorLogMiddleware.php`
-* `app/Services/VisitorLogService.php`
-* `app/Services/VisitorStatsService.php`
-* `app/Services/AnomalyDetectionService.php`
-* `app/Console/Commands/VisitorAggregate.php`
-
----
-
-## 10. Claude Code 输出规范（每次交付必须包含）
-
-Claude Code 每次生成代码/改动时，必须输出以下四块内容：
-
-1. **变更文件清单**（新增/修改路径）
-2. **关键实现说明**（≤10 条，必须覆盖：性能、异常隔离、IP 信任边界、注入防护、Cookie 安全、数据保留/清理）
-3. **手动验证步骤**（如何触发写入、如何跑聚合命令、如何验证 DB 统计表更新）
-4. **回滚方式**（删除哪些文件 / 关闭哪些开关即可恢复）
-
----
-
-## 11. 默认参数建议（可作为 config 初始值）
-
-* 日志目录：`storage/logs/visitor`
-* 单文件上限：100MB
-* 文件保留：7 天（文件层），数据库明细保留 30 天（表层）
-* 聚合 batchSize：1000
-* 高频告警阈值：requests\_per\_hour=300（按文档）
-
----
-
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+**YYCMS** - A PHP 8.2 CMS system with a built-in visitor log system for tracking and analyzing website traffic.
+
+**Key Characteristics:**
+- PHP 8.2 only with strict types (`declare(strict_types=1);`)
+- No Composer / No Node.js / No NPM (manual autoloading)
+- Uses Medoo (lightweight database library), Latte (templating), and WangEditor (WYSIWYG editor)
+- Visitor log system with async file-based logging + batch processing
+
+## Architecture Overview
+
+### Request Flow
+```
+Browser → public/index.php → Router → Middleware Chain → Controller → Response
+```
+
+### Middleware Chain (in order)
+1. **LogMiddleware** - Basic request logging
+2. **PerformanceMiddleware** - Performance metrics tracking
+3. **SecurityMiddleware** - Security headers and debug script protection
+4. **VisitorLogMiddleware** - Visitor log collection (async file write)
+
+### Visitor Log System Architecture
+
+**Async Write Path (Request Thread):**
+```
+VisitorLogMiddleware → VisitorLogService → FileLogDriver → storage/logs/visitor/visitor-{date}.log
+```
+
+**Batch Processing Path (Cron/CLI):**
+```
+VisitorAggregate.php → Read log file → Parse JSON → Batch insert → Database → Update stats → Detect anomalies → Cleanup
+```
+
+**Data Flow:**
+```
+Raw Logs (30 days) → Daily Stats (Permanent) → Aggregated Reports
+```
+
+## Key Files & Locations
+
+### Core Visitor Log System
+- **Middleware**: `app/Http/Middleware/VisitorLogMiddleware.php` (~360 lines)
+- **Services**:
+  - `app/Services/VisitorLogService.php` (~600 lines) - Log recording & cleanup
+  - `app/Services/VisitorStatsService.php` (~810 lines) - Statistical calculations
+  - `app/Services/AnomalyDetectionService.php` (~530 lines) - Anomaly detection
+- **Log Driver**: `app/Services/Log/FileLogDriver.php` (~220 lines)
+- **Console Commands**:
+  - `app/Console/Commands/VisitorAggregate.php` (~360 lines) - Main aggregation command
+  - `app/Console/Commands/VisitorVerify.php` (~555 lines) - System verification
+
+### Database Schema
+- **SQL File**: `sql/visitor_log_tables.sql` (~840 lines)
+- **Tables**:
+  - `visitor_logs` - Raw request logs (30 days, partitioned by month)
+  - `visitor_stats_daily` - Daily aggregates (permanent)
+  - `visitor_sessions` - Session tracking (30 days)
+  - `visitor_alerts` - Anomaly alerts (90 days)
+  - `visitor_session_cleanup` - Session cleanup helper
+  - `visitor_cleanup_config` - Cleanup configuration
+
+### Configuration
+- **Main Config**: `config.php` - Database and app settings
+- **Routes**: `config/routes.php` - URL routing definitions
+- **Entry Point**: `public/index.php` - Application bootstrap
+
+### Admin Interface
+- **Routes**: `config/routes.php` (lines 137-142)
+  - `/admin/visitor/logs` - View raw logs
+  - `/admin/visitor/stats` - View statistics
+  - `/admin/visitor/alerts` - View alerts
+  - `/admin/visitor/anomaly-report` - View anomaly reports
+
+## Common Development Tasks
+
+### Running the Application
+```bash
+# Start PHP built-in server (development)
+php -S localhost:8000 -t public/
+
+# Or use your web server (Apache/Nginx)
+# Document root: /var/www/yycms.com/public/
+```
+
+### Database Operations
+```bash
+# Test database connection
+php public/index.php --test-db
+
+# Create visitor log tables
+mysql -h 127.0.0.1 -u root -p yycms < sql/visitor_log_tables.sql
+
+# Verify system installation
+php public/index.php visitor:verify
+php public/index.php visitor:verify --quick  # Fast verification
+```
+
+### Visitor Log Commands
+```bash
+# Aggregate logs (run every 5 minutes via cron)
+php public/index.php visitor:aggregate
+php public/index.php visitor:aggregate --date=2026-01-22
+php public/index.php visitor:aggregate --force  # Force re-aggregation
+
+# View database stats
+php public/index.php visitor:aggregate --stats
+
+# Cleanup (run daily via cron)
+php public/index.php visitor:aggregate  # Includes cleanup
+```
+
+### Cron Configuration
+Add to crontab (`crontab -e`):
+```bash
+# Aggregate logs every 5 minutes
+*/5 * * * * php /var/www/yycms.com/public/index.php visitor:aggregate
+
+# Daily stats (runs after aggregation)
+0 2 * * * php /var/www/yycms.com/public/index.php visitor:daily-stats
+
+# Anomaly detection (runs after aggregation)
+0 3 * * * php /var/www/yycms.com/public/index.php visitor:detect-anomalies
+
+# Cleanup (runs daily at 4 AM)
+0 4 * * * php /var/www/yycms.com/public/index.php visitor:cleanup
+```
+
+### Testing Visitor Log System
+```bash
+# 1. Check if middleware is registered
+grep -r "VisitorLogMiddleware" app/Core/App.php
+
+# 2. View live logs
+tail -f /var/www/yycms.com/storage/logs/visitor/visitor-$(date +%Y-%m-%d).log
+
+# 3. Test log writing
+curl http://localhost:8000/
+
+# 4. Check database
+mysql -h 127.0.0.1 -u root -p yycms -e "SELECT COUNT(*) FROM visitor_logs;"
+mysql -h 127.0.0.1 -u root -p yycms -e "SELECT * FROM visitor_stats_daily ORDER BY date DESC LIMIT 5;"
+```
+
+## Visitor Log System Details
+
+### Data Collection (VisitorLogMiddleware)
+**Collected Fields:**
+- `request_id` - Unique request identifier
+- `session_id` - Visitor session ID (30 min expiry)
+- `ip` - Client IP (with trusted proxy support)
+- `user_agent` - Browser/device info
+- `url` - Requested URL
+- `referrer` - Referring URL
+- `method` - HTTP method (GET/POST/etc)
+- `status_code` - HTTP status code
+- `duration` - Response time (ms)
+- `memory_used` - Memory usage (KB)
+- `device_type` - mobile/desktop/tablet
+- `browser` - Browser type
+- `os` - Operating system
+- `is_bot` - Bot detection flag
+- `timestamp` - Unix timestamp
+
+**Security Features:**
+- IP header whitelist (trusted proxy mode)
+- Session cookie: HttpOnly + Secure + SameSite
+- String sanitization (removes control characters)
+- Length limits (URL/UA/Referrer: 500 chars)
+- Exception isolation (log failures don't affect response)
+
+### Log Format
+```
+[2026-01-22 10:30:45] INFO: Visitor log {"request_id":"req_123","session_id":"sess_456","ip":"127.0.0.1",...}
+```
+
+### Performance Targets
+- **Write Performance**: > 1000 QPS (async file write)
+- **Query Performance**: 99% < 500ms (reads from stats table)
+- **Memory Usage**: < 50MB during batch processing
+- **Batch Size**: 1000 records per batch
+
+### Data Lifecycle
+| Table | Retention | Cleanup Method |
+|-------|-----------|----------------|
+| `visitor_logs` | 30 days | Delete by timestamp |
+| `visitor_sessions` | 30 days | Delete by last_visit |
+| `visitor_alerts` | 90 days | Delete by created_at |
+| `visitor_stats_daily` | Permanent | N/A (archived) |
+
+## Security Considerations
+
+### IP Trust Boundary
+**Default: OFF** - Uses `REMOTE_ADDR` directly
+```php
+// Enable trusted proxy mode in config
+'visitor.ip.enable_trusted_proxy' => true,
+'visitor.ip.trusted_proxies' => ['127.0.0.1', '127.0.0.1'],
+```
+
+### Session Cookie Security
+```php
+setcookie('visitor_session', $sessionId, [
+    'expires' => time() + 1800,  // 30 minutes
+    'path' => '/',
+    'secure' => true,      // HTTPS only
+    'httponly' => true,    // Prevent XSS
+    'samesite' => 'Lax',   // CSRF protection
+]);
+```
+
+### SQL Injection Protection
+- All database operations use Medoo parameterized queries
+- No raw SQL concatenation
+- ORDER BY / field names use whitelist mapping
+
+### Data Sanitization
+- Removes control characters (ASCII 0-31, 127)
+- Removes Unicode control characters
+- Enforces length limits (500 chars max for URL/UA/Referrer)
+- JSON encoding for all log data
+
+## Configuration
+
+### Database Configuration
+Located in `config.php`:
+```php
+'db' => [
+    'host' => '127.0.0.1',
+    'database' => 'yycms',
+    'username' => 'yycms',
+    'password' => 'YOUR_DB_PASSWORD',
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+],
+```
+
+### Visitor Log Configuration
+Default values (can be customized):
+```php
+'visitor.log' => [
+    'dir' => 'storage/logs/visitor',
+    'format' => 'visitor-{date}.log',
+],
+'visitor.anomaly' => [
+    'high_frequency' => [
+        'requests_per_minute' => 60,
+        'requests_per_hour' => 300,
+    ],
+    'suspicious_ip' => [
+        'error_rate' => 0.5,
+        'min_requests' => 10,
+    ],
+],
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**1. Logs not being written**
+```bash
+# Check directory permissions
+ls -la /var/www/yycms.com/storage/logs/visitor/
+chmod -R 755 /var/www/yycms.com/storage/logs/visitor/
+
+# Check if middleware is registered
+grep "VisitorLogMiddleware" app/Core/App.php
+```
+
+**2. Database connection fails**
+```bash
+# Test connection
+php public/index.php --test-db
+
+# Check config
+cat config.php | grep -A 10 "db"
+```
+
+**3. Aggregation not working**
+```bash
+# Check if log file exists
+ls -la /var/www/yycms.com/storage/logs/visitor/
+
+# Run aggregation manually
+php public/index.php visitor:aggregate --date=2026-01-22
+
+# Check for errors
+tail -f /var/log/php-fpm/error.log
+```
+
+**4. Statistics not updating**
+```bash
+# Check if stats table has data
+mysql -h 127.0.0.1 -u root -p yycms -e "SELECT * FROM visitor_stats_daily ORDER BY date DESC LIMIT 5;"
+
+# Force re-aggregation
+php public/index.php visitor:aggregate --force
+```
+
+### Debug Commands
+```bash
+# View all visitor log tables
+mysql -h 127.0.0.1 -u root -p yycms -e "SHOW TABLES LIKE 'visitor_%';"
+
+# Check table sizes
+mysql -h 127.0.0.1 -u root -p yycms -e "
+SELECT table_name, ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
+FROM information_schema.tables
+WHERE table_schema = DATABASE() AND table_name LIKE 'visitor_%'
+ORDER BY size_mb DESC;
+"
+
+# View recent logs
+tail -n 50 /var/www/yycms.com/storage/logs/visitor/visitor-$(date +%Y-%m-%d).log
+
+# Check cron jobs
+crontab -l
+grep "visitor" /etc/crontab
+```
+
+## Performance Optimization
+
+### File Log Driver
+- Uses `file_put_contents()` with `FILE_APPEND | LOCK_EX` for atomic writes
+- Single file per day for easy parsing
+- Automatic rotation at 100MB
+- 30-day retention for log files
+
+### Batch Processing
+- Stream-based reading (fgets) to avoid memory issues
+- Batch inserts (1000 records per batch)
+- Transaction wrapping for data consistency
+- Memory monitoring with GC collection
+
+### Database Indexes
+```sql
+-- visitor_logs
+INDEX `idx_timestamp`(`timestamp`)
+INDEX `idx_ip`(`ip`)
+INDEX `idx_url`(`url`(100))
+INDEX `idx_session`(`session_id`)
+INDEX `idx_referrer`(`referrer`(100))
+
+-- visitor_stats_daily
+PRIMARY KEY (`date`)
+
+-- visitor_sessions
+UNIQUE KEY `uk_session`(`session_id`)
+INDEX `idx_ip_ua`(`ip`, `user_agent_hash`)
+INDEX `idx_last_visit`(`last_visit`)
+
+-- visitor_alerts
+INDEX `idx_ip_alert`(`ip`, `alert_type`)
+INDEX `idx_status_risk`(`status`, `risk_level`)
+```
+
+### Partitioning
+`visitor_logs` table uses RANGE partitioning by `timestamp` for:
+- Fast deletion of old data (DROP PARTITION)
+- Query performance (partition pruning)
+- Efficient storage management
+
+## Code Quality Notes
+
+### PHP 8.2 Features Used
+- `declare(strict_types=1);` - Strict type checking
+- Readonly properties - `private readonly string $logDir`
+- Constructor property promotion
+- Named arguments (where applicable)
+
+### Error Handling
+- All database operations wrapped in try-catch
+- Errors logged to `error_log()` (PHP error log)
+- Exception isolation in middleware chain
+- Graceful degradation (log failures don't break requests)
+
+### Code Style
+- PSR-4 autoloading via `app/Core/Autoloader.php`
+- No external dependencies (zero Composer)
+- Single responsibility per class
+- Comprehensive inline documentation
+
+## Deployment Checklist
+
+1. **Database Setup**
+   ```bash
+   mysql -h 127.0.0.1 -u root -p yycms < sql/visitor_log_tables.sql
+   ```
+
+2. **Configuration**
+   - Update `config.php` with correct database credentials
+   - Configure trusted proxy settings if behind load balancer
+   - Set up cron jobs
+
+3. **Permissions**
+   ```bash
+   chmod -R 755 storage/logs/visitor/
+   chown -R www-data:www-data storage/logs/visitor/
+   ```
+
+4. **Verification**
+   ```bash
+   php public/index.php visitor:verify
+   ```
+
+5. **Testing**
+   - Visit any page to generate logs
+   - Check log file: `tail -f storage/logs/visitor/visitor-$(date +%Y-%m-%d).log`
+   - Run aggregation: `php public/index.php visitor:aggregate`
+   - Verify stats: `mysql -h 127.0.0.1 -u root -p yycms -e "SELECT * FROM visitor_stats_daily LIMIT 5;"`
+
+## Important Notes for Claude
+
+### When Modifying Visitor Log System
+1. **Never** write directly to `visitor_logs` table in middleware - always use async file logging
+2. **Always** use parameterized queries (Medoo) for database operations
+3. **Always** sanitize user input (IP, UA, URL, Referrer) before logging
+4. **Always** wrap database operations in try-catch with error logging
+5. **Always** maintain batch processing for performance (1000 records/batch)
+6. **Never** load entire log files into memory - use streaming/fgets
+7. **Always** respect data retention policies (30/90 days)
+
+### When Adding New Features
+1. Check if feature requires database changes (add to `sql/visitor_log_tables.sql`)
+2. Update configuration if needed (add to `config.php`)
+3. Add console commands if batch processing required
+4. Update admin routes if new views needed
+5. Document in inline comments
+
+### Performance Testing
+- Use `ab` (Apache Bench) for load testing
+- Monitor memory usage: `ps aux | grep php`
+- Check query performance with `EXPLAIN`
+- Verify cron execution: `tail -f /var/log/cron`
+
+## Related Documentation
+- `doc/claude/20260122_yycms_visitor_log_final_summary.md` - Complete implementation summary
+- `sql/visitor_log_tables.sql` - Database schema with detailed comments
+- `app/Services/Log/README.md` - Log driver documentation

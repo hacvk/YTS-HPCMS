@@ -98,18 +98,22 @@ class SearchLogService
     {
         $startTime = time() - $days * 86400;
 
-        $stats = $this->db->select('search_logs', [
-            [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))'), 'date'],
-            [new \Medoo\Raw('COUNT(*)'), 'total_searches'],
-            [new \Medoo\Raw('COUNT(DISTINCT ip)'), 'unique_searchers'],
-            [new \Medoo\Raw('SUM(CASE WHEN status = "blocked" THEN 1 ELSE 0 END)'), 'blocked_searches'],
-            [new \Medoo\Raw('AVG(result_count)'), 'avg_results'],
-            [new \Medoo\Raw('AVG(duration)'), 'avg_duration'],
-        ], [
-            'timestamp[>=]' => $startTime,
-            'GROUP' => [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))')],
-            'ORDER' => [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))') => 'DESC'],
-        ]);
+        $sql = "SELECT DATE(FROM_UNIXTIME(timestamp)) AS date, 
+                       COUNT(*) AS total_searches, 
+                       COUNT(DISTINCT ip) AS unique_searchers, 
+                       SUM(CASE WHEN status = 'blocked' THEN 1 ELSE 0 END) AS blocked_searches, 
+                       AVG(result_count) AS avg_results, 
+                       AVG(duration) AS avg_duration 
+                FROM search_logs 
+                WHERE timestamp >= :start_time 
+                GROUP BY DATE(FROM_UNIXTIME(timestamp)) 
+                ORDER BY DATE(FROM_UNIXTIME(timestamp)) DESC";
+
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':start_time', $startTime, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $stats = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $stats;
     }
@@ -125,19 +129,19 @@ class SearchLogService
     {
         $startTime = time() - $days * 86400;
 
-        $keywords = $this->db->select('search_logs', [
-            'keyword',
-            [new \Medoo\Raw('COUNT(*)'), 'count'],
-            [new \Medoo\Raw('MAX(timestamp)'), 'last_search'],
-        ], [
-            'timestamp[>=]' => $startTime,
-            'status' => 'success',
-            'GROUP' => ['keyword'],
-            'ORDER' => ['count' => 'DESC'],
-            'LIMIT' => $limit,
-        ]);
+        $sql = "SELECT keyword, COUNT(*) AS keyword_count, MAX(timestamp) AS last_search 
+                FROM search_logs 
+                WHERE timestamp >= :start_time AND status = 'success' 
+                GROUP BY keyword 
+                ORDER BY keyword_count DESC 
+                LIMIT :limit";
 
-        return $keywords;
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':start_time', $startTime, \PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -151,18 +155,19 @@ class SearchLogService
     {
         $startTime = time() - $days * 86400;
 
-        $ips = $this->db->select('search_logs', [
-            'ip',
-            [new \Medoo\Raw('COUNT(*)'), 'count'],
-            [new \Medoo\Raw('MAX(timestamp)'), 'last_search'],
-        ], [
-            'timestamp[>=]' => $startTime,
-            'GROUP' => ['ip'],
-            'ORDER' => ['count' => 'DESC'],
-            'LIMIT' => $limit,
-        ]);
+        $sql = "SELECT ip, COUNT(*) AS ip_count, MAX(timestamp) AS last_search 
+                FROM search_logs 
+                WHERE timestamp >= :start_time 
+                GROUP BY ip 
+                ORDER BY ip_count DESC 
+                LIMIT :limit";
 
-        return $ips;
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':start_time', $startTime, \PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
 
     /**
@@ -215,12 +220,32 @@ class SearchLogService
             [new \Medoo\Raw('AVG(duration)'), 'avg_duration'],
             [new \Medoo\Raw('MIN(duration)'), 'min_duration'],
             [new \Medoo\Raw('MAX(duration)'), 'max_duration'],
-            [new \Medoo\Raw('PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY duration)'), 'p95_duration'],
-            [new \Medoo\Raw('PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY duration)'), 'p99_duration'],
         ], [
             'timestamp[>=]' => $startTime,
             'status' => 'success',
         ]);
+
+        // 为兼容较低版本的MySQL，手动计算百分位数
+        if (!empty($stats[0])) {
+            $total = $stats[0]['total'];
+            $p95_index = (int)($total * 0.95);
+            $p99_index = (int)($total * 0.99);
+            
+            // 获取排序后的持续时间列表
+            $durations = $this->db->select('search_logs', [
+                'duration'
+            ], [
+                'timestamp[>=]' => $startTime,
+                'status' => 'success',
+                'ORDER' => ['duration' => 'ASC']
+            ]);
+            
+            $p95_duration = isset($durations[$p95_index]) ? $durations[$p95_index]['duration'] : 0;
+            $p99_duration = isset($durations[$p99_index]) ? $durations[$p99_index]['duration'] : 0;
+            
+            $stats[0]['p95_duration'] = $p95_duration;
+            $stats[0]['p99_duration'] = $p99_duration;
+        }
 
         return $stats[0] ?? [];
     }
@@ -330,15 +355,19 @@ class SearchLogService
     {
         $startTime = time() - $days * 86400;
 
-        $trend = $this->db->select('search_logs', [
-            [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))'), 'date'],
-            [new \Medoo\Raw('HOUR(FROM_UNIXTIME(timestamp))'), 'hour'],
-            [new \Medoo\Raw('COUNT(*)'), 'count'],
-        ], [
-            'timestamp[>=]' => $startTime,
-            'GROUP' => [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))'), new \Medoo\Raw('HOUR(FROM_UNIXTIME(timestamp))')],
-            'ORDER' => [new \Medoo\Raw('DATE(FROM_UNIXTIME(timestamp))') => 'ASC', new \Medoo\Raw('HOUR(FROM_UNIXTIME(timestamp))') => 'ASC'],
-        ]);
+        $sql = "SELECT DATE(FROM_UNIXTIME(timestamp)) AS date, 
+                       HOUR(FROM_UNIXTIME(timestamp)) AS hour, 
+                       COUNT(*) AS count 
+                FROM search_logs 
+                WHERE timestamp >= :start_time 
+                GROUP BY DATE(FROM_UNIXTIME(timestamp)), HOUR(FROM_UNIXTIME(timestamp)) 
+                ORDER BY DATE(FROM_UNIXTIME(timestamp)) ASC, HOUR(FROM_UNIXTIME(timestamp)) ASC";
+
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':start_time', $startTime, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $trend = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $trend;
     }

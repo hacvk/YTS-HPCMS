@@ -20,7 +20,10 @@
       "Bash(dos2unix:*)",
       "Bash(ls:*)",
       "Bash(php:*)",
-      "Bash(mysql -h 127.0.0.1 -u yycms -pYOUR_DB_PASSWORD yycms:*)"
+      "Bash(mysql -h 127.0.0.1 -u yycms -pYOUR_DB_PASSWORD yycms:*)",
+      "Bash(sudo chown:*)",
+      "Bash(sudo chmod:*)",
+      "Bash(chown:*)"
     ]
   }
 }

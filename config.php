@@ -21,6 +21,7 @@ $baseConfig = [
 			],
 	'app' => [
 		'debug' => getenv('APP_DEBUG') === 'true',
+		'debug' => getenv('APP_DEBUG') === 'true',
 		'app_key' => 'yycms_' . bin2hex(random_bytes(32)),
 		],
 ];

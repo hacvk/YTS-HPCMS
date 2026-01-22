@@ -43,7 +43,11 @@ class SearchCacheService
         // 1. 先从内存缓存获取
         $result = $this->cache->get($cacheKey);
         if ($result !== null) {
-            return $result;
+            // 避免因为旧缓存(尤其是空结果)导致“明明有数据却始终搜不到”
+            // 有结果才直接返回；空结果让流程继续走数据库实时查询
+            if (!empty($result['total']) || !empty($result['list'])) {
+                return $result;
+            }
         }
 
         // 2. 从数据库缓存获取
@@ -92,16 +96,32 @@ class SearchCacheService
 
         // 2. 设置数据库缓存
         try {
-            $this->db->insert('search_cache', [
-                'cache_key' => md5($cacheKey),
-                'keyword' => $keyword,
-                'results' => json_encode($result['list'] ?? []),
-                'result_count' => $result['total'] ?? 0,
-                'expires_at' => $expiresAt,
-            ], [
-                // 如果已存在则更新
-                'cache_key' => md5($cacheKey),
+            // 检查是否已存在该缓存记录
+            $existingRecord = $this->db->get('search_cache', 'id', [
+                'cache_key' => md5($cacheKey)
             ]);
+            
+            if ($existingRecord) {
+                // 如果存在，则更新
+                $this->db->update('search_cache', [
+                    'keyword' => $keyword,
+                    'results' => json_encode($result['list'] ?? []),
+                    'result_count' => $result['total'] ?? 0,
+                    'expires_at' => $expiresAt,
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], [
+                    'cache_key' => md5($cacheKey)
+                ]);
+            } else {
+                // 如果不存在，则插入
+                $this->db->insert('search_cache', [
+                    'cache_key' => md5($cacheKey),
+                    'keyword' => $keyword,
+                    'results' => json_encode($result['list'] ?? []),
+                    'result_count' => $result['total'] ?? 0,
+                    'expires_at' => $expiresAt,
+                ]);
+            }
 
             return true;
         } catch (\Exception $e) {
@@ -192,13 +212,17 @@ class SearchCacheService
      */
     public function getStats(): array
     {
-        $stats = $this->db->select('search_cache', [
-            [new \Medoo\Raw('COUNT(*)'), 'total'],
-            [new \Medoo\Raw('COUNT(CASE WHEN expires_at > UNIX_TIMESTAMP() THEN 1 END)'), 'valid'],
-            [new \Medoo\Raw('COUNT(CASE WHEN expires_at <= UNIX_TIMESTAMP() THEN 1 END)'), 'expired'],
-            [new \Medoo\Raw('SUM(result_count)'), 'total_results'],
-            [new \Medoo\Raw('AVG(result_count)'), 'avg_results'],
-        ]);
+        $sql = "SELECT COUNT(*) AS total, 
+                       COUNT(CASE WHEN expires_at > UNIX_TIMESTAMP() THEN 1 END) AS valid, 
+                       COUNT(CASE WHEN expires_at <= UNIX_TIMESTAMP() THEN 1 END) AS expired, 
+                       SUM(result_count) AS total_results, 
+                       AVG(result_count) AS avg_results 
+                FROM search_cache";
+
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->execute();
+        
+        $stats = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $stats[0] ?? [];
     }
@@ -211,16 +235,21 @@ class SearchCacheService
      */
     public function getHotKeywords(int $limit = 10): array
     {
-        $keywords = $this->db->select('search_cache', [
-            'keyword',
-            [new \Medoo\Raw('COUNT(*)'), 'count'],
-            [new \Medoo\Raw('MAX(created_at)'), 'last_used'],
-        ], [
-            'expires_at[>]' => time(),
-            'GROUP' => ['keyword'],
-            'ORDER' => ['count' => 'DESC'],
-            'LIMIT' => $limit,
-        ]);
+        $sql = "SELECT keyword, 
+                       COUNT(*) AS count, 
+                       MAX(created_at) AS last_used 
+                FROM search_cache 
+                WHERE expires_at > :current_time 
+                GROUP BY keyword 
+                ORDER BY count DESC 
+                LIMIT :limit";
+
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':current_time', time(), \PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $keywords = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $keywords;
     }

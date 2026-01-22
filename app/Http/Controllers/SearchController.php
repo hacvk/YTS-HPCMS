@@ -39,9 +39,9 @@ class SearchController extends BaseController
         $keyword = $this->get('keyword', '');
         $keyword = trim($keyword);
 
-        // 如果没有关键词，显示搜索页面
+        // 如果没有关键词：提示并返回首页
         if (empty($keyword)) {
-            $this->showSearchPage();
+            $this->redirect('/?msg=' . urlencode('请输入查询内容'));
             return;
         }
 
@@ -55,6 +55,14 @@ class SearchController extends BaseController
         $limit = 10;
 
         try {
+            // 使用 SiteService 构建导航数据
+            $navItems = $this->siteService->buildNav();
+
+            // 计算基础URL
+            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+            $appBaseUrl = $protocol . '://' . $host;
+
             // 获取客户端IP和User-Agent
             $ip = $this->getClientIp();
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
@@ -79,14 +87,9 @@ class SearchController extends BaseController
                 return;
             }
 
-            // 使用 SiteService 构建导航数据
-            $navItems = $this->siteService->buildNav();
-
-            // 计算基础URL
-            $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
-            $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $appBaseUrl = $protocol . '://' . $host;
-
+            // 获取热门搜索关键词
+            $hotKeywords = $this->searchService->getHotKeywords(7, 10);
+            
             // 渲染搜索结果页
             $this->render('front/search', [
                 'title' => '搜索结果 - ' . $keyword,
@@ -97,6 +100,7 @@ class SearchController extends BaseController
                 'limit' => $limit,
                 'navItems' => $navItems,
                 'appBaseUrl' => $appBaseUrl,
+                'hotKeywords' => $hotKeywords,
             ]);
         } catch (\Exception $e) {
             error_log('搜索失败: ' . $e->getMessage());
@@ -118,6 +122,9 @@ class SearchController extends BaseController
         $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
         $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
         $appBaseUrl = $protocol . '://' . $host;
+        
+        // 获取热门搜索关键词
+        $hotKeywords = $this->searchService->getHotKeywords(7, 10);
 
         $this->render('front/search', [
             'title' => '内容搜索',
@@ -128,6 +135,7 @@ class SearchController extends BaseController
             'limit' => 10,
             'navItems' => $navItems,
             'appBaseUrl' => $appBaseUrl,
+            'hotKeywords' => $hotKeywords,
         ]);
     }
 

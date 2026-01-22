@@ -12,6 +12,11 @@ return [
     // 首页
     'GET /' => ['HomeController', 'index'],
 
+    // 搜索
+    'GET /search/' => ['SearchController', 'index'],
+    'GET /search' => ['SearchController', 'index'],
+    'POST /search/suggestions' => ['SearchController', 'suggestions'],
+
     // SEO 相关
     'GET /seo/sitemap' => ['SeoController', 'sitemap'],
     'GET /seo/sitemap.xml' => ['SeoController', 'sitemap'],

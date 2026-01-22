@@ -165,7 +165,7 @@ class SearchRateLimitService
                 'enabled' => 1,
                 'OR' => [
                     'expired_at[>=]' => date('Y-m-d H:i:s'),
-                    'expired_at[is]' => null,
+                    'expired_at' => null,
                 ],
             ]);
 
@@ -223,13 +223,23 @@ class SearchRateLimitService
 
         if ($blockedInfo === null) {
             // 从数据库获取最近的拦截记录
+            // 注意：search_blocks表中没有block_duration字段，需要从配置获取
             $blockedInfo = $this->db->get('search_blocks', [
-                'block_until' => $this->db->raw('last_blocked + block_duration'),
+                'ip',
+                'last_blocked',
+                'block_type',
             ], [
                 'ip' => $ip,
                 'ORDER' => ['last_blocked' => 'DESC'],
                 'LIMIT' => 1,
             ]);
+
+            if ($blockedInfo) {
+                // 从配置获取block_duration
+                $config = $this->getRateLimitConfig($ip);
+                $blockDuration = $config['block_duration'] ?? 300; // 默认5分钟
+                $blockedInfo['block_until'] = (int)$blockedInfo['last_blocked'] + $blockDuration;
+            }
 
             if ($blockedInfo) {
                 // 缓存到下次拦截结束
@@ -273,6 +283,7 @@ class SearchRateLimitService
                 'block_reason' => 'Rate limit exceeded',
                 'first_blocked' => time(),
                 'last_blocked' => time(),
+                'block_count' => 1,
             ]);
         }
 
@@ -369,14 +380,18 @@ class SearchRateLimitService
     {
         $startTime = time() - $days * 86400;
 
-        $stats = $this->db->select('search_blocks', [
-            'block_type',
-            [new \Medoo\Raw('COUNT(*)'), 'count'],
-            [new \Medoo\Raw('COUNT(DISTINCT ip)'), 'unique_ips'],
-        ], [
-            'last_blocked[>=]' => $startTime,
-            'GROUP' => ['block_type'],
-        ]);
+        $sql = "SELECT block_type, 
+                       COUNT(*) AS count, 
+                       COUNT(DISTINCT ip) AS unique_ips 
+                FROM search_blocks 
+                WHERE last_blocked >= :start_time 
+                GROUP BY block_type";
+
+        $stmt = $this->db->pdo->prepare($sql);
+        $stmt->bindParam(':start_time', $startTime, \PDO::PARAM_INT);
+        $stmt->execute();
+        
+        $stats = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
         return $stats;
     }
