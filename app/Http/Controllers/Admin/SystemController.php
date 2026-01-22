@@ -27,7 +27,7 @@ class SystemController extends AdminBaseController
             $secs = $seconds % 60;
             
             if ($days > 0) {
-                $runtime = sprintf('%d天 %02d:%02d:%02d', $days, $hours, $minutes, $secs);
+                $runtime = sprintf('%d天%02d:%02d:%02d', $days, $hours, $minutes, $secs);
             } else {
                 $runtime = sprintf('%02d:%02d:%02d', $hours, $minutes, $secs);
             }
@@ -95,6 +95,11 @@ class SystemController extends AdminBaseController
     {
         try {
             $type = $this->get('type', 'operation');
+            // 验证 type 参数，防止非法值
+            $validTypes = ['operation', 'performance', 'error', 'slow_query'];
+            if (!in_array($type, $validTypes, true)) {
+                $type = 'operation'; // 默认值
+            }
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
             
@@ -110,7 +115,7 @@ class SystemController extends AdminBaseController
             
             switch ($type) {
                 case 'operation':
-                    // 操作日志 - 从 LogService 获取
+                    // 操作日志 - 从LogService 获取
                     $conditions = [];
                     $adminId = (int)($this->get('admin_id', 0));
                     $startDate = $this->get('start_date', '');
@@ -148,7 +153,16 @@ class SystemController extends AdminBaseController
                     }
                     
                     $logs = $db->select('performance_metrics', '*', $where);
-                    $total = $db->count('performance_metrics', isset($where['AND']) ? $where['AND'] : []);
+                    
+                    // 为计数查询构建单独的条件（排除 ORDER 和 LIMIT）
+                    $countWhere = [];
+                    if (isset($where['timestamp[>=]'])) {
+                        $countWhere['timestamp[>=]'] = $where['timestamp[>=]'];
+                    }
+                    if (isset($where['timestamp[<=]'])) {
+                        $countWhere['timestamp[<=]'] = $where['timestamp[<=]'];
+                    }
+                    $total = $db->count('performance_metrics', $countWhere);
                     $title = '性能日志';
                     break;
                 
@@ -166,7 +180,16 @@ class SystemController extends AdminBaseController
                     }
                     
                     $logs = $db->select('error_logs', '*', $where);
-                    $total = $db->count('error_logs', isset($where['AND']) ? $where['AND'] : []);
+                    
+                    // 为计数查询构建单独的条件（排除 ORDER 和 LIMIT）
+                    $countWhere = [];
+                    if (isset($where['timestamp[>=]'])) {
+                        $countWhere['timestamp[>=]'] = $where['timestamp[>=]'];
+                    }
+                    if (isset($where['timestamp[<=]'])) {
+                        $countWhere['timestamp[<=]'] = $where['timestamp[<=]'];
+                    }
+                    $total = $db->count('error_logs', $countWhere);
                     $title = '错误日志';
                     break;
                 
@@ -184,7 +207,16 @@ class SystemController extends AdminBaseController
                     }
                     
                     $logs = $db->select('slow_queries', '*', $where);
-                    $total = $db->count('slow_queries', isset($where['AND']) ? $where['AND'] : []);
+                    
+                    // 为计数查询构建单独的条件（排除 ORDER 和 LIMIT）
+                    $countWhere = [];
+                    if (isset($where['timestamp[>=]'])) {
+                        $countWhere['timestamp[>=]'] = $where['timestamp[>=]'];
+                    }
+                    if (isset($where['timestamp[<=]'])) {
+                        $countWhere['timestamp[<=]'] = $where['timestamp[<=]'];
+                    }
+                    $total = $db->count('slow_queries', $countWhere);
                     $title = '慢查询日志';
                     break;
                 
@@ -225,6 +257,7 @@ class SystemController extends AdminBaseController
                 'upload' => '上传',
                 'download' => '下载',
                 'error' => '错误',
+                'slow_query' => '慢查询',
             ];
             
             $this->render('admin/system/logs', [
@@ -259,6 +292,11 @@ class SystemController extends AdminBaseController
             }
 
             $type = $this->post('type', 'operation');
+            // 验证 type 参数，防止非法值
+            $validTypes = ['operation', 'performance', 'error', 'slow_query'];
+            if (!in_array($type, $validTypes, true)) {
+                $type = 'operation'; // 默认值
+            }
             $days = (int)$this->post('days', 30);
             
             $db = Database::get();
@@ -327,3 +365,5 @@ class SystemController extends AdminBaseController
         }
     }
 }
+
+

@@ -34,7 +34,7 @@ class PerformanceMiddleware
             $this->ensurePerformanceMetricsTableExists($db);
             
             // 额外检查表是否真的存在，以防ensurePerformanceMetricsTableExists()方法未能成功创建表
-            $tableExists = $db->query('SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "performance_metrics" LIMIT 1')->fetchAll();
+            $tableExists = $db->query("SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'performance_metrics' LIMIT 1")->fetchAll();
             
             if (!empty($tableExists)) {
                 $adminId = $_SESSION['admin_id'] ?? null;
@@ -67,28 +67,20 @@ class PerformanceMiddleware
 
     private function ensurePerformanceMetricsTableExists($db)
     {
+        static $tableChecked = false;
+        if ($tableChecked) {
+            return;
+        }
+
         try {
-            $tableExists = $db->query('SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "performance_metrics" LIMIT 1')->fetchAll();
+            $tableExists = $db->query("SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'performance_metrics' LIMIT 1")->fetchAll();
             if (empty($tableExists)) {
-                // 使用更标准的表创建语句
-                $createQuery = "CREATE TABLE IF NOT EXISTS `performance_metrics` (
-                    `id` int(11) NOT NULL AUTO_INCREMENT,
-                    `request_id` varchar(50) NOT NULL,
-                    `method` varchar(10) NOT NULL,
-                    `uri` varchar(255) NOT NULL,
-                    `status_code` int(3) NOT NULL,
-                    `duration` decimal(10,2) NOT NULL,
-                    `memory_used` decimal(10,2) NOT NULL,
-                    `ip` varchar(45) NOT NULL,
-                    `user_agent` varchar(255) DEFAULT NULL,
-                    `admin_id` int(11) DEFAULT NULL,
-                    `timestamp` int(10) NOT NULL,
-                    PRIMARY KEY (`id`),
-                    INDEX `idx_timestamp` (`timestamp`),
-                    INDEX `idx_status_code` (`status_code`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;";
-                $db->query($createQuery);
+                // 表不存在，不再自动创建，直接返回
+                $tableChecked = true;
+                return;
             }
+
+            $tableChecked = true;
         } catch (\Exception $e) {
             // 获取管理员ID用于日志记录，并确保类型安全
             $sessionAdminId = $_SESSION['admin_id'] ?? null;
@@ -107,7 +99,7 @@ class PerformanceMiddleware
             $db = Database::get();
             
             // 检查 slow_queries 表是否存在
-            $tableExists = $db->query('SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "slow_queries" LIMIT 1')->fetchAll();
+            $tableExists = $db->query("SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'slow_queries' LIMIT 1")->fetchAll();
             
             // 如果 slow_queries 表不存在，先创建它
             if (empty($tableExists)) {

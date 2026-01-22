@@ -33,7 +33,7 @@ class AlertService
             $db = Database::get();
             
             // 检查数据库连接是否正常以及所需表是否存在
-            $tableExists = $db->query('SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = "performance_metrics" LIMIT 1')->fetchAll();
+            $tableExists = $db->query("SELECT 1 FROM information_schema.tables WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'performance_metrics' LIMIT 1")->fetchAll();
             
             if (empty($tableExists)) {
                 // 如果表不存在，跳过性能监控检查
