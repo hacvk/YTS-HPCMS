@@ -1,0 +1,168 @@
+{extends 'layout.latte'}
+
+{block content}
+<div class="auto auto_1150">
+    <!-- 搜索框 -->
+    <div class="search-box mb-4">
+        <form method="get" action="/search/" class="search-form">
+            <div class="input-group">
+                <input type="text" class="form-control" name="keyword" value="{$keyword}" placeholder="请输入搜索关键词..." required>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> 搜索
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- 搜索结果统计 -->
+    {if !empty($keyword)}
+    <div class="search-stats mb-4">
+        {if isset($blocked) && $blocked}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle"></i> 搜索请求被限制
+            {if isset($blocked_reason)}
+            <br><small>原因：{$blocked_reason}</small>
+            {/if}
+        </div>
+        {else}
+        <p class="text-muted">
+            搜索结果：<strong>{$total}</strong> 条
+            {if $total > 0}
+            （当前第 {$page} 页）
+            {/if}
+        </p>
+        {/if}
+    </div>
+    {/if}
+
+    <!-- 搜索结果列表 -->
+    {if !empty($results)}
+    <div class="search-results">
+        {foreach $results as $result}
+        <div class="search-result-item mb-3 p-3 border rounded">
+            <h4 class="search-result-title">
+                <a href="{$result['url']}" class="text-decoration-none">{$result['title']}</a>
+            </h4>
+            <div class="search-result-meta text-muted small">
+                <span>发布时间：{date('Y-m-d', strtotime($result['published_at']))}</span>
+                <span class="mx-2">|</span>
+                <span>阅读：{$result['views']} 次</span>
+            </div>
+            <div class="search-result-summary mt-2">
+                {$result['summary']|noescape}
+            </div>
+        </div>
+        {/foreach}
+    </div>
+
+    <!-- 分页 -->
+    {if $total > $limit}
+    <div class="pagination justify-content-center mt-4">
+        {var $totalPages = ceil($total / $limit)}
+        {var $startPage = max(1, $page - 4)}
+        {var $endPage = min($totalPages, $startPage + 8)}
+
+        {if $startPage > 1}
+        <a href="/search/?keyword={$keyword}&page=1" class="btn btn-sm btn-outline-primary">1</a>
+        {if $startPage > 2}
+        <span class="btn btn-sm btn-outline-secondary disabled">...</span>
+        {/if}
+        {/if}
+
+        {for $i = $startPage; $i <= $endPage; $i++}
+        {if $i == $page}
+        <span class="btn btn-sm btn-primary">{$i}</span>
+        {else}
+        <a href="/search/?keyword={$keyword}&page={$i}" class="btn btn-sm btn-outline-primary">{$i}</a>
+        {/if}
+        {/for}
+
+        {if $endPage < $totalPages}
+        {if $endPage < $totalPages - 1}
+        <span class="btn btn-sm btn-outline-secondary disabled">...</span>
+        {/if}
+        <a href="/search/?keyword={$keyword}&page={$totalPages}" class="btn btn-sm btn-outline-primary">{$totalPages}</a>
+        {/if}
+    </div>
+    {/if}
+
+    {else}
+    {if !empty($keyword)}
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle"></i> 没有找到与 "{$keyword}" 相关的内容
+    </div>
+    {/if}
+    {/if}
+
+    <!-- 热门搜索（可选） -->
+    {if empty($keyword)}
+    <div class="hot-searches mt-5">
+        <h5 class="mb-3">热门搜索</h5>
+        <div class="tags">
+            {ifset $hotKeywords}
+            {foreach $hotKeywords as $hotKeyword}
+            <a href="/search/?keyword={$hotKeyword}" class="btn btn-sm btn-outline-secondary mr-2 mb-2">{$hotKeyword}</a>
+            {/foreach}
+            {/ifset}
+        </div>
+    </div>
+    {/if}
+</div>
+
+<style>
+.search-box {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+.search-form .input-group {
+    display: flex;
+}
+
+.search-form .form-control {
+    flex: 1;
+    border-radius: 4px 0 0 4px;
+}
+
+.search-form .btn {
+    border-radius: 0 4px 4px 0;
+}
+
+.search-result-item:hover {
+    background: #f8f9fa;
+    transition: background 0.2s;
+}
+
+.search-result-title a {
+    color: #2c3e50;
+    font-weight: bold;
+}
+
+.search-result-title a:hover {
+    color: #3498db;
+}
+
+.search-result-summary {
+    color: #666;
+    line-height: 1.6;
+}
+
+.search-highlight {
+    background: #fff3cd;
+    padding: 0 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+.hot-searches .tags {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.hot-searches .btn {
+    margin-right: 5px;
+    margin-bottom: 5px;
+}
+</style>
+{/block}

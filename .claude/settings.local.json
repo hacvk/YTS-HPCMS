@@ -19,7 +19,8 @@
       "Bash(php /var/www/yycms.com/test_db2.php:*)",
       "Bash(dos2unix:*)",
       "Bash(ls:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(mysql -h 127.0.0.1 -u yycms -pYOUR_DB_PASSWORD yycms:*)"
     ]
   }
 }
