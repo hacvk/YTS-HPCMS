@@ -96,7 +96,8 @@ class SettingService
             'site_copyright' => $settings['site_copyright'] ?? '',
             'site_icp' => $settings['site_icp'] ?? '',
             'site_beian' => $settings['site_beian'] ?? '',
-            'site_beian_url' => $settings['site_beian_url'] ?? ''
+            'site_beian_url' => $settings['site_beian_url'] ?? '',
+            'admin_path' => $settings['admin_path'] ?? '/admin'
         ];
     }
 

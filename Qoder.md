@@ -1,0 +1,1 @@
+当前就是根目录，你不要加 \\wsl$\Ubuntu\var\www\yycms.com或者\var\www\yycms.com 你当前已经在根目录了

@@ -41,6 +41,12 @@ class SettingController extends AdminBaseController
                         'site_description' => ['label' => '网站描述', 'type' => 'textarea'],
                     ]
                 ],
+                'admin' => [
+                    'title' => '后台设置',
+                    'fields' => [
+                        'admin_path' => ['label' => '后台入口路径', 'type' => 'text', 'help' => '请输入后台入口路径，如：/admin 或 /manager，必须以/开头'],
+                    ]
+                ],
                 'logo' => [
                     'title' => 'Logo设置',
                     'fields' => [

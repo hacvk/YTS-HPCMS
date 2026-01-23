@@ -83,6 +83,13 @@ class SettingValidationService
                     }
                     break;
                     
+                case 'admin_path':
+                    // 验证admin路径格式：必须以/开头，只能包含字母、数字、下划线和连字符
+                    if (!empty($value) && (!preg_match('/^\/[_a-zA-Z0-9-]+$/', $value) || strlen($value) > 50)) {
+                        $errors[$key] = '后台入口路径格式不正确，必须以/开头，只能包含字母、数字、下划线和连字符，且不超过50个字符';
+                    }
+                    break;
+                    
                 default:
                     // 对于其他设置项，进行通用验证
                     if (strlen($value) > 1000) {
@@ -125,6 +132,7 @@ class SettingValidationService
                 case 'site_icp':
                 case 'site_beian':
                 case 'site_beian_url':
+                case 'admin_path':
                     // 这些字段需要去除首尾空白
                     $cleanValue = trim($cleanValue);
                     break;

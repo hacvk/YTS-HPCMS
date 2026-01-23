@@ -28,8 +28,26 @@ class LoginController extends BaseController
         // 如果已登录且当前请求不是退出登录，则直接跳转到后台首页
         // 注意：只在访问登录页面时检查，避免在登录处理时干扰
         $uri = $_SERVER['REQUEST_URI'] ?? '';
-        if ($uri === '/admin' && SessionService::isLoggedIn()) {
-            $this->redirect('/admin/dashboard');
+        
+        // 获取当前admin路径配置
+        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
+        
+        // 尝试从数据库直接获取配置
+        try {
+            $db = \App\Core\Database::get();
+            $settingModel = new \App\Models\Setting($db);
+            $settings = $settingModel->getAll();
+            $customPath = $settings['admin_path'] ?? null;
+            
+            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
+                $adminPath = $customPath;
+            }
+        } catch (\Exception $e) {
+            // 如果无法获取设置，使用默认值
+        }
+        
+        if ($uri === $adminPath && SessionService::isLoggedIn()) {
+            $this->redirect($adminPath . '/dashboard');
             exit;
         }
     }
@@ -191,8 +209,25 @@ class LoginController extends BaseController
             // 记录登录日志
             $this->log('登录成功', 'login', $admin['id']);
 
+            // 获取当前admin路径配置
+            $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
+            
+            // 尝试从数据库直接获取配置
+            try {
+                $db = \App\Core\Database::get();
+                $settingModel = new \App\Models\Setting($db);
+                $settings = $settingModel->getAll();
+                $customPath = $settings['admin_path'] ?? null;
+                
+                if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
+                    $adminPath = $customPath;
+                }
+            } catch (\Exception $e) {
+                // 如果无法获取设置，使用默认值
+            }
+            
             // 返回成功 JSON
-            $this->successJson('登录成功', null, '/admin/dashboard');
+            $this->successJson('登录成功', null, $adminPath . '/dashboard');
 
         } catch (\Exception $e) {
             // 记录详细错误日志
@@ -222,8 +257,25 @@ class LoginController extends BaseController
         // 安全地销毁 Session
         SessionService::destroy();
 
+        // 获取当前admin路径配置
+        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
+        
+        // 尝试从数据库直接获取配置
+        try {
+            $db = \App\Core\Database::get();
+            $settingModel = new \App\Models\Setting($db);
+            $settings = $settingModel->getAll();
+            $customPath = $settings['admin_path'] ?? null;
+            
+            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
+                $adminPath = $customPath;
+            }
+        } catch (\Exception $e) {
+            // 如果无法获取设置，使用默认值
+        }
+        
         // 跳转到登录页
-        $this->redirect('/admin');
+        $this->redirect($adminPath);
     }
 
     /**

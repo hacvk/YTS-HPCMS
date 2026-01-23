@@ -60,6 +60,39 @@ class Router
     private static ?array $dynamicRouteConfig = null;
     
     /**
+     * 获取admin路径
+     *
+     * @return string
+     */
+    private static function getAdminPath(): string
+    {
+        // 尝试从SettingService获取配置（优先级最高）
+        try {
+            // 使用全局函数或直接实例化Database来获取设置
+            $db = \App\Core\Database::get();
+            $settingModel = new \App\Models\Setting($db);
+            $settings = $settingModel->getAll();
+            $customPath = $settings['admin_path'] ?? null;
+            
+            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
+                return $customPath;
+            }
+        } catch (\Exception $e) {
+            // 如果无法获取SettingService，记录错误但不中断程序
+            error_log('Failed to get admin path from settings: ' . $e->getMessage());
+        }
+        
+        // 从系统配置中获取admin路径
+        $customAdminPath = \App\Core\App::getConfig('system.admin_path');
+        if ($customAdminPath && is_string($customAdminPath) && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customAdminPath)) {
+            return $customAdminPath;
+        }
+        
+        // 默认返回 /admin
+        return '/admin';
+    }
+    
+    /**
      * 中间件列表
      *
      * @var array<string> 中间件类名列表
@@ -346,6 +379,26 @@ class Router
             'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],
             'POST /admin/cache/clear-all' => ['Admin\\CacheController', 'clearAll'],
             ];
+        }
+        
+        // 加载动态admin路径配置
+        $adminPath = self::getAdminPath();
+        
+        // 如果admin路径不是默认的'/admin'，则添加动态路径映射
+        if ($adminPath !== '/admin') {
+            $dynamicAdminRoutes = [];
+            
+            // 遍历现有路由，为admin相关路由创建动态映射
+            foreach ($routes as $route => $controllerAction) {
+                if (preg_match('/^([^ ]+) \/admin/', $route)) { // 匹配以 HTTP方法 /admin 开头的路由
+                    // 替换 /admin 为动态路径
+                    $newRoute = preg_replace('/^(.+) \/admin/', '\$1 ' . $adminPath, $route);
+                    $dynamicAdminRoutes[$newRoute] = $controllerAction;
+                }
+            }
+            
+            // 合并动态路由到主路由数组
+            $routes = array_merge($routes, $dynamicAdminRoutes);
         }
 
         // 生产环境缓存到文件
