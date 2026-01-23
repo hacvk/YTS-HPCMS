@@ -106,7 +106,7 @@
                     {foreach $list as $a}
                         <li>
                             <div class="ytable">
-                                <div class="pic ytable-cell"><a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}"><img src="{$a['pic'] ?? $a['cover_img'] ?? ''}"></a></div>
+                                <div class="pic ytable-cell"><a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}"><img src="{$a['pic'] ?? $a['cover_img'] ?? ''}" width="150" height="210"></a></div>
                                 <div class="txt ytable-cell">
                                     <h3 class="dot">
                                         <a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}">{$a['title'] ?? ''}</a>
