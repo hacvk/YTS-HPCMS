@@ -11,6 +11,7 @@ use App\Core\Database;
 use App\Services\CaptchaService;
 use App\Services\SessionService;
 use App\Services\ValidationService;
+use App\Services\CacheService;
 
 /**
  * 后台登录控制器
@@ -111,35 +112,48 @@ class LoginController extends BaseController
                 $this->errorJson('请求方法错误');
             }
 
+            $ip = SessionService::getClientIp();
+            $username = trim($this->post('username', ''));
+
+            // 登录限流检查
+            $limitMessage = $this->checkLoginRateLimit($ip, $username);
+            if ($limitMessage !== null) {
+                $this->errorJson($limitMessage);
+            }
+
             // 验证 CSRF Token
             $csrfToken = $this->post('csrf_token', '');
             if (!$this->securityService->checkCsrfToken($csrfToken)) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('CSRF Token 验证失败');
             }
 
             // 获取并清理输入
-            $username = trim($this->post('username', ''));
             $password = $this->post('password', '');
             $captcha   = strtoupper(trim($this->post('captcha', '')));
 
             // 验证必填字段
             if (empty($username) || empty($password)) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('用户名和密码不能为空');
             }
 
             // 验证用户名格式
             if (!ValidationService::validateUsername($username)) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('用户名格式不正确（只能包含字母、数字、下划线，3-20位）');
             }
 
             // 验证密码强度
             if (!ValidationService::validatePasswordStrength($password, 1)) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('密码长度至少8位');
             }
 
             // 验证验证码
             $sessionCaptcha = SessionService::get('admin_login_captcha', '');
             if (empty($captcha) || $captcha !== $sessionCaptcha) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('验证码错误');
             }
 
@@ -164,16 +178,19 @@ class LoginController extends BaseController
             // 检查管理员是否存在
             if (!$admin) {
                 // 防止用户名枚举攻击（统一返回错误信息）
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('用户名或密码错误');
             }
 
             // 检查账号状态
             if ($admin['status'] != 1) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('账号已被禁用');
             }
 
             // 验证密码
             if (!$this->securityService->passwordVerify($password, $admin['password'])) {
+                $this->recordLoginFailure($ip, $username);
                 $this->errorJson('用户名或密码错误');
             }
 
@@ -209,6 +226,9 @@ class LoginController extends BaseController
             // 记录登录日志
             $this->log('登录成功', 'login', $admin['id']);
 
+            // 登录成功，清理失败计数
+            $this->clearLoginAttempts($ip, $username);
+
             // 获取当前admin路径配置
             $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
             
@@ -240,6 +260,106 @@ class LoginController extends BaseController
                 $this->errorJson('登录失败，请稍后重试');
             }
         }
+    }
+
+    /**
+     * 登录限流检查
+     *
+     * @param string $ip
+     * @param string $username
+     * @return string|null 返回错误消息或 null
+     */
+    private function checkLoginRateLimit(string $ip, string $username): ?string
+    {
+        $cache = new CacheService();
+        $blockKey = 'login_block_' . md5($ip);
+        $blockUntil = (int)$cache->get($blockKey, 0);
+        if ($blockUntil > time()) {
+            return '尝试次数过多，请稍后再试';
+        }
+
+        $attemptKey = $this->getLoginAttemptKey($ip, $username);
+        $attempt = $cache->get($attemptKey, [
+            'count' => 0,
+            'first_at' => time(),
+        ]);
+
+        $windowSeconds = 600;
+        if (!is_array($attempt) || !isset($attempt['count'], $attempt['first_at'])) {
+            return null;
+        }
+
+        if (time() - (int)$attempt['first_at'] > $windowSeconds) {
+            return null;
+        }
+
+        if ((int)$attempt['count'] >= 5) {
+            return '尝试次数过多，请稍后再试';
+        }
+
+        return null;
+    }
+
+    /**
+     * 记录登录失败
+     *
+     * @param string $ip
+     * @param string $username
+     * @return void
+     */
+    private function recordLoginFailure(string $ip, string $username): void
+    {
+        $cache = new CacheService();
+        $attemptKey = $this->getLoginAttemptKey($ip, $username);
+
+        $attempt = $cache->get($attemptKey, [
+            'count' => 0,
+            'first_at' => time(),
+        ]);
+
+        if (!is_array($attempt) || !isset($attempt['count'], $attempt['first_at'])) {
+            $attempt = ['count' => 0, 'first_at' => time()];
+        }
+
+        $windowSeconds = 600;
+        if (time() - (int)$attempt['first_at'] > $windowSeconds) {
+            $attempt = ['count' => 0, 'first_at' => time()];
+        }
+
+        $attempt['count'] = (int)$attempt['count'] + 1;
+        $cache->set($attemptKey, $attempt, $windowSeconds);
+
+        if ($attempt['count'] >= 5) {
+            $blockKey = 'login_block_' . md5($ip);
+            $cache->set($blockKey, time() + 900, 900);
+        }
+    }
+
+    /**
+     * 清理登录失败计数
+     *
+     * @param string $ip
+     * @param string $username
+     * @return void
+     */
+    private function clearLoginAttempts(string $ip, string $username): void
+    {
+        $cache = new CacheService();
+        $cache->delete($this->getLoginAttemptKey($ip, $username));
+        $cache->delete('login_block_' . md5($ip));
+    }
+
+    /**
+     * 构建登录失败缓存键
+     *
+     * @param string $ip
+     * @param string $username
+     * @return string
+     */
+    private function getLoginAttemptKey(string $ip, string $username): string
+    {
+        $normalizedUser = $username !== '' ? $username : 'unknown';
+        return 'login_attempt_' . md5($ip . '|' . $normalizedUser);
     }
 
     /**

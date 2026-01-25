@@ -1129,8 +1129,20 @@ class FileService
                 return ['success' => false, 'message' => '源图片不存在'];
             }
 
+            // 限制裁剪来源必须在 public/uploads 内
+            $realSourcePath = realpath($sourcePath);
+            if ($realSourcePath === false) {
+                return ['success' => false, 'message' => '源图片路径无效'];
+            }
+
+            $publicDir = dirname(__DIR__, 2) . '/public';
+            $allowedBaseDir = realpath($publicDir . '/uploads');
+            if ($allowedBaseDir === false || strpos($realSourcePath, $allowedBaseDir) !== 0) {
+                return ['success' => false, 'message' => '不允许的图片路径'];
+            }
+
             // 获取图片信息
-            $imageInfo = @getimagesize($sourcePath);
+            $imageInfo = @getimagesize($realSourcePath);
             if ($imageInfo === false) {
                 return ['success' => false, 'message' => '无法读取图片信息'];
             }
@@ -1149,7 +1161,7 @@ class FileService
             }
 
             // 创建源图片资源
-            $sourceImage = self::createImageFromFile($sourcePath, $imageType);
+            $sourceImage = self::createImageFromFile($realSourcePath, $imageType);
             if ($sourceImage === false) {
                 return ['success' => false, 'message' => '无法创建图片资源'];
             }
@@ -1340,6 +1352,8 @@ class FileService
         ?int $targetWidth = null,
         ?int $targetHeight = null
     ): array {
+        $maxBytes = 5 * 1024 * 1024; // 5MB
+
         // 解析 Base64 数据
         if (!str_starts_with($base64Data, 'data:image/')) {
             return ['success' => false, 'message' => '无效的图片数据'];
@@ -1353,6 +1367,11 @@ class FileService
         $extension = strtolower($matches[1]);
         $base64Content = $matches[2];
 
+        // 基于 Base64 长度的快速限制（约等于原始字节数）
+        if (strlen($base64Content) > (int)($maxBytes * 1.4)) {
+            return ['success' => false, 'message' => '图片过大'];
+        }
+
         // 验证扩展名
         $allowedExtensions = ['jpeg', 'jpg', 'png', 'gif', 'webp'];
         if (!in_array($extension, $allowedExtensions, true)) {
@@ -1363,6 +1382,10 @@ class FileService
         $imageData = base64_decode($base64Content);
         if ($imageData === false) {
             return ['success' => false, 'message' => 'Base64 解码失败'];
+        }
+
+        if (strlen($imageData) > $maxBytes) {
+            return ['success' => false, 'message' => '图片过大'];
         }
 
         // 验证图片数据

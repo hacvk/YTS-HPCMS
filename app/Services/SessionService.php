@@ -30,11 +30,14 @@ class SessionService
     public static function init(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
+            $cookieSecure = self::resolveCookieSecure();
+            $cookieSameSite = self::resolveCookieSameSite();
+
             // 设置 Session 配置
             ini_set('session.cookie_httponly', self::$config['cookie_httponly'] ? '1' : '0');
-            ini_set('session.cookie_secure', self::$config['cookie_secure'] ? '1' : '0');
+            ini_set('session.cookie_secure', $cookieSecure ? '1' : '0');
             ini_set('session.use_strict_mode', self::$config['use_strict_mode'] ? '1' : '0');
-            ini_set('session.cookie_samesite', self::$config['cookie_samesite']);
+            ini_set('session.cookie_samesite', $cookieSameSite);
             ini_set('session.cookie_lifetime', (string)self::$config['cookie_lifetime']);
             ini_set('session.gc_maxlifetime', (string)self::$config['gc_maxlifetime']);
 
@@ -45,6 +48,44 @@ class SessionService
 
             session_start();
         }
+    }
+
+    /**
+     * 解析 cookie_secure（环境变量优先，其次自动检测 HTTPS）
+     *
+     * @return bool
+     */
+    private static function resolveCookieSecure(): bool
+    {
+        $env = getenv('SESSION_COOKIE_SECURE');
+        if ($env !== false) {
+            return filter_var($env, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        if (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') {
+            return true;
+        }
+
+        if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') {
+            return true;
+        }
+
+        return self::$config['cookie_secure'];
+    }
+
+    /**
+     * 解析 cookie_samesite（环境变量优先）
+     *
+     * @return string
+     */
+    private static function resolveCookieSameSite(): string
+    {
+        $env = getenv('SESSION_COOKIE_SAMESITE');
+        if ($env !== false && $env !== '') {
+            return (string)$env;
+        }
+
+        return (string)self::$config['cookie_samesite'];
     }
 
     /**

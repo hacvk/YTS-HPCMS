@@ -3,8 +3,9 @@
  * 应用入口文件
  */
 
-// 开启错误显示（调试模式，生产环境请关闭）
-ini_set('display_errors', '1');
+// 错误显示控制（生产环境关闭显示，保留错误上报）
+$appDebug = filter_var(getenv('APP_DEBUG'), FILTER_VALIDATE_BOOLEAN);
+ini_set('display_errors', $appDebug ? '1' : '0');
 error_reporting(E_ALL);
 
 // 定义应用根目录

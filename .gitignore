@@ -56,6 +56,8 @@
 # 忽略名称中包含 test 的所有文件/目录（区分大小写，如 test.php、user_test.txt、test_dir/ 都被忽略）
 *test*
 *.example*
+.env
+.env.*
 
 # 忽略 oldhtml 整个目录（包括目录下所有文件/子目录）
 oldhtml/
@@ -71,4 +73,3 @@ doc/
 
 # 可选：避免忽略名称中 test 是正常业务的文件（如果有例外，比如 TestService.php 不想忽略，加 ! 排除）
 # !app/Service/TestService.php
-
