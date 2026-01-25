@@ -30,6 +30,12 @@
                             </button>
                         </div>
                     </div>
+                    <div class="col-md-2 mb-2">
+                        <div class="btn-group w-100">
+                            <a class="btn btn-outline-primary" href="/admin/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=daily">导出日统计</a>
+                            <a class="btn btn-outline-secondary" href="/admin/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=range">导出范围</a>
+                        </div>
+                    </div>
                 </div>
             </form>
         </div>
@@ -120,6 +126,23 @@
                         </div>
                     </div>
                 </div>
+                {ifset $dailyStats['session_count']}
+                <div class="col-xl-3 col-md-6 mb-4">
+                    <div class="card border-left-info shadow h-100 py-2">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="text-xs font-weight-bold text-info text-uppercase mb-1">会话数</div>
+                                    <div class="h5 mb-0 font-weight-bold text-gray-800">{$dailyStats['session_count']}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-stream fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {/ifset}
             </div>
 
             <div class="row">

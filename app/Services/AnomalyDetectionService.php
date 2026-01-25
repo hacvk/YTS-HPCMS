@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Database;
+use App\Services\CacheService;
+use App\Services\VisitorLogService;
 
 /**
  * 异常行为检测服务
@@ -480,40 +482,34 @@ class AnomalyDetectionService
     public static function getAnomalyReport(string $date): array
     {
         try {
-            $db = Database::get();
             $timestampStart = strtotime($date . ' 00:00:00');
             $timestampEnd = strtotime($date . ' 23:59:59');
 
-            // 总体统计
-            $totalRequests = $db->count('visitor_logs', [
-                'timestamp[>=]' => $timestampStart,
-                'timestamp[<=]' => $timestampEnd,
-            ]);
+            $cache = new CacheService();
+            $cacheKey = 'visitor:anomaly_report:' . $date;
+            $cached = $cache->get($cacheKey);
+            if (is_array($cached)) {
+                return $cached;
+            }
 
-            $errorRequests = $db->count('visitor_logs', [
-                'timestamp[>=]' => $timestampStart,
-                'timestamp[<=]' => $timestampEnd,
-                'status_code[>=]' => 400,
-            ]);
-
-            $botRequests = $db->count('visitor_logs', [
-                'timestamp[>=]' => $timestampStart,
-                'timestamp[<=]' => $timestampEnd,
-                'is_bot' => 1,
-            ]);
+            $summary = VisitorLogService::getFileLogSummary($date, $date);
+            $totalRequests = (int)($summary['total_requests'] ?? 0);
+            $errorRequests = (int)($summary['error_requests'] ?? 0);
+            $botRequests = (int)($summary['bot_requests'] ?? 0);
 
             // 异常率
             $errorRate = $totalRequests > 0 ? ($errorRequests / $totalRequests) * 100 : 0;
             $botRate = $totalRequests > 0 ? ($botRequests / $totalRequests) * 100 : 0;
 
             // 获取告警
+            $db = Database::get();
             $alerts = $db->select('visitor_alerts', '*', [
                 'first_seen[>=]' => $timestampStart,
                 'first_seen[<=]' => $timestampEnd,
                 'ORDER' => ['risk_level' => 'DESC', 'created_at' => 'DESC'],
             ]);
 
-            return [
+            $result = [
                 'date' => $date,
                 'total_requests' => $totalRequests,
                 'error_requests' => $errorRequests,
@@ -523,9 +519,201 @@ class AnomalyDetectionService
                 'alerts' => $alerts,
                 'alert_count' => count($alerts),
             ];
+            $cache->set($cacheKey, $result, 60);
+            return $result;
         } catch (\Exception $e) {
             error_log('[AnomalyDetectionService] 获取异常检测报告失败: ' . $e->getMessage());
             return [];
         }
+    }
+
+    /**
+     * 从文件日志生成告警（不落库）
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @param string $riskLevel
+     * @param string $alertType
+     * @param int $limit
+     * @param int $offset
+     * @return array<int, array<string, mixed>>
+     */
+    public static function getAlertsFromFile(string $startDate, string $endDate, string $riskLevel = '', string $alertType = '', int $limit = 20, int $offset = 0): array
+    {
+        $aggregates = VisitorLogService::getFileLogAggregates($startDate, $endDate);
+        $thresholds = self::getThresholds();
+
+        $alerts = [];
+
+        // 高频访问
+        if ($alertType === '' || $alertType === 'high_frequency') {
+            foreach ($aggregates['ip_counts'] as $ip => $count) {
+                if ($count >= $thresholds['high_frequency']['requests_per_hour']) {
+                    $level = self::calculateRiskLevel((int)$count);
+                    $alerts[] = [
+                        'alert_type' => 'high_frequency',
+                        'ip' => $ip,
+                        'risk_level' => $level,
+                        'count' => (int)$count,
+                        'details' => json_encode(['request_count' => (int)$count], JSON_UNESCAPED_UNICODE),
+                        'status' => 'pending',
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ];
+                }
+            }
+        }
+
+        // 可疑IP（错误率）
+        if ($alertType === '' || $alertType === 'suspicious_ip') {
+            foreach ($aggregates['ip_counts'] as $ip => $count) {
+                $errorCount = (int)($aggregates['ip_error_counts'][$ip] ?? 0);
+                if ($count >= $thresholds['suspicious_ip']['min_requests']) {
+                    $errorRate = $count > 0 ? $errorCount / $count : 0;
+                    if ($errorRate >= $thresholds['suspicious_ip']['error_rate']) {
+                        $level = $errorRate >= 0.8 ? 'critical' : ($errorRate >= 0.6 ? 'high' : 'medium');
+                        $alerts[] = [
+                            'alert_type' => 'suspicious_ip',
+                            'ip' => $ip,
+                            'risk_level' => $level,
+                            'count' => $count,
+                            'details' => json_encode(['error_rate' => round($errorRate, 2), 'total_requests' => $count, 'error_requests' => $errorCount], JSON_UNESCAPED_UNICODE),
+                            'status' => 'pending',
+                            'created_at' => date('Y-m-d H:i:s'),
+                        ];
+                    }
+                }
+            }
+        }
+
+        // 爬虫检测
+        if ($alertType === '' || $alertType === 'bot_detection') {
+            foreach ($aggregates['bot_counts'] as $key => $count) {
+                if ($count >= $thresholds['bot_detection']['min_requests']) {
+                    [$ip, $userAgent] = array_pad(explode('|', $key, 2), 2, '');
+                    $alerts[] = [
+                        'alert_type' => 'bot_detection',
+                        'ip' => $ip,
+                        'user_agent' => $userAgent,
+                        'risk_level' => 'low',
+                        'count' => $count,
+                        'details' => json_encode(['request_count' => $count], JSON_UNESCAPED_UNICODE),
+                        'status' => 'pending',
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ];
+                }
+            }
+        }
+
+        // 异常来源
+        if ($alertType === '' || $alertType === 'abnormal_referrer') {
+            foreach ($aggregates['referrer_counts'] as $referrer => $count) {
+                if ($count >= $thresholds['abnormal_referrer']['min_requests']) {
+                    if (str_contains($referrer, 'yycms.com')
+                        || str_contains($referrer, 'google.com')
+                        || str_contains($referrer, 'baidu.com')) {
+                        continue;
+                    }
+                    $alerts[] = [
+                        'alert_type' => 'abnormal_referrer',
+                        'ip' => '',
+                        'referrer' => $referrer,
+                        'risk_level' => 'medium',
+                        'count' => $count,
+                        'details' => json_encode(['referrer' => $referrer, 'request_count' => $count], JSON_UNESCAPED_UNICODE),
+                        'status' => 'pending',
+                        'created_at' => date('Y-m-d H:i:s'),
+                    ];
+                }
+            }
+        }
+
+        if ($riskLevel !== '') {
+            $alerts = array_values(array_filter($alerts, fn($alert) => $alert['risk_level'] === $riskLevel));
+        }
+
+        usort($alerts, function (array $a, array $b): int {
+            $levels = ['critical' => 4, 'high' => 3, 'medium' => 2, 'low' => 1];
+            return ($levels[$b['risk_level']] ?? 0) <=> ($levels[$a['risk_level']] ?? 0);
+        });
+
+        $alerts = array_values($alerts);
+        $alerts = array_slice($alerts, $offset, $limit);
+        foreach ($alerts as $index => &$alert) {
+            $alert['id'] = $alert['id'] ?? ($offset + $index + 1);
+            $alert['first_seen'] = $alert['first_seen'] ?? $alert['created_at'] ?? date('Y-m-d H:i:s');
+            $alert['last_seen'] = $alert['last_seen'] ?? $alert['created_at'] ?? date('Y-m-d H:i:s');
+        }
+        unset($alert);
+
+        return $alerts;
+    }
+
+    /**
+     * 获取文件日志告警总数
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @param string $riskLevel
+     * @param string $alertType
+     * @return int
+     */
+    public static function getAlertsFromFileCount(string $startDate, string $endDate, string $riskLevel = '', string $alertType = ''): int
+    {
+        $alerts = self::getAlertsFromFile($startDate, $endDate, $riskLevel, $alertType, 50000, 0);
+        return count($alerts);
+    }
+
+    /**
+     * 文件日志告警统计
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<string, mixed>
+     */
+    public static function getAlertStatsFromFile(string $startDate, string $endDate): array
+    {
+        $alerts = self::getAlertsFromFile($startDate, $endDate, '', '', 5000, 0);
+        if (empty($alerts)) {
+            return ['by_type' => [], 'by_risk' => [], 'by_ip' => []];
+        }
+
+        $byType = [];
+        $byRisk = [];
+        $byIp = [];
+
+        foreach ($alerts as $alert) {
+            $type = (string)$alert['alert_type'];
+            $risk = (string)$alert['risk_level'];
+            $ip = (string)($alert['ip'] ?? '');
+
+            $byType[$type . '|' . $risk] = ($byType[$type . '|' . $risk] ?? 0) + 1;
+            $byRisk[$risk] = ($byRisk[$risk] ?? 0) + 1;
+            if ($ip !== '') {
+                $byIp[$ip] = ($byIp[$ip] ?? 0) + 1;
+            }
+        }
+
+        $byTypeRows = [];
+        foreach ($byType as $key => $count) {
+            [$type, $risk] = explode('|', $key, 2);
+            $byTypeRows[] = ['alert_type' => $type, 'risk_level' => $risk, 'count' => $count];
+        }
+
+        $byRiskRows = [];
+        foreach ($byRisk as $risk => $count) {
+            $byRiskRows[] = ['risk_level' => $risk, 'count' => $count];
+        }
+
+        arsort($byIp);
+        $byIpRows = [];
+        foreach (array_slice($byIp, 0, 20, true) as $ip => $count) {
+            $byIpRows[] = ['ip' => $ip, 'count' => $count, 'max_risk' => 'medium'];
+        }
+
+        return [
+            'by_type' => $byTypeRows,
+            'by_risk' => $byRiskRows,
+            'by_ip' => $byIpRows,
+        ];
     }
 }

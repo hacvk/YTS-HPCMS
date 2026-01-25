@@ -411,6 +411,153 @@ class VisitorLogService
     }
 
     /**
+     * 汇总文件日志（用于统计/异常报告）
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<string, mixed>
+     */
+    public static function getFileLogSummary(string $startDate, string $endDate): array
+    {
+        $entries = self::collectFileLogs([], $startDate, $endDate);
+        if (empty($entries)) {
+            return [
+                'total_requests' => 0,
+                'error_requests' => 0,
+                'bot_requests' => 0,
+                'unique_ips' => 0,
+                'unique_sessions' => 0,
+                'top_pages' => [],
+                'top_referrers' => [],
+                'top_ips' => [],
+            ];
+        }
+
+        $total = 0;
+        $error = 0;
+        $bot = 0;
+        $ipSet = [];
+        $sessionSet = [];
+        $pageCounts = [];
+        $referrerCounts = [];
+        $ipCounts = [];
+
+        foreach ($entries as $entry) {
+            $total++;
+            $status = (int)($entry['status_code'] ?? 0);
+            if ($status >= 400) {
+                $error++;
+            }
+            if ((int)($entry['is_bot'] ?? 0) === 1) {
+                $bot++;
+            }
+            $ip = (string)($entry['ip'] ?? '');
+            if ($ip !== '') {
+                $ipSet[$ip] = true;
+                $ipCounts[$ip] = ($ipCounts[$ip] ?? 0) + 1;
+            }
+            $sessionId = (string)($entry['session_id'] ?? '');
+            if ($sessionId !== '') {
+                $sessionSet[$sessionId] = true;
+            }
+            $url = (string)($entry['url'] ?? '');
+            if ($url !== '') {
+                $pageCounts[$url] = ($pageCounts[$url] ?? 0) + 1;
+            }
+            $referrer = (string)($entry['referrer'] ?? '');
+            if ($referrer !== '') {
+                $referrerCounts[$referrer] = ($referrerCounts[$referrer] ?? 0) + 1;
+            }
+        }
+
+        arsort($pageCounts);
+        arsort($referrerCounts);
+        arsort($ipCounts);
+
+        $topPages = array_map(
+            fn($url, $count) => ['url' => $url, 'count' => $count],
+            array_keys(array_slice($pageCounts, 0, 10, true)),
+            array_values(array_slice($pageCounts, 0, 10, true))
+        );
+        $topReferrers = array_map(
+            fn($ref, $count) => ['referrer' => $ref, 'count' => $count],
+            array_keys(array_slice($referrerCounts, 0, 10, true)),
+            array_values(array_slice($referrerCounts, 0, 10, true))
+        );
+        $topIps = array_map(
+            fn($ip, $count) => ['ip' => $ip, 'count' => $count],
+            array_keys(array_slice($ipCounts, 0, 10, true)),
+            array_values(array_slice($ipCounts, 0, 10, true))
+        );
+
+        return [
+            'total_requests' => $total,
+            'error_requests' => $error,
+            'bot_requests' => $bot,
+            'unique_ips' => count($ipSet),
+            'unique_sessions' => count($sessionSet),
+            'top_pages' => $topPages,
+            'top_referrers' => $topReferrers,
+            'top_ips' => $topIps,
+        ];
+    }
+
+    /**
+     * 获取文件日志聚合数据（用于告警检测）
+     *
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<string, mixed>
+     */
+    public static function getFileLogAggregates(string $startDate, string $endDate): array
+    {
+        $entries = self::collectFileLogs([], $startDate, $endDate);
+        if (empty($entries)) {
+            return [
+                'ip_counts' => [],
+                'ip_error_counts' => [],
+                'bot_counts' => [],
+                'referrer_counts' => [],
+            ];
+        }
+
+        $ipCounts = [];
+        $ipErrorCounts = [];
+        $botCounts = [];
+        $referrerCounts = [];
+
+        foreach ($entries as $entry) {
+            $ip = (string)($entry['ip'] ?? '');
+            $status = (int)($entry['status_code'] ?? 0);
+            $isBot = (int)($entry['is_bot'] ?? 0);
+            $userAgent = (string)($entry['user_agent'] ?? '');
+            $referrer = (string)($entry['referrer'] ?? '');
+
+            if ($ip !== '') {
+                $ipCounts[$ip] = ($ipCounts[$ip] ?? 0) + 1;
+                if ($status >= 400) {
+                    $ipErrorCounts[$ip] = ($ipErrorCounts[$ip] ?? 0) + 1;
+                }
+                if ($isBot === 1) {
+                    $botKey = $ip . '|' . $userAgent;
+                    $botCounts[$botKey] = ($botCounts[$botKey] ?? 0) + 1;
+                }
+            }
+
+            if ($referrer !== '') {
+                $referrerCounts[$referrer] = ($referrerCounts[$referrer] ?? 0) + 1;
+            }
+        }
+
+        return [
+            'ip_counts' => $ipCounts,
+            'ip_error_counts' => $ipErrorCounts,
+            'bot_counts' => $botCounts,
+            'referrer_counts' => $referrerCounts,
+        ];
+    }
+
+    /**
      * 获取访客日志总数
      *
      * 安全特性:
@@ -568,6 +715,10 @@ class VisitorLogService
             'id' => 0,
             'ip' => (string)($data['ip'] ?? ''),
             'url' => (string)($data['url'] ?? ''),
+            'referrer' => (string)($data['referrer'] ?? ''),
+            'session_id' => (string)($data['session_id'] ?? ''),
+            'user_agent' => (string)($data['user_agent'] ?? ''),
+            'method' => (string)($data['method'] ?? ''),
             'status_code' => (int)($data['status_code'] ?? 0),
             'duration' => (float)($data['duration'] ?? 0),
             'is_bot' => (int)($data['is_bot'] ?? 0),

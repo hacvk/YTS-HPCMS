@@ -33,6 +33,13 @@
                         </select>
                     </div>
                     <div class="col-md-2 mb-2">
+                        <select class="form-control" id="status" name="status">
+                            <option value="" {if !$status}selected{/if}>处理状态</option>
+                            <option value="pending" {if $status == 'pending'}selected{/if}>未处理</option>
+                            <option value="handled" {if $status == 'handled'}selected{/if}>已处理</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
                         <input type="date" class="form-control" id="start_date" name="start_date" value="{$startDate}" placeholder="开始日期">
                     </div>
                     <div class="col-md-2 mb-2">
@@ -45,6 +52,9 @@
                             </button>
                             <a href="/admin/visitor/alerts" class="btn btn-secondary">
                                 <i class="fas fa-redo"></i> 重置
+                            </a>
+                            <a href="/admin/visitor/alerts?risk_level={$riskLevel}&alert_type={$alertType}&status={$status}&start_date={$startDate}&end_date={$endDate}&export=csv" class="btn btn-outline-primary">
+                                <i class="fas fa-file-export"></i> 导出
                             </a>
                         </div>
                     </div>
@@ -223,6 +233,7 @@
                             <th style="min-width: 80px; width: 80px;">次数</th>
                             <th style="min-width: 160px; width: 160px;">首次发现</th>
                             <th style="min-width: 160px; width: 160px;">最后出现</th>
+                            <th style="min-width: 100px; width: 100px;">状态</th>
                             <th style="min-width: 100px; width: 100px;">操作</th>
                         </tr>
                     </thead>
@@ -260,15 +271,28 @@
                             <td style="word-break: break-word; white-space: nowrap;">{$alert['first_seen']|date:'Y-m-d H:i:s'}</td>
                             <td style="word-break: break-word; white-space: nowrap;">{$alert['last_seen']|date:'Y-m-d H:i:s'}</td>
                             <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alert['status'] == 'handled'}
+                                <span class="badge badge-pill bg-secondary">已处理</span>
+                                {else}
+                                <span class="badge badge-pill bg-success">未处理</span>
+                                {/if}
+                            </td>
+                            <td style="word-break: break-word; white-space: nowrap;">
+                                {if $alertsReadonly}
+                                <button type="button" class="btn btn-sm btn-secondary" disabled>
+                                    <i class="fas fa-ban"></i> 只读
+                                </button>
+                                {else}
                                 <button type="button" class="btn btn-sm btn-success" onclick="handleAlert({$alert['id']})">
                                     <i class="fas fa-check"></i> 处理
                                 </button>
+                                {/if}
                             </td>
                         </tr>
                         {/foreach}
                         {else}
                         <tr>
-                            <td colspan="8" class="text-center">暂无待处理告警</td>
+                            <td colspan="9" class="text-center">暂无待处理告警</td>
                         </tr>
                         {/if}
                     </tbody>
