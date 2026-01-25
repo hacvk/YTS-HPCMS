@@ -14,6 +14,10 @@ return [
         'copyright' => '© 2015-2026 Yanchang Tech-Service. All rights reserved.',
     ],
     'log' => [
-        'driver' => 'database',  // 使用数据库驱动存储日志
+        'driver' => 'monolog',  // 使用 Monolog 存储日志
+        'file' => [
+            'dir' => APP_ROOT . '/storage/logs',
+            'format' => 'app-{date}.log',
+        ],
     ]
 ];

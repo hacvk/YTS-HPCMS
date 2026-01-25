@@ -3,10 +3,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+
 /**
  * 缓存服务类
  * 提供简单的文件缓存功能，用于存储统计数据等
- * 注意：如需 Redis 缓存，可以实现 CacheInterface 接口
+ * 注意：底层已替换为 Symfony Cache
  */
 class CacheService
 {
@@ -21,6 +23,11 @@ class CacheService
     private const DEFAULT_TTL = 600; // 10 分钟
 
     /**
+     * Symfony Cache 适配器
+     */
+    private FilesystemAdapter $cache;
+
+    /**
      * 构造函数
      *
      * @param string|null $cacheDir 缓存目录（如果为null，使用默认目录）
@@ -28,11 +35,7 @@ class CacheService
     public function __construct(?string $cacheDir = null)
     {
         $this->cacheDir = $cacheDir ?? dirname(__DIR__, 2) . '/storage/cache/app';
-        
-        // 确保缓存目录存在
-        if (!is_dir($this->cacheDir)) {
-            @mkdir($this->cacheDir, 0755, true);
-        }
+        $this->cache = new FilesystemAdapter('yycms', self::DEFAULT_TTL, $this->cacheDir);
     }
 
     /**
@@ -44,34 +47,14 @@ class CacheService
      */
     public function get(string $key, mixed $default = null): mixed
     {
-        $filePath = $this->getCacheFilePath($key);
-        
-        if (!file_exists($filePath)) {
+        $cacheKey = $this->normalizeKey($key);
+        $item = $this->cache->getItem($cacheKey);
+
+        if (!$item->isHit()) {
             return $default;
         }
 
-        try {
-            $data = unserialize(file_get_contents($filePath), ['allowed_classes' => false]);
-            
-            if (!is_array($data) || !isset($data['expires_at']) || !isset($data['value'])) {
-                // 缓存文件格式错误，删除并返回默认值
-                @unlink($filePath);
-                return $default;
-            }
-
-            // 检查是否过期
-            if (time() > $data['expires_at']) {
-                @unlink($filePath);
-                return $default;
-            }
-
-            return $data['value'];
-        } catch (\Exception $e) {
-            // 反序列化失败，删除损坏的缓存文件
-            error_log('[CacheService] 缓存读取失败: ' . $e->getMessage());
-            @unlink($filePath);
-            return $default;
-        }
+        return $item->get();
     }
 
     /**
@@ -84,26 +67,12 @@ class CacheService
      */
     public function set(string $key, mixed $value, int $ttl = self::DEFAULT_TTL): bool
     {
-        $filePath = $this->getCacheFilePath($key);
-        
-        $data = [
-            'expires_at' => time() + $ttl,
-            'value' => $value,
-        ];
+        $cacheKey = $this->normalizeKey($key);
+        $item = $this->cache->getItem($cacheKey);
+        $item->set($value);
+        $item->expiresAfter($ttl);
 
-        try {
-            // 使用文件锁确保并发安全
-            $result = file_put_contents(
-                $filePath,
-                serialize($data),
-                LOCK_EX
-            );
-            
-            return $result !== false;
-        } catch (\Exception $e) {
-            error_log('[CacheService] 缓存写入失败: ' . $e->getMessage());
-            return false;
-        }
+        return $this->cache->save($item);
     }
 
     /**
@@ -114,13 +83,8 @@ class CacheService
      */
     public function delete(string $key): bool
     {
-        $filePath = $this->getCacheFilePath($key);
-        
-        if (file_exists($filePath)) {
-            return @unlink($filePath);
-        }
-        
-        return true; // 文件不存在，视为删除成功
+        $cacheKey = $this->normalizeKey($key);
+        return $this->cache->deleteItem($cacheKey);
     }
 
     /**
@@ -130,20 +94,8 @@ class CacheService
      */
     public function clear(): int
     {
-        $count = 0;
-        
-        if (!is_dir($this->cacheDir)) {
-            return 0;
-        }
-
-        $files = glob($this->cacheDir . '/*.cache');
-        foreach ($files as $file) {
-            if (is_file($file) && @unlink($file)) {
-                $count++;
-            }
-        }
-
-        return $count;
+        $this->cache->clear();
+        return 0;
     }
 
     /**
@@ -154,29 +106,8 @@ class CacheService
      */
     public function has(string $key): bool
     {
-        $filePath = $this->getCacheFilePath($key);
-        
-        if (!file_exists($filePath)) {
-            return false;
-        }
-
-        try {
-            $data = unserialize(file_get_contents($filePath), ['allowed_classes' => false]);
-            
-            if (!is_array($data) || !isset($data['expires_at'])) {
-                return false;
-            }
-
-            // 检查是否过期
-            if (time() > $data['expires_at']) {
-                @unlink($filePath);
-                return false;
-            }
-
-            return true;
-        } catch (\Exception $e) {
-            return false;
-        }
+        $cacheKey = $this->normalizeKey($key);
+        return $this->cache->hasItem($cacheKey);
     }
 
     /**
@@ -189,31 +120,29 @@ class CacheService
      */
     public function remember(string $key, callable $callback, int $ttl = self::DEFAULT_TTL): mixed
     {
-        $value = $this->get($key);
-        
-        if ($value !== null) {
-            return $value;
+        $cacheKey = $this->normalizeKey($key);
+        $item = $this->cache->getItem($cacheKey);
+
+        if ($item->isHit()) {
+            return $item->get();
         }
 
-        // 执行回调生成值
         $value = $callback();
-        
-        // 缓存结果
-        $this->set($key, $value, $ttl);
-        
+        $item->set($value);
+        $item->expiresAfter($ttl);
+        $this->cache->save($item);
+
         return $value;
     }
 
     /**
-     * 获取缓存文件路径
+     * 规范化缓存键（避免非法字符）
      *
      * @param string $key 缓存键
      * @return string
      */
-    private function getCacheFilePath(string $key): string
+    private function normalizeKey(string $key): string
     {
-        // 使用 MD5 哈希确保文件名安全
-        $safeKey = md5($key);
-        return $this->cacheDir . '/' . $safeKey . '.cache';
+        return md5($key);
     }
 }

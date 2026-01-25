@@ -4,6 +4,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Core\Security;
+use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Validator\Constraints\Length;
+use Symfony\Component\Validator\Constraints\Regex;
+use Symfony\Component\Validator\Constraints\Url;
+use Symfony\Component\Validator\Validation;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
  * 验证服务类
@@ -11,6 +17,21 @@ use App\Core\Security;
  */
 class ValidationService
 {
+    private static ?ValidatorInterface $validator = null;
+
+    private static function getValidator(): ValidatorInterface
+    {
+        if (self::$validator === null) {
+            self::$validator = Validation::createValidator();
+        }
+        return self::$validator;
+    }
+
+    private static function validateWithConstraint(mixed $value, mixed $constraint): bool
+    {
+        $violations = self::getValidator()->validate($value, $constraint);
+        return count($violations) === 0;
+    }
     /**
      * 验证必填字段
      *
@@ -126,7 +147,7 @@ class ValidationService
      */
     public static function validateUrlFormat(string $url): bool
     {
-        return filter_var($url, FILTER_VALIDATE_URL) !== false;
+        return self::validateWithConstraint($url, new Url());
     }
 
     /**
@@ -139,17 +160,12 @@ class ValidationService
      */
     public static function validateLength(string $value, ?int $min = null, ?int $max = null): bool
     {
-        $length = mb_strlen($value, 'UTF-8');
-        
-        if ($min !== null && $length < $min) {
-            return false;
-        }
-        
-        if ($max !== null && $length > $max) {
-            return false;
-        }
-        
-        return true;
+        $constraint = new Length([
+            'min' => $min,
+            'max' => $max,
+        ]);
+
+        return self::validateWithConstraint($value, $constraint);
     }
 
     /**
@@ -160,7 +176,7 @@ class ValidationService
      */
     public static function validateEmail(string $email): bool
     {
-        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        return self::validateWithConstraint($email, new Email());
     }
 
     /**
@@ -198,7 +214,7 @@ class ValidationService
      */
     public static function validatePhone(string $phone): bool
     {
-        return preg_match('/^1[3-9]\d{9}$/', $phone) === 1;
+        return self::validateWithConstraint($phone, new Regex('/^1[3-9]\d{9}$/'));
     }
 
     /**
@@ -209,7 +225,7 @@ class ValidationService
      */
     public static function validateUsername(string $username): bool
     {
-        return preg_match('/^[a-zA-Z0-9_]{3,20}$/', $username) === 1;
+        return self::validateWithConstraint($username, new Regex('/^[a-zA-Z0-9_]{3,20}$/'));
     }
 
     /**

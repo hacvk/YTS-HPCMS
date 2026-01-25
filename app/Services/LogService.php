@@ -7,6 +7,7 @@ use App\Core\Database;
 use App\Services\Log\DatabaseLogDriver;
 use App\Services\Log\FileLogDriver;
 use App\Services\Log\LogDriverInterface;
+use App\Services\Log\MonologDriver;
 
 /**
  * 日志服务类
@@ -47,6 +48,10 @@ class LogService
             
             self::$driver = match ($driverType) {
                 'file' => new FileLogDriver(
+                    \App\Core\App::getConfig('log.file.dir', ''),
+                    \App\Core\App::getConfig('log.file.format', 'app-{date}.log')
+                ),
+                'monolog' => new MonologDriver(
                     \App\Core\App::getConfig('log.file.dir', ''),
                     \App\Core\App::getConfig('log.file.format', 'app-{date}.log')
                 ),
@@ -538,7 +543,6 @@ class LogService
         }
     }
 }
-
 
 
 
