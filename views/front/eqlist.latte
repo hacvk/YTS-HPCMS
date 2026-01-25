@@ -256,7 +256,7 @@
 {/block}
 
 {block scripts}
-<script type="text/javascript">
+<script nonce="{$csp_nonce}" type="text/javascript">
     $(function() {
         $('.equipment-image img').on('error', function() {
             $(this).attr('src', '{$basePath}static/picture/default-equipment.jpg');

@@ -231,6 +231,7 @@ class View
                 'view' => $this,
                 'app' => App::class,
                 'config' => App::getAllConfig(),
+                'csp_nonce' => (string)((App::getRequest()?->attributes->get('_csp_nonce')) ?? ($_SERVER['CSP_NONCE'] ?? '')),
                 'request' => [
                     'uri' => $_SERVER['REQUEST_URI'] ?? '/',
                     'method' => $_SERVER['REQUEST_METHOD'] ?? 'GET',

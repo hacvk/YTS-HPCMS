@@ -155,7 +155,7 @@
 </div>
 
 <!-- 清理日志确认对话框 -->
-<script n:syntax=off>
+<script nonce="{$csp_nonce}" n:syntax=off>
 function cleanLogs() {
     const days = prompt('请输入要保留的天数（默认30天）：', '30');
     if (days === null) return;

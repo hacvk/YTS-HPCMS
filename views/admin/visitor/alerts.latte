@@ -279,7 +279,7 @@
 </div>
 
 <!-- 处理告警确认对话框 -->
-<script n:syntax=off>
+<script nonce="{$csp_nonce}" n:syntax=off>
 function handleAlert(alertId) {
     if (!confirm('确定要处理此告警吗？')) {
         return;

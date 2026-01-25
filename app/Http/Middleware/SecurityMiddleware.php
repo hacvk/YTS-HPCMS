@@ -21,6 +21,13 @@ class SecurityMiddleware
      */
     public function handle(callable $next)
     {
+        $nonce = base64_encode(random_bytes(16));
+        $request = App::getRequest();
+        if ($request !== null) {
+            $request->attributes->set('_csp_nonce', $nonce);
+        }
+        $_SERVER['CSP_NONCE'] = $nonce;
+
         // 检查是否为调试脚本
         $scriptName = basename($_SERVER['SCRIPT_NAME'] ?? '');
         $debugScripts = [
@@ -48,7 +55,7 @@ class SecurityMiddleware
         }
 
         // 添加安全 HTTP 头
-        $this->addSecurityHeaders();
+        $this->addSecurityHeaders($nonce);
 
         // 继续执行
         return $next();
@@ -57,7 +64,7 @@ class SecurityMiddleware
     /**
      * 添加安全 HTTP 头
      */
-    private function addSecurityHeaders(): void
+    private function addSecurityHeaders(string $nonce): void
     {
         // 防止点击劫持
         header('X-Frame-Options: DENY');
@@ -73,11 +80,11 @@ class SecurityMiddleware
 
         // CSP (根据环境调整)
         if (App::isDebug()) {
-            // 开发环境宽松的 CSP
-            header("Content-Security-Policy: default-src 'self' 'unsafe-inline' 'unsafe-eval'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'");
+            // 开发环境 CSP（允许 unsafe-eval，移除 script unsafe-inline）
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$nonce}' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'");
         } else {
-            // 生产环境严格的 CSP
-            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'");
+            // 生产环境 CSP（移除 script unsafe-inline）
+            header("Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{$nonce}'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self'; connect-src 'self'");
         }
     }
 }

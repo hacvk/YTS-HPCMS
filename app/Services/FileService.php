@@ -417,7 +417,39 @@ class FileService
                 'message' => '不支持的文档类型，仅支持：' . implode(', ', self::DOCUMENT_ALLOWED_EXTENSIONS)
             ];
         }
- 
+
+        // MIME 类型校验（基于 finfo）
+        $allowedDocumentMimes = [
+            'pdf' => ['application/pdf'],
+            'doc' => ['application/msword', 'application/doc'],
+            'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+            'xls' => ['application/vnd.ms-excel'],
+            'xlsx' => ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'],
+            'ppt' => ['application/vnd.ms-powerpoint'],
+            'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip'],
+            'txt' => ['text/plain'],
+            'wps' => ['application/vnd.ms-works', 'application/octet-stream'],
+            'dps' => ['application/vnd.ms-powerpoint', 'application/octet-stream'],
+            'et' => ['application/vnd.ms-excel', 'application/octet-stream'],
+        ];
+
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            if ($finfo !== false) {
+                $mimeType = finfo_file($finfo, (string)$uploadedFile['tmp_name']);
+                finfo_close($finfo);
+                if ($mimeType !== false) {
+                    $allowedMimes = $allowedDocumentMimes[$extension] ?? [];
+                    if (!empty($allowedMimes) && !in_array($mimeType, $allowedMimes, true)) {
+                        return [
+                            'valid' => false,
+                            'message' => '文件类型与扩展名不匹配：' . $mimeType
+                        ];
+                    }
+                }
+            }
+        }
+
         // 文件大小校验（默认使用文档大小上限，可通过 options 覆盖）
         $maxSize = $options['max_size'] ?? self::DOCUMENT_MAX_SIZE;
         $size = (int)($uploadedFile['size'] ?? 0);

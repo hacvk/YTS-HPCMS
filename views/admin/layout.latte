@@ -382,7 +382,7 @@
         </ul>
         
         <!-- 侧边栏折叠功能 JavaScript -->
-        <script>
+        <script nonce="{$csp_nonce}">
             document.addEventListener('DOMContentLoaded', function() {
                 // 初始化：根据当前状态设置箭头方向
                 const submenus = document.querySelectorAll('.sidebar-submenu');
@@ -533,8 +533,8 @@
     </div>
 
     <!-- Bootstrap 5 JS -->
-    <script src="/static/js/bootstrap.bundle.min.js"></script>
+    <script nonce="{$csp_nonce}" src="/static/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
-    <script src="/static/front/js/jquery-3.3.1.min.js"></script>
+    <script nonce="{$csp_nonce}" src="/static/front/js/jquery-3.3.1.min.js"></script>
 </body>
 </html>

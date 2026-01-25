@@ -18,7 +18,7 @@
             <li><img src="{asset('static/picture/banner-placeholder.jpg')}" alt="banner placeholder"></li>
         {/ifset}
     </ul>
-    <script>
+    <script nonce="{$csp_nonce}">
         $('.indexbanner ul').bxSlider({ auto: true, mode: 'fade'});
     </script>
 </div>
@@ -50,7 +50,7 @@
                     <div class="hd"><ul></ul></div>
                 </div>
 
-                <script type="text/javascript">
+                <script nonce="{$csp_nonce}" type="text/javascript">
                     jQuery(".fullSlide").slide({ titCell:".hd ul", mainCell:".bd ul", effect:"leftLoop", vis:"auto", autoPlay:true, autoPage:true, trigger:"click"});
                 </script>
             </section>
@@ -143,7 +143,7 @@
         </section>
     </div>
 
-    <script>
+    <script nonce="{$csp_nonce}">
         newsbox(".newsbox")
         function newsbox(v){
             var _this=$(v)
@@ -198,7 +198,7 @@
         </div>
     </div>
 </div>
-<script>
+<script nonce="{$csp_nonce}">
     $(".debox .tab li").click(function(){
         var e=$(this).index()
         $(this).addClass("active").siblings().removeClass("active");
@@ -242,7 +242,7 @@
         </section>
     </div>
 </div>
-<script n:syntax="off">
+<script nonce="{$csp_nonce}" n:syntax="off">
     $('.Doctor_box .slider .ul').slick({
         slidesToShow: 3,
         autoplay:true,

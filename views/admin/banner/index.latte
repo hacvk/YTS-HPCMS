@@ -1,7 +1,7 @@
 {extends '../layout.latte'}
 {block title}{$title}{/block}
 {block content}
-<script>
+<script nonce="{$csp_nonce}">
   var bannerCsrfToken = {$csrf_token};
 </script>
 <div class="container-fluid">
@@ -54,7 +54,7 @@
         </tbody>
     </table>
 </div>
-<script>
+<script nonce="{$csp_nonce}">
 function delBanner(id){
   if(!confirm('确定删除?'))return;
   

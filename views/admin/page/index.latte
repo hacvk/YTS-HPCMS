@@ -92,7 +92,7 @@
 </div>
 
 <!-- 删除确认脚本 -->
-<script>
+<script nonce="{$csp_nonce}">
 function deletePage(id) {
     if (confirm('确定要删除这个单页吗？')) {
         // 获取 CSRF Token

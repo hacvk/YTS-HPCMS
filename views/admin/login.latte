@@ -124,7 +124,7 @@
             <p>请登录您的账号</p>
         </div>
 
-        <form action="/admin/login/login" method="POST">
+        <form action="/admin/login" method="POST">
             <input type="hidden" name="csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
@@ -173,7 +173,7 @@
             </div>
 
             <button type="submit" class="btn-submit">登 录</button>
-            <script>
+            <script nonce="{$csp_nonce}">
                 // 点击验证码图片刷新
                 document.getElementById('captchaImg').addEventListener('click', function () {
                     this.src = '/admin/login/captcha?rand=' + Date.now();

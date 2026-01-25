@@ -1,7 +1,7 @@
 {extends '../layout.latte'}
 {block title}{$title}{/block}
 {block content}
-<script>
+<script nonce="{$csp_nonce}">
   var friendLinkCsrfToken = {$csrf_token};
 </script>
 
@@ -54,7 +54,7 @@
     </table>
 </div>
 
-<script>
+<script nonce="{$csp_nonce}">
 function delFriendLink(id){
   if(!confirm('确定删除?'))return;
   const f = new FormData();

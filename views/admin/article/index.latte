@@ -148,7 +148,7 @@
 </div>
 
 <!-- 删除确认脚本 -->
-<script>
+<script nonce="{$csp_nonce}">
 function deleteArticle(id) {
     if (confirm('确定要删除这篇文章吗？')) {
         // 获取 CSRF Token
