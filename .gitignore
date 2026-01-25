@@ -58,6 +58,7 @@
 *.example*
 .env
 .env.*
+vendor/
 
 # 忽略 oldhtml 整个目录（包括目录下所有文件/子目录）
 oldhtml/

@@ -33,6 +33,9 @@ if (file_exists(APP_ROOT . '/.env')) {
 }
 
 // 引入自动加载器
+if (is_file(APP_ROOT . '/vendor/autoload.php')) {
+    require_once APP_ROOT . '/vendor/autoload.php';
+}
 require_once APP_ROOT . '/app/Core/Autoloader.php';
 
 // 注册自动加载器

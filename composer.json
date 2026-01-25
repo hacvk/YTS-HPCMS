@@ -1,0 +1,25 @@
+{
+  "name": "yycms/yycms",
+  "description": "YYCMS Content Management System",
+  "type": "project",
+  "require": {
+    "php": "^8.2",
+    "catfan/medoo": "^2.2",
+    "latte/latte": "^3.1",
+    "ezyang/htmlpurifier": "^4.19"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\\\": "app/"
+    },
+    "exclude-from-classmap": [
+      "app/Lib/"
+    ]
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}

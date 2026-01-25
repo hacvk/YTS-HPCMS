@@ -19,10 +19,17 @@ class Autoloader
     public function __construct()
     {
         $this->registerNamespace('App\\', __DIR__ . '/../');
-        // 注意：Medoo 这里直接指向文件
-        $this->registerNamespace('Medoo\\', __DIR__ . '/../Lib/Medoo.php');
-        // 注意：Latte 指向目录
-        $this->registerNamespace('Latte\\', __DIR__ . '/../Lib/Latte/src/Latte/');
+
+        // 如果 composer 已加载对应类，则不注册内置库映射
+        if (!class_exists('Medoo\\Medoo')) {
+            // 注意：Medoo 这里直接指向文件
+            $this->registerNamespace('Medoo\\', __DIR__ . '/../Lib/Medoo.php');
+        }
+
+        if (!class_exists('Latte\\Engine')) {
+            // 注意：Latte 指向目录
+            $this->registerNamespace('Latte\\', __DIR__ . '/../Lib/Latte/src/Latte/');
+        }
     }
 
     /**
