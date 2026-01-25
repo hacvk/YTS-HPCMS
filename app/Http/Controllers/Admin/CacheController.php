@@ -32,7 +32,49 @@ class CacheController extends AdminBaseController
             $appCacheDir = $cacheDir . '/app';
 
             $latteStats = $this->getDirectoryStats($latteCacheDir, true, 200, ['lock']);
-            $appStats = $this->getDirectoryStats($appCacheDir, false, 0);
+            $appStats = $this->getDirectoryStats($appCacheDir, true, 200);
+
+            $searchCacheItems = [];
+            $searchCacheCount = 0;
+            $searchCacheDisplayLimit = 200;
+            try {
+                $db = Database::get();
+                $searchCacheCount = $db->count('search_cache');
+                $searchCacheItems = $db->select('search_cache', [
+                    'cache_key',
+                    'keyword',
+                    'result_count',
+                    'expires_at',
+                    'updated_at',
+                    'created_at',
+                ], [
+                    'ORDER' => ['expires_at' => 'DESC'],
+                    'LIMIT' => $searchCacheDisplayLimit,
+                ]);
+            } catch (\Exception $e) {
+                error_log('加载搜索缓存列表失败: ' . $e->getMessage());
+                $searchCacheItems = [];
+                $searchCacheCount = 0;
+            }
+
+            $now = time();
+            $searchCacheItems = array_map(static function (array $item) use ($now): array {
+                $expiresAt = isset($item['expires_at']) ? (int)$item['expires_at'] : 0;
+                $updatedAt = $item['updated_at'] ?? null;
+                $createdAt = $item['created_at'] ?? null;
+                $item['expires_formatted'] = $expiresAt > 0 ? date('Y-m-d H:i:s', $expiresAt) : '-';
+                $item['is_expired'] = $expiresAt > 0 ? $expiresAt <= $now : false;
+                if ($updatedAt) {
+                    $item['updated_formatted'] = date('Y-m-d H:i:s', strtotime((string)$updatedAt));
+                } elseif ($createdAt) {
+                    $item['updated_formatted'] = date('Y-m-d H:i:s', strtotime((string)$createdAt));
+                } else {
+                    $item['updated_formatted'] = '-';
+                }
+                $cacheKey = (string)($item['cache_key'] ?? '');
+                $item['cache_key_short'] = strlen($cacheKey) > 16 ? substr($cacheKey, 0, 16) . '...' : $cacheKey;
+                return $item;
+            }, $searchCacheItems);
 
             $this->render('admin/cache/index', [
                 'title' => '缓存管理',
@@ -41,9 +83,14 @@ class CacheController extends AdminBaseController
                 'latte_total_size' => $latteStats['size'],
                 'latte_total_size_formatted' => $this->formatSize($latteStats['size']),
                 'latte_display_limit' => $latteStats['display_limit'],
+                'app_cache_files' => $appStats['files'],
                 'app_cache_file_count' => $appStats['count'],
                 'app_cache_total_size' => $appStats['size'],
                 'app_cache_total_size_formatted' => $this->formatSize($appStats['size']),
+                'app_cache_display_limit' => $appStats['display_limit'],
+                'search_cache_items' => $searchCacheItems,
+                'search_cache_count' => $searchCacheCount,
+                'search_cache_display_limit' => $searchCacheDisplayLimit,
             ]);
         } catch (\Exception $e) {
             $this->errorJson('加载缓存管理页面失败: ' . $e->getMessage());

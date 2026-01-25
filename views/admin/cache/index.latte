@@ -176,6 +176,108 @@
             {/if}
         </div>
     </div>
+
+    <div class="card mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-info">
+                <i class="bi bi-lightning-charge"></i> 应用缓存文件
+            </h6>
+        </div>
+        <div class="card-body">
+            {if count($app_cache_files) > 0}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>文件名</th>
+                                <th style="width: 150px;">大小</th>
+                                <th style="width: 200px;">修改时间</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {foreach $app_cache_files as $file}
+                                <tr>
+                                    <td>
+                                        <code>{$file['name']}</code>
+                                    </td>
+                                    <td>{$file['size_formatted']}</td>
+                                    <td class="text-muted small">
+                                        {$file['modified_formatted']}
+                                    </td>
+                                </tr>
+                            {/foreach}
+                        </tbody>
+                    </table>
+                </div>
+                {if $app_cache_file_count > $app_cache_display_limit}
+                    <div class="text-muted small mt-2">
+                        仅显示最近 {$app_cache_display_limit} 个缓存文件（总计 {$app_cache_file_count} 个）
+                    </div>
+                {/if}
+            {else}
+                <div class="text-center py-5">
+                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #1cc88a;"></i>
+                    <p class="text-muted mt-3">当前没有缓存文件</p>
+                </div>
+            {/if}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-info">
+                <i class="bi bi-search"></i> 搜索缓存列表
+            </h6>
+        </div>
+        <div class="card-body">
+            {if count($search_cache_items) > 0}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 160px;">Cache Key</th>
+                                <th>关键词</th>
+                                <th style="width: 120px;">结果数</th>
+                                <th style="width: 200px;">过期时间</th>
+                                <th style="width: 200px;">更新时间</th>
+                                <th style="width: 100px;">状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {foreach $search_cache_items as $item}
+                                <tr>
+                                    <td>
+                                        <code title="{$item['cache_key']}">{$item['cache_key_short']}</code>
+                                    </td>
+                                    <td>{$item['keyword']}</td>
+                                    <td>{$item['result_count']}</td>
+                                    <td>{$item['expires_formatted']}</td>
+                                    <td>{$item['updated_formatted']}</td>
+                                    <td>
+                                        {if $item['is_expired']}
+                                            <span class="badge bg-secondary">已过期</span>
+                                        {else}
+                                            <span class="badge bg-success">有效</span>
+                                        {/if}
+                                    </td>
+                                </tr>
+                            {/foreach}
+                        </tbody>
+                    </table>
+                </div>
+                {if $search_cache_count > $search_cache_display_limit}
+                    <div class="text-muted small mt-2">
+                        仅显示最近 {$search_cache_display_limit} 条缓存记录（总计 {$search_cache_count} 条）
+                    </div>
+                {/if}
+            {else}
+                <div class="text-center py-5">
+                    <i class="bi bi-check-circle" style="font-size: 3rem; color: #1cc88a;"></i>
+                    <p class="text-muted mt-3">当前没有搜索缓存记录</p>
+                </div>
+            {/if}
+        </div>
+    </div>
 </div>
 
 <style>
