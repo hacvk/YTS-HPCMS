@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Services\LogService;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 应用核心类
@@ -17,6 +19,7 @@ class App
      * @var array<string, mixed>
      */
     private static array $config = [];
+    private static ?Request $request = null;
 
     /**
      * 构造函数（使用 PHP 8.0 构造函数属性提升）
@@ -54,6 +57,11 @@ class App
         // 注册安全服务
         $container->singleton(\App\Services\SecurityService::class, new \App\Services\SecurityService());
 
+        // 初始化 Request
+        $request = Request::createFromGlobals();
+        self::setRequest($request);
+        $container->singleton(Request::class, $request);
+
         // 实例化路由器并分发请求（通过容器解析控制器依赖）
         $router = new \App\Http\Router($container);
         
@@ -63,7 +71,10 @@ class App
         $router->registerMiddleware(\App\Http\Middleware\SecurityMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\VisitorLogMiddleware::class);
         
-        $router->dispatch();
+        $response = $router->dispatch($request);
+        if ($response instanceof Response) {
+            $response->send();
+        }
     }
     
     /**
@@ -247,6 +258,16 @@ class App
     public static function getAllConfig(): array
     {
         return self::$config;
+    }
+
+    public static function setRequest(Request $request): void
+    {
+        self::$request = $request;
+    }
+
+    public static function getRequest(): ?Request
+    {
+        return self::$request;
     }
 
     /**

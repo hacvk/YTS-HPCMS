@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Core\View;
+use Symfony\Component\HttpFoundation\Request;
 
 /**
  * 控制器基类
@@ -16,6 +17,7 @@ abstract class BaseController
      * @var View
      */
     protected View $view;
+    protected Request $request;
 
     /**
      * 视图数据
@@ -37,6 +39,7 @@ abstract class BaseController
     public function __construct()
     {
         $this->view = new View();
+        $this->request = \App\Core\App::getRequest() ?? Request::createFromGlobals();
     }
 
     /**
@@ -166,8 +169,7 @@ abstract class BaseController
      */
     protected function isAjax(): bool
     {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        return $this->request->isXmlHttpRequest();
     }
 
     /**
@@ -177,7 +179,7 @@ abstract class BaseController
      */
     protected function isPost(): bool
     {
-        return $_SERVER['REQUEST_METHOD'] === 'POST';
+        return $this->request->isMethod('POST');
     }
 
     /**
@@ -187,7 +189,7 @@ abstract class BaseController
      */
     protected function isGet(): bool
     {
-        return $_SERVER['REQUEST_METHOD'] === 'GET';
+        return $this->request->isMethod('GET');
     }
 
     /**
@@ -199,7 +201,7 @@ abstract class BaseController
      */
     protected function post(string $key, mixed $default = null): mixed
     {
-        return $_POST[$key] ?? $default;
+        return $this->request->request->get($key, $default);
     }
 
     /**
@@ -235,7 +237,11 @@ abstract class BaseController
      */
     protected function get(string $key, mixed $default = null): mixed
     {
-        return $_GET[$key] ?? $default;
+        $attrValue = $this->request->attributes->get($key);
+        if ($attrValue !== null) {
+            return $attrValue;
+        }
+        return $this->request->query->get($key, $default);
     }
 
     /**
@@ -247,6 +253,6 @@ abstract class BaseController
      */
     protected function param(string $key, mixed $default = null): mixed
     {
-        return $_REQUEST[$key] ?? $default;
+        return $this->request->get($key, $default);
     }
 }
