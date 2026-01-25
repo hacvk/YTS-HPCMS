@@ -328,6 +328,9 @@ class PageController extends AdminBaseController
                     $pageTitle = $page['title'] ?? '未知';
                 }
             } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
                 // ignore
             }
 

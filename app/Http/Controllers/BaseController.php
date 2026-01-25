@@ -4,7 +4,12 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Core\View;
+use App\Http\ResponseContext;
+use App\Http\ResponseHaltException;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 控制器基类
@@ -49,10 +54,13 @@ abstract class BaseController
      * @param array<string, mixed> $data 模板数据
      * @return void
      */
-    protected function render(string $template, array $data = []): void
+    protected function render(string $template, array $data = []): Response
     {
         $mergedData = array_merge($this->viewData, $data);
-        $this->view->render($template, $mergedData);
+        $content = $this->view->renderToString($template, $mergedData);
+        $response = new Response($content, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        ResponseContext::set($response);
+        return $response;
     }
 
     /**
@@ -100,10 +108,11 @@ abstract class BaseController
      * @param int $statusCode HTTP状态码
      * @return void
      */
-    protected function redirect(string $url, int $statusCode = 302): void
+    protected function redirect(string $url, int $statusCode = 302): Response
     {
-        header("Location: {$url}", true, $statusCode);
-        exit;
+        $response = new RedirectResponse($url, $statusCode);
+        ResponseContext::set($response);
+        throw new ResponseHaltException($response);
     }
 
     /**
@@ -113,12 +122,12 @@ abstract class BaseController
      * @param int $code 状态码
      * @return void
      */
-    protected function json(array $data, int $code = 200): void
+    protected function json(array $data, int $code = 200): JsonResponse
     {
-        http_response_code($code);
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        exit;
+        $response = new JsonResponse($data, $code);
+        $response->setEncodingOptions(JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        ResponseContext::set($response);
+        throw new ResponseHaltException($response);
     }
 
     /**
@@ -129,7 +138,7 @@ abstract class BaseController
      * @param string|null $url 跳转URL
      * @return void
      */
-    protected function successJson(string $message, mixed $data = null, ?string $url = null): void
+    protected function successJson(string $message, mixed $data = null, ?string $url = null): JsonResponse
     {
         $response = [
             'code' => 0,
@@ -144,7 +153,7 @@ abstract class BaseController
             $response['url'] = $url;
         }
 
-        $this->json($response);
+        return $this->json($response);
     }
 
     /**
@@ -154,9 +163,9 @@ abstract class BaseController
      * @param int $code 错误码
      * @return void
      */
-    protected function errorJson(string $message, int $code = 1): void
+    protected function errorJson(string $message, int $code = 1): JsonResponse
     {
-        $this->json([
+        return $this->json([
             'code' => $code,
             'message' => $message,
         ]);

@@ -5,6 +5,8 @@ namespace App\Http;
 
 use App\Core\App;
 use App\Core\Container;
+use App\Http\ResponseContext;
+use App\Http\ResponseHaltException;
 use App\Services\LogService;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -97,14 +99,33 @@ class Router
             });
 
             ob_start();
-            $result = $pipeline();
+            try {
+                $result = $pipeline();
+            } catch (ResponseHaltException $e) {
+                $output = ob_get_clean();
+                $response = $e->getResponse();
+                ResponseContext::clear();
+                if ($output !== '') {
+                    $response->setContent($response->getContent() . $output);
+                }
+                return $response;
+            }
             $output = ob_get_clean();
 
             if ($result instanceof Response) {
+                ResponseContext::clear();
                 if ($output !== '') {
                     $result->setContent($result->getContent() . $output);
                 }
                 return $result;
+            }
+
+            $contextResponse = ResponseContext::consume();
+            if ($contextResponse instanceof Response) {
+                if ($output !== '') {
+                    $contextResponse->setContent($contextResponse->getContent() . $output);
+                }
+                return $contextResponse;
             }
 
             if (is_string($result)) {
@@ -113,11 +134,26 @@ class Router
 
             return new Response($output);
         } catch (ResourceNotFoundException $e) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             LogService::error($e, 'route_not_found');
             return $this->notFoundResponse();
         } catch (MethodNotAllowedException $e) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             return $this->methodNotAllowedResponse();
+        } catch (ResponseHaltException $e) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
+            ResponseContext::clear();
+            return $e->getResponse();
         } catch (\Throwable $e) {
+            if (ob_get_level() > 0) {
+                ob_end_clean();
+            }
             LogService::error($e, 'route_dispatch_error');
             return $this->dispatchErrorResponse($request, $e);
         }
@@ -330,6 +366,12 @@ class Router
         }
 
         $controllerInstance = $this->container->get($controllerName);
+
+        $contextResponse = ResponseContext::get();
+        if ($contextResponse instanceof Response) {
+            ResponseContext::clear();
+            return $contextResponse;
+        }
 
         if (!method_exists($controllerInstance, $actionName)) {
             throw new RouterException("方法不存在: {$controllerName}::{$actionName}()");

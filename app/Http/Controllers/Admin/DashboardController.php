@@ -140,6 +140,9 @@ class DashboardController extends AdminBaseController
         try {
             return (int)$db->count('sys_content');
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             return 0;
         }
     }
@@ -155,6 +158,9 @@ class DashboardController extends AdminBaseController
         try {
             return (int)$db->count('sys_category');
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             return 0;
         }
     }
@@ -176,6 +182,9 @@ class DashboardController extends AdminBaseController
                 'create_time[<=]' => $today . ' 23:59:59',
             ]);
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             return 0;
         }
     }
@@ -207,6 +216,9 @@ class DashboardController extends AdminBaseController
             $diff = time() - $startTs;
             return (int)max(0, floor($diff / 86400));
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             return 0;
         }
     }
@@ -279,6 +291,9 @@ class DashboardController extends AdminBaseController
             $role = $db->get('sys_role', 'name', ['id' => $this->admin['role_id']]);
             return ['role_name' => $role ?? '普通管理员'];
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             return ['role_name' => '普通管理员'];
         }
     }

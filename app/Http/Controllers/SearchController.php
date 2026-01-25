@@ -150,7 +150,7 @@ class SearchController extends BaseController
         $keyword = trim($keyword);
 
         if (empty($keyword) || mb_strlen($keyword) < 2) {
-            echo json_encode([]);
+            $this->json([]);
             return;
         }
 
@@ -162,11 +162,10 @@ class SearchController extends BaseController
             // 获取搜索建议（限制数量，性能优化）
             $suggestions = $this->searchService->getSuggestions($keyword, 5, $ip, $userAgent);
 
-            header('Content-Type: application/json; charset=utf-8');
-            echo json_encode($suggestions);
+            $this->json($suggestions);
         } catch (\Exception $e) {
             error_log('搜索建议失败: ' . $e->getMessage());
-            echo json_encode([]);
+            $this->json([]);
         }
     }
 

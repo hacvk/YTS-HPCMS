@@ -8,7 +8,12 @@ use App\Core\App;
 use App\Core\Database;
 use App\Core\Security;
 use App\Core\View;
+use App\Http\ResponseContext;
+use App\Http\ResponseHaltException;
 use App\Services\SessionService;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 后台控制器基类
@@ -275,20 +280,24 @@ abstract class AdminBaseController extends BaseController
      * @param string|null $url 跳转URL
      * @return void
      */
-    protected function success(string $message, ?string $url = null): void
+    protected function success(string $message, ?string $url = null): Response
     {
         if ($this->isAjax()) {
-            header('Content-Type: application/json');
-            echo json_encode([
+            $response = new JsonResponse([
                 'code' => 0,
                 'message' => $message,
                 'url' => $url ?? ''
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            if ($url) {
-                $this->redirect($url);
-            } else {
-                echo '<!DOCTYPE html>
+            ], 200);
+            $response->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+            ResponseContext::set($response);
+            throw new ResponseHaltException($response);
+        }
+
+        if ($url) {
+            return $this->redirect($url);
+        }
+
+        $html = '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -304,16 +313,16 @@ abstract class AdminBaseController extends BaseController
 <body>
     <div class="box">
         <h2>成功：' . htmlspecialchars($message) . '</h2>';
-                if ($url) {
-                    echo '<p>正在跳转...</p>
+        if ($url) {
+            $html .= '<p>正在跳转...</p>
         <script>setTimeout(function() { window.location.href = "' . htmlspecialchars($url) . '"; }, 1000);</script>';
-                }
-                echo '</div>
+        }
+        $html .= '</div>
 </body>
 </html>';
-            }
-        }
-        exit;
+        $response = new Response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        ResponseContext::set($response);
+        throw new ResponseHaltException($response);
     }
 
     /**
@@ -322,16 +331,19 @@ abstract class AdminBaseController extends BaseController
      * @param string $message 错误消息
      * @return void
      */
-    protected function error(string $message): void
+    protected function error(string $message): Response
     {
         if ($this->isAjax()) {
-            header('Content-Type: application/json');
-            echo json_encode([
+            $response = new JsonResponse([
                 'code' => 1,
                 'message' => $message
-            ], JSON_UNESCAPED_UNICODE);
-        } else {
-            echo '<!DOCTYPE html>
+            ], 200);
+            $response->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+            ResponseContext::set($response);
+            throw new ResponseHaltException($response);
+        }
+
+        $html = '<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -350,8 +362,9 @@ abstract class AdminBaseController extends BaseController
     </div>
 </body>
 </html>';
-        }
-        exit;
+        $response = new Response($html, 200, ['Content-Type' => 'text/html; charset=utf-8']);
+        ResponseContext::set($response);
+        throw new ResponseHaltException($response);
     }
 
     /**
@@ -362,7 +375,7 @@ abstract class AdminBaseController extends BaseController
      * @param string|null $url 跳转URL
      * @return void
      */
-    protected function successJson(string $message, mixed $data = null, ?string $url = null): void
+    protected function successJson(string $message, mixed $data = null, ?string $url = null): JsonResponse
     {
         $response = [
             'code' => 0,
@@ -377,7 +390,7 @@ abstract class AdminBaseController extends BaseController
             $response['url'] = $url;
         }
 
-        $this->json($response);
+        return $this->json($response);
     }
 
     /**
@@ -387,9 +400,9 @@ abstract class AdminBaseController extends BaseController
      * @param int $code 错误码
      * @return void
      */
-    protected function errorJson(string $message, int $code = 1): void
+    protected function errorJson(string $message, int $code = 1): JsonResponse
     {
-        $this->json([
+        return $this->json([
             'code' => $code,
             'message' => $message,
         ]);
@@ -402,10 +415,11 @@ abstract class AdminBaseController extends BaseController
      * @param int $statusCode HTTP状态码
      * @return void
      */
-    protected function redirect(string $url, int $statusCode = 302): void
+    protected function redirect(string $url, int $statusCode = 302): RedirectResponse
     {
-        header("Location: {$url}", true, $statusCode);
-        exit;
+        $response = new RedirectResponse($url, $statusCode);
+        ResponseContext::set($response);
+        throw new ResponseHaltException($response);
     }
 
     /**

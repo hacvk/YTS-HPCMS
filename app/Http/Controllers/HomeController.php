@@ -167,6 +167,9 @@ class HomeController extends BaseController
                 'groups' => $groups
             ];
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('获取科室数据失败: ' . $e->getMessage());
             return [
                 'tabs' => [],
@@ -232,6 +235,9 @@ class HomeController extends BaseController
                 ];
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('获取专家列表失败: ' . $e->getMessage());
             $doctorItems = [];
         }
@@ -274,6 +280,9 @@ class HomeController extends BaseController
                 ];
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('获取图片新闻失败: ' . $e->getMessage());
             $imageNewsItems = [];
         }

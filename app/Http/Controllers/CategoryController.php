@@ -232,6 +232,9 @@ class CategoryController extends BaseController
             // 渲染模板
             $this->render($listTemplate, $templateData);
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('栏目列表页加载失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             $this->redirect('/');
@@ -311,6 +314,9 @@ class CategoryController extends BaseController
                 return $items;
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('构建侧边栏菜单失败: ' . $e->getMessage());
             return [];
         }
@@ -368,6 +374,9 @@ class CategoryController extends BaseController
                 error_log('CategoryController::resolveListTemplate - 模板文件不存在: ' . $candidatePath . '，使用默认模板');
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('解析列表模板失败: ' . $e->getMessage());
             // 忽略错误，使用默认模板
         }

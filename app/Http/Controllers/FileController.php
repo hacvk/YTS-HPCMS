@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 
 use App\Core\Database;
 use App\Core\Exception\PathTraversalException;
+use App\Http\ResponseContext;
 use App\Models\File;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
  * 前台文件控制器
@@ -70,6 +74,9 @@ class FileController extends BaseController
                     'id' => $id,
                 ]);
             } catch (\Throwable $e) {
+                if ($e instanceof \App\Http\ResponseHaltException) {
+                    throw $e;
+                }
                 error_log('[FileController] 更新下载次数失败: ' . $e->getMessage());
             }
 
@@ -81,24 +88,25 @@ class FileController extends BaseController
             $originalName = (string)($file['original_name'] ?? 'download');
             $encodedName = rawurlencode($originalName);
 
-            // 发送文件
-            header('Content-Type: ' . $mimeType);
-            header('Content-Disposition: attachment; filename="' . $encodedName . '"');
-            header('Content-Length: ' . filesize($realPath));
-            header('X-Content-Type-Options: nosniff');
-
-            readfile($realPath);
-            exit;
+            $response = new BinaryFileResponse($realPath);
+            $response->headers->set('Content-Type', $mimeType);
+            $response->headers->set('X-Content-Type-Options', 'nosniff');
+            $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $originalName, $encodedName);
+            ResponseContext::set($response);
+            return;
         } catch (PathTraversalException $e) {
             error_log('[FileController] 路径遍历攻击检测: ' . $e->getMessage());
-            http_response_code(400);
-            echo '非法请求';
-            exit;
+            $response = new Response('非法请求', 400);
+            ResponseContext::set($response);
+            return;
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('[FileController] 文件下载失败: ' . $e->getMessage());
-            http_response_code(500);
-            echo '文件下载失败';
-            exit;
+            $response = new Response('文件下载失败', 500);
+            ResponseContext::set($response);
+            return;
         }
     }
 
@@ -110,8 +118,7 @@ class FileController extends BaseController
      */
     private function sendNotFound(string $message = '文件不存在'): void
     {
-        http_response_code(404);
-        echo $message;
-        exit;
+        $response = new Response($message, 404);
+        ResponseContext::set($response);
     }
 }

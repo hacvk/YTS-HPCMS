@@ -6,7 +6,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Core\App;
-use App\Services\SessionService;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 安全中间件 - 防止调试脚本暴露
@@ -35,8 +35,7 @@ class SecurityMiddleware
         if (in_array($scriptName, $debugScripts, true)) {
             // 生产环境直接拒绝
             if (!App::isDebug()) {
-                http_response_code(404);
-                die('Not Found');
+                return new Response('Not Found', 404);
             }
 
             // 开发环境检查 IP
@@ -44,8 +43,7 @@ class SecurityMiddleware
             $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
 
             if (!in_array($clientIp, $allowedIps, true)) {
-                http_response_code(403);
-                die('Access denied');
+                return new Response('Access denied', 403);
             }
         }
 

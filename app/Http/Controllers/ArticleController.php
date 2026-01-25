@@ -81,6 +81,9 @@ class ArticleController extends BaseController
                 $fileModel = new \App\Models\File($this->db);
                 $attachments = $fileModel->getByRelated('article', $id, 'document');
             } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
                 error_log('获取文章附件失败: ' . $e->getMessage());
             }
             
@@ -174,6 +177,9 @@ class ArticleController extends BaseController
                 'appBaseUrl' => $appBaseUrl,
             ]);
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('文章详情页加载失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             $this->redirect('/');
@@ -249,6 +255,9 @@ class ArticleController extends BaseController
                 $detailTemplate = $candidate;
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('解析详情模板失败: ' . $e->getMessage());
             // 忽略错误，使用默认模板
         }
@@ -336,6 +345,9 @@ class ArticleController extends BaseController
                 return $items;
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('构建文章页侧边栏菜单失败: ' . $e->getMessage());
             return [];
         }

@@ -177,6 +177,9 @@ class PageController extends BaseController
                 'appBaseUrl' => $appBaseUrl,
             ]);
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('单页显示失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             $this->redirect('/');
@@ -256,6 +259,9 @@ class PageController extends BaseController
                 return $items;
             }
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('构建侧边栏菜单失败: ' . $e->getMessage());
             return [];
         }

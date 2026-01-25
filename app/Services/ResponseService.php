@@ -3,6 +3,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Http\ResponseContext;
+use App\Http\ResponseHaltException;
+use Symfony\Component\HttpFoundation\JsonResponse;
+
 /**
  * 响应服务类
  * 提供统一的响应处理方法
@@ -17,7 +21,7 @@ class ResponseService
      * @param string|null $redirect 重定向地址
      * @return void
      */
-    public static function jsonSuccess(string $message = '操作成功', mixed $data = null, string $redirect = null): void
+    public static function jsonSuccess(string $message = '操作成功', mixed $data = null, string $redirect = null): JsonResponse
     {
         $response = [
             'code' => 0,
@@ -30,9 +34,10 @@ class ResponseService
             $response['redirect'] = $redirect;
         }
 
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        $jsonResponse = new JsonResponse($response, 200);
+        $jsonResponse->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        ResponseContext::set($jsonResponse);
+        throw new ResponseHaltException($jsonResponse);
     }
 
     /**
@@ -43,7 +48,7 @@ class ResponseService
      * @param mixed $data 数据
      * @return void
      */
-    public static function jsonError(string $message = '操作失败', int $code = 1, mixed $data = null): void
+    public static function jsonError(string $message = '操作失败', int $code = 1, mixed $data = null): JsonResponse
     {
         $response = [
             'code' => $code,
@@ -52,9 +57,10 @@ class ResponseService
             'timestamp' => time()
         ];
 
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        $jsonResponse = new JsonResponse($response, 200);
+        $jsonResponse->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        ResponseContext::set($jsonResponse);
+        throw new ResponseHaltException($jsonResponse);
     }
 
     /**
@@ -65,7 +71,7 @@ class ResponseService
      * @param mixed $data 数据
      * @return void
      */
-    public static function redirectSuccess(string $redirect, string $message = '操作成功', mixed $data = null): void
+    public static function redirectSuccess(string $redirect, string $message = '操作成功', mixed $data = null): JsonResponse
     {
         $response = [
             'code' => 0,
@@ -75,9 +81,10 @@ class ResponseService
             'timestamp' => time()
         ];
 
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        $jsonResponse = new JsonResponse($response, 200);
+        $jsonResponse->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        ResponseContext::set($jsonResponse);
+        throw new ResponseHaltException($jsonResponse);
     }
 
     /**
@@ -88,7 +95,7 @@ class ResponseService
      * @param string $message 错误消息
      * @return void
      */
-    public static function handleWangEditorUploadResponse(array $result = null, bool $success = false, string $message = ''): void
+    public static function handleWangEditorUploadResponse(array $result = null, bool $success = false, string $message = ''): JsonResponse
     {
         if ($success && $result && isset($result['url'])) {
             // WangEditor 4.x 期望的格式
@@ -104,8 +111,9 @@ class ResponseService
             ];
         }
 
-        header('Content-Type: application/json; charset=utf-8');
-        echo json_encode($response, JSON_UNESCAPED_UNICODE);
-        exit;
+        $jsonResponse = new JsonResponse($response, 200);
+        $jsonResponse->setEncodingOptions(JSON_UNESCAPED_UNICODE);
+        ResponseContext::set($jsonResponse);
+        throw new ResponseHaltException($jsonResponse);
     }
 }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 
 use App\Services\SeoService;
 use Medoo\Medoo;
+use Symfony\Component\HttpFoundation\Response;
 
 class SeoController extends BaseController
 {
@@ -22,28 +23,29 @@ class SeoController extends BaseController
     {
         $type = $this->get('type', 'index');
         $page = (int)$this->get('page', 1);
-        
-        header('Content-Type: application/xml; charset=utf-8');
-        
+
         switch ($type) {
             case 'index':
-                $this->generateSitemapIndex();
+                $xml = $this->generateSitemapIndex();
                 break;
             case 'articles':
-                $this->generateArticleSitemap($page);
+                $xml = $this->generateArticleSitemap($page);
                 break;
             case 'categories':
-                $this->generateCategorySitemap();
+                $xml = $this->generateCategorySitemap();
                 break;
             case 'pages':
-                $this->generatePageSitemap();
+                $xml = $this->generatePageSitemap();
                 break;
             default:
-                $this->generateSitemapIndex();
+                $xml = $this->generateSitemapIndex();
         }
+
+        $response = new Response($xml, 200, ['Content-Type' => 'application/xml; charset=utf-8']);
+        \App\Http\ResponseContext::set($response);
     }
 
-    private function generateSitemapIndex(): void
+    private function generateSitemapIndex(): string
     {
         $baseUrl = $this->getBaseUrl();
         $totalArticles = $this->db->count('sys_content', ['status' => 1]);
@@ -71,10 +73,10 @@ class SeoController extends BaseController
         
         $xml .= '</sitemapindex>';
         
-        echo $xml;
+        return $xml;
     }
 
-    private function generateArticleSitemap(int $page): void
+    private function generateArticleSitemap(int $page): string
     {
         $baseUrl = $this->getBaseUrl();
         $offset = ($page - 1) * self::SITEMAP_CHUNK_SIZE;
@@ -101,10 +103,10 @@ class SeoController extends BaseController
         
         $xml .= '</urlset>';
         
-        echo $xml;
+        return $xml;
     }
 
-    private function generateCategorySitemap(): void
+    private function generateCategorySitemap(): string
     {
         $baseUrl = $this->getBaseUrl();
         
@@ -130,10 +132,10 @@ class SeoController extends BaseController
         
         $xml .= '</urlset>';
         
-        echo $xml;
+        return $xml;
     }
 
-    private function generatePageSitemap(): void
+    private function generatePageSitemap(): string
     {
         $baseUrl = $this->getBaseUrl();
         
@@ -154,7 +156,7 @@ class SeoController extends BaseController
         
         $xml .= '</urlset>';
         
-        echo $xml;
+        return $xml;
     }
 
     public function robots(): void
@@ -169,8 +171,8 @@ class SeoController extends BaseController
         $robots .= "\n";
         $robots .= "Sitemap: " . $baseUrl . "/seo/sitemap\n";
         
-        header('Content-Type: text/plain; charset=utf-8');
-        echo $robots;
+        $response = new Response($robots, 200, ['Content-Type' => 'text/plain; charset=utf-8']);
+        \App\Http\ResponseContext::set($response);
     }
 
     public function extractKeywords(): void
@@ -192,6 +194,9 @@ class SeoController extends BaseController
                 'description' => $description
             ]);
         } catch (\Throwable $e) {
+            if ($e instanceof \App\Http\ResponseHaltException) {
+                throw $e;
+            }
             error_log('关键词提取失败: ' . $e->getMessage());
             $this->json([
                 'success' => false,

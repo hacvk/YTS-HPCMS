@@ -12,6 +12,7 @@ use App\Services\CaptchaService;
 use App\Services\SessionService;
 use App\Services\ValidationService;
 use App\Services\CacheService;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * 后台登录控制器
@@ -49,7 +50,6 @@ class LoginController extends BaseController
         
         if ($uri === $adminPath && SessionService::isLoggedIn()) {
             $this->redirect($adminPath . '/dashboard');
-            exit;
         }
     }
 
@@ -70,7 +70,7 @@ class LoginController extends BaseController
         // 生成 CSRF Token
         $csrfToken = $this->securityService->generateCsrfToken();
 
-        $this->view->render('admin/login', [
+        $this->render('admin/login', [
             'title' => '后台登录',
             'csrf_token' => $csrfToken,
             'system' => App::getConfig('system', []),
@@ -92,11 +92,10 @@ class LoginController extends BaseController
         $_SESSION['admin_login_captcha'] = $result['code'];
 
         // 输出 HTTP Header
-        header('Content-Type: ' . $result['mimeType']);
-        
-        // 输出图片内容
-        echo $result['image'];
-        exit;
+        $response = new Response($result['image'], 200, [
+            'Content-Type' => $result['mimeType'],
+        ]);
+        \App\Http\ResponseContext::set($response);
     }
 
     /**
