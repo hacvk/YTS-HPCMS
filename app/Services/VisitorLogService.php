@@ -377,6 +377,40 @@ class VisitorLogService
     }
 
     /**
+     * 从访客日志文件读取记录
+     *
+     * @param array<string, mixed> $conditions
+     * @param int $limit
+     * @param int $offset
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<int, array<string, mixed>>
+     */
+    public static function getFileLogs(array $conditions = [], int $limit = 50, int $offset = 0, string $startDate = '', string $endDate = ''): array
+    {
+        $entries = self::collectFileLogs($conditions, $startDate, $endDate);
+        if (empty($entries)) {
+            return [];
+        }
+
+        return array_slice($entries, $offset, $limit);
+    }
+
+    /**
+     * 获取访客日志文件记录总数
+     *
+     * @param array<string, mixed> $conditions
+     * @param string $startDate
+     * @param string $endDate
+     * @return int
+     */
+    public static function getFileLogsCount(array $conditions = [], string $startDate = '', string $endDate = ''): int
+    {
+        $entries = self::collectFileLogs($conditions, $startDate, $endDate);
+        return count($entries);
+    }
+
+    /**
      * 获取访客日志总数
      *
      * 安全特性:
@@ -395,6 +429,155 @@ class VisitorLogService
             error_log('[VisitorLogService] 获取日志总数失败: ' . $e->getMessage());
             return 0;
         }
+    }
+
+    /**
+     * 读取并过滤访客日志文件
+     *
+     * @param array<string, mixed> $conditions
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<int, array<string, mixed>>
+     */
+    private static function collectFileLogs(array $conditions, string $startDate, string $endDate): array
+    {
+        $logConfig = \App\Core\App::getConfig('visitor.log', [
+            'dir' => 'storage/logs/visitor',
+            'format' => 'visitor-{date}.log',
+        ]);
+
+        $logDir = dirname(__DIR__, 2) . '/' . ($logConfig['dir'] ?? 'storage/logs/visitor');
+        $format = $logConfig['format'] ?? 'visitor-{date}.log';
+        $pattern = str_replace('{date}', '*', $format);
+        $files = glob($logDir . '/' . $pattern) ?: [];
+        if (empty($files)) {
+            return [];
+        }
+
+        $startTs = $startDate !== '' ? strtotime($startDate . ' 00:00:00') : null;
+        $endTs = $endDate !== '' ? strtotime($endDate . ' 23:59:59') : null;
+
+        $files = array_values(array_filter($files, function (string $file) use ($startTs, $endTs): bool {
+            if ($startTs === null && $endTs === null) {
+                return true;
+            }
+            if (!preg_match('/\d{4}-\d{2}-\d{2}/', basename($file), $m)) {
+                return true;
+            }
+            $fileTs = strtotime($m[0] . ' 00:00:00');
+            if ($startTs !== null && $fileTs < $startTs) {
+                return false;
+            }
+            if ($endTs !== null && $fileTs > $endTs) {
+                return false;
+            }
+            return true;
+        }));
+
+        rsort($files);
+
+        $ipFilter = (string)($conditions['ip[~]'] ?? '');
+        $urlFilter = (string)($conditions['url[~]'] ?? '');
+        $statusFilter = isset($conditions['status_code']) ? (int)$conditions['status_code'] : 0;
+        $isBotFilter = isset($conditions['is_bot']) ? (int)$conditions['is_bot'] : -1;
+
+        $entries = [];
+        foreach ($files as $file) {
+            $handle = fopen($file, 'r');
+            if ($handle === false) {
+                continue;
+            }
+            while (($line = fgets($handle)) !== false) {
+                $parsed = self::parseVisitorLogLine($line);
+                if ($parsed === null) {
+                    continue;
+                }
+
+                $timestamp = $parsed['timestamp'];
+                if ($startTs !== null && $timestamp < $startTs) {
+                    continue;
+                }
+                if ($endTs !== null && $timestamp > $endTs) {
+                    continue;
+                }
+
+                $entry = $parsed['entry'];
+
+                if ($ipFilter !== '' && strpos($entry['ip'], $ipFilter) === false) {
+                    continue;
+                }
+                if ($urlFilter !== '' && strpos($entry['url'], $urlFilter) === false) {
+                    continue;
+                }
+                if ($statusFilter > 0 && (int)$entry['status_code'] !== $statusFilter) {
+                    continue;
+                }
+                if ($isBotFilter >= 0 && (int)$entry['is_bot'] !== $isBotFilter) {
+                    continue;
+                }
+
+                $entries[] = $entry;
+            }
+            fclose($handle);
+        }
+
+        usort($entries, function (array $a, array $b): int {
+            return (int)$b['timestamp'] <=> (int)$a['timestamp'];
+        });
+
+        $total = count($entries);
+        foreach ($entries as $index => &$entry) {
+            $entry['id'] = $total - $index;
+        }
+        unset($entry);
+
+        return $entries;
+    }
+
+    /**
+     * 解析访客日志行
+     *
+     * @param string $line
+     * @return array<string, mixed>|null
+     */
+    private static function parseVisitorLogLine(string $line): ?array
+    {
+        $line = trim($line);
+        if ($line === '') {
+            return null;
+        }
+
+        if (!preg_match('/^\[(.*?)\]\s+[^:]+:\s+Visitor log\s+(\{.*\})$/', $line, $matches)) {
+            return null;
+        }
+
+        $timeStr = $matches[1];
+        $json = $matches[2];
+
+        $timestamp = strtotime($timeStr);
+        if ($timestamp === false) {
+            return null;
+        }
+
+        $data = json_decode($json, true);
+        if (!is_array($data)) {
+            return null;
+        }
+
+        $entry = [
+            'id' => 0,
+            'ip' => (string)($data['ip'] ?? ''),
+            'url' => (string)($data['url'] ?? ''),
+            'status_code' => (int)($data['status_code'] ?? 0),
+            'duration' => (float)($data['duration'] ?? 0),
+            'is_bot' => (int)($data['is_bot'] ?? 0),
+            'timestamp' => (int)($data['timestamp'] ?? $timestamp),
+        ];
+
+        return [
+            'timestamp' => $entry['timestamp'],
+            'entry' => $entry,
+        ];
     }
 
     /**

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Admin\AdminBaseController;
+use App\Core\App;
 use App\Services\VisitorLogService;
 use App\Services\VisitorStatsService;
 use App\Services\AnomalyDetectionService;
@@ -53,8 +54,16 @@ class VisitorController extends AdminBaseController
 
             // 获取访客日志列表
             $offset = ($page - 1) * $limit;
-            $logs = VisitorLogService::getLogs($conditions, $limit, $offset);
-            $total = VisitorLogService::getCount($conditions);
+            $fileLogs = VisitorLogService::getFileLogs($conditions, $limit, $offset, $startDate, $endDate);
+            $fileTotal = VisitorLogService::getFileLogsCount($conditions, $startDate, $endDate);
+
+            if ($fileTotal > 0) {
+                $logs = $fileLogs;
+                $total = $fileTotal;
+            } else {
+                $logs = VisitorLogService::getLogs($conditions, $limit, $offset);
+                $total = VisitorLogService::getCount($conditions);
+            }
 
             $this->render('admin/visitor/logs', [
                 'title' => '访客日志',
