@@ -9,40 +9,127 @@
 </div>
 <!-- Banner End -->
 
-<div class="crumbs">
-    <div class="auto auto_1150"> 
+<nav class="crumbs" aria-label="breadcrumb">
+    <div class="auto auto_1150" itemscope itemtype="http://schema.org/BreadcrumbList">
         <em>您的当前位置：</em>
         {for $i = 0; $i < count($breadcrumbs); $i++}
             {var $breadcrumb = $breadcrumbs[$i]}
-            <a href="{$breadcrumb['url']}">{$breadcrumb['title']}</a>
-            {if $i < count($breadcrumbs) - 1} > {/if}
+            <span itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
+                <a itemprop="item" href="{$breadcrumb['url']}">
+                    <span itemprop="name">{$breadcrumb['title']}</span>
+                </a>
+                <meta itemprop="position" content="{$i + 1}">
+            </span>
+            {if $i < count($breadcrumbs) - 1} &gt; {/if}
         {/for}
     </div>
-</div>
+</nav>
 
-<div class="auto auto_1150">
+<div class="auto auto_1150 content-wrap">
     <div class="w22 fl"> 
         {include 'sidebar.latte'}
     </div>
     
     <div class="w75 fr">
-        <!--publictxt star-->
-        <div class="publictxt">
+        <div class="content-card">
+            <div class="content-card-head">
+                <h1 class="content-title">{$page['title']|noescape}</h1>
+            </div>
+            <!--publictxt star-->
+            <div class="publictxt">
             <div class="auto">
                 <div class="img-ban">
                     <img src="{$page['cover_img']|noescape}" class="img-block" alt="{$page['title']|noescape}">
                 </div>
                 <div class="detail">
-                    <h1 class="title">{$page['title']|noescape}</h1>
+                    <h2 class="title">{$page['title']|noescape}</h2>
                     <article class="edit-info">
                         {$page['content']|noescape}
                     </article>
-                </div>
-            </div>
         </div>
-        <!--publictxt end-->
     </div>
-    
     <div class="clear"></div>
 </div>
+            <!--publictxt end-->
+        </div>
+    </div>
+    
+</div>
+
+<style>
+.content-wrap:after {
+    content: '';
+    display: table;
+    clear: both;
+}
+.content-wrap {
+    position: relative;
+    z-index: 1;
+}
+.content-card {
+    background: #fff;
+    border-radius: 0.8rem;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    border: 1px solid #edf1f7;
+    margin-bottom: 8px;
+}
+.content-card-head {
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #e8eef7;
+    margin-bottom: 1rem;
+}
+.content-title {
+    margin: 0;
+    font-size: 2rem;
+    color: #0f172a;
+}
+.content-card .img-ban {
+    margin: 0 0 1.2rem;
+    text-align: center;
+}
+.content-card .img-ban img {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border-radius: 0.6rem;
+    box-shadow: 0 10px 24px rgba(15,23,42,0.12);
+}
+.content-card .detail .title {
+    font-size: 1.4rem;
+    margin: 0 0 0.8rem;
+    border: 0;
+}
+.content-card .edit-info {
+    line-height: 1.8;
+    border: 0;
+}
+.content-card .edit-info img {
+    max-width: 100%;
+    height: auto;
+}
+.content-card .publictxt,
+.content-card .publictxt .detail,
+.content-card .publictxt .img-ban {
+    border: 0;
+    box-shadow: none;
+}
+.content-card .publictxt .auto {
+    border: 0;
+    box-shadow: none;
+}
+.crumbs {
+    font-size: 0.9rem;
+}
+.crumbs em {
+    color: #64748b;
+}
+.crumbs a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.crumbs a:hover {
+    text-decoration: underline;
+}
+</style>
 {/block}

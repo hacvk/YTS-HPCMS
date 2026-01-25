@@ -7,25 +7,50 @@
     <img src="{$bannerUrl}" alt="">
 </div>
 
-<div class="crumbs">
-    <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > 设备详情 </div>
-</div>
+<nav class="crumbs" aria-label="breadcrumb">
+    <div class="auto auto_1150" itemscope itemtype="http://schema.org/BreadcrumbList">
+        <em>您的当前位置：</em>
+        {ifset $breadcrumbs}
+            {foreach $breadcrumbs as $crumb}
+                <span itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
+                    <a itemprop="item" href="{$crumb['url']}">
+                        <span itemprop="name">{$crumb['title']}</span>
+                    </a>
+                    <meta itemprop="position" content="{$iterator->counter}">
+                </span>
+                {if !$iterator->last}&nbsp;&gt;&nbsp;{/if}
+            {/foreach}
+            &nbsp;&gt;&nbsp;
+            <span itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
+                <span itemprop="name">{$article['title']}</span>
+                <meta itemprop="position" content="{count($breadcrumbs) + 1}">
+            </span>
+        {else}
+            首页 &gt; 设备详情
+        {/ifset}
+    </div>
+</nav>
 
-<div class="auto auto_1150">
+<div class="auto auto_1150 content-wrap">
   <div class="w22 fl"> 
     {include 'sidebar.latte'}
   </div>
   <div class="w75 fr"> 
     <div class="Artinfo">
       <div class="auto auto_1150">
-        <article class="news-details auto w_96">
-          <div id="print-area">
+        <article class="news-details auto w_96 article-card" id="print-area">
+          <div>
             <div class="title">
               <h1>{$article['title']}</h1>
               <aside>
                 <span>发布时间：{date('Y-m-d H:i', strtotime($article['published_at']))}</span>
                 <span>阅读次数：{$article['views'] ?? 0} 次</span>
               </aside>
+            </div>
+
+            <div class="article-tools">
+              <a class="a-print action-link" href="javascript:void(0);">打印</a>
+              <a class="action-link" id="btn-article-close" href="javascript:void(0);">关闭</a>
             </div>
 
             {var $cover = $article['cover_img'] ?? $article['pic'] ?? ''}
@@ -45,10 +70,6 @@
           </div>
         
           <div class="pn-page">
-            <div class="operating">
-              <a class="a-print" href="javascript:void(0);">打印本页</a>
-              <a class="a-close" href="javascript:void(0);" onClick="closeWindow();">关闭窗口</a>
-            </div>
             
             {ifset $prevArticle}
               <aside class="dot">上一篇:<a href="/article/{$prevArticle['id']}">{$prevArticle['title']}</a></aside>
@@ -83,18 +104,114 @@ function SetFont(size)
     }
   }
 }
-$(".a-print").click(function(){
-    $("#print-area").printArea();
-});
- function closeWindow() {
-    var userAgent = navigator.userAgent;
-    if (userAgent.indexOf("Firefox") != -1 || userAgent.indexOf("Chrome") != -1) {
-        location.href = "about:blank";
-    } else {
-        window.opener = null;
-        window.open('', '_self');
+document.addEventListener('DOMContentLoaded', function () {
+    var printButton = document.querySelector('.a-print');
+    if (printButton) {
+        printButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.printArea === 'function') {
+                jQuery('#print-area').printArea();
+                return;
+            }
+            if (typeof window.print === 'function') {
+                window.print();
+            }
+        });
     }
-    window.close();
-}
+
+    var closeButton = document.getElementById('btn-article-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.location.href = '/';
+        });
+    }
+});
 </script>
+
+<style>
+.content-wrap:after {
+    content: '';
+    display: table;
+    clear: both;
+}
+.content-wrap {
+    position: relative;
+    z-index: 1;
+}
+.article-card {
+    background: #fff;
+    border-radius: 0.8rem;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    border: 1px solid #edf1f7;
+    margin-bottom: 8px;
+}
+.article-card.auto.w_96 {
+    width: 100%;
+    max-width: 100%;
+}
+.Artinfo > .auto {
+    border: 0;
+    box-shadow: none;
+}
+.article-card .title {
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #e8eef7;
+    margin-bottom: 1rem;
+}
+.article-card .title h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #0f172a;
+}
+.article-card .title aside {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 3px solid #38bdf8;
+}
+.article-tools {
+    text-align: right;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.action-link {
+    color: #f8fafc;
+    background: rgba(15,23,42,0.35);
+    padding: 0.2rem 0.8rem;
+    border-radius: 0.4rem;
+    text-decoration: none;
+    margin-left: 0.4rem;
+    font-size: 0.85rem;
+}
+.article-card .edit-info {
+    line-height: 1.8;
+}
+.article-card .edit-info img {
+    max-width: 100%;
+    height: auto;
+}
+.crumbs {
+    font-size: 0.9rem;
+}
+.crumbs em {
+    color: #64748b;
+}
+.crumbs a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.crumbs a:hover {
+    text-decoration: underline;
+}
+@media (max-width: 992px) {
+    .article-tools {
+        text-align: left;
+        white-space: normal;
+    }
+}
+</style>
 {/block}

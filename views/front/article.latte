@@ -1,324 +1,557 @@
-﻿{extends 'layout.latte'}
+{extends 'layout.latte'}
 
 {block head}
 <link rel="stylesheet" href="{asset('static/css/fontawesome/all.min.css')}" />
 {/block}
 
 {block content}
-<div class="Banner_dy">
+<div class="page-banner">
     {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('/uploads/images/nullbanner.jpg')) : asset('/uploads/images/nullbanner.jpg')}
     <span style="background-image:url({$bannerUrl})"></span>
-    <img src="{$bannerUrl}" alt="">
+    <img src="{$bannerUrl}" alt="{$article['title']}" />
+    <div class="page-banner-overlay"></div>
 </div>
 
-<div class="crumbs">
-    <div class="auto auto_1150"> <em>您的当前位置：</em>首页 > 文章详情 </div>
-</div>
-
-<div class="auto auto_1150">
-  <div class="w22 fl"> 
-    {include 'sidebar.latte'}
-  </div>
-  <div class="w75 fr"> 
-    <!--Artinfo star-->
-    <div class="Artinfo">
-      <div class="auto auto_1150">
-        <article class="news-details auto w_96">
-          <div id="print-area">
-            <div class="title">
-              <h1>{$article['title']}</h1>
-              <aside>
-                <span>发布时间：{date('Y-m-d H:i', strtotime($article['published_at']))}</span>
-                <span>阅读次数：{$article['views'] ?? 0} 次</span>
-                <span>【字号：<a href="javascript:SetFont(20)">大</a> <a href="javascript:SetFont(18)">中</a> <a href="javascript:SetFont(16)">小</a>】</span>
-              </aside>
-            </div>
-            <div class="edit-info" id="news_content">
-              {if isset($article['content'])}
-                {$article['content']|noescape}
-              {else}
-                <p>暂无内容</p>
-              {/if}
-            </div>
-            
-            {if isset($attachments) && $attachments && count($attachments)}
-              <div class="article-attachments mt-4">
-                <h4 class="title">相关附件</h4>
-                <div class="attachments-container">
-                  {foreach $attachments as $file}
-                    {var $ext = pathinfo($file['original_name'], \PATHINFO_EXTENSION)}
-                    {var $sizeKb = round($file['size'] / 1024, 2)}
-                    <div class="attachment-item">
-                      <div class="attachment-icon">
-                        {if $ext === 'pdf'}
-                          <i class="fas fa-file-pdf text-danger"></i>
-                        {elseif $ext === 'doc' || $ext === 'docx'}
-                          <i class="fas fa-file-word text-blue"></i>
-                        {elseif $ext === 'xls' || $ext === 'xlsx'}
-                          <i class="fas fa-file-excel text-green"></i>
-                        {elseif $ext === 'ppt' || $ext === 'pptx'}
-                          <i class="fas fa-file-powerpoint text-orange"></i>
-                        {elseif $ext === 'zip' || $ext === 'rar' || $ext === '7z'}
-                          <i class="fas fa-file-archive text-purple"></i>
-                        {else}
-                          <i class="fas fa-file text-gray"></i>
-                        {/if}
-                      </div>
-                      <div class="attachment-info">
-                        <div class="attachment-name">
-                          <a href="/file/download/{$file['id']}" target="_blank" class="attachment-link">{$file['original_name']}</a>
-                        </div>
-                        <div class="attachment-meta">
-                          <span class="file-ext">.{$ext}</span>
-                          <span class="file-size">{$sizeKb} KB</span>
-                          {if $file['description']}
-                            <span class="file-desc">{$file['description']}</span>
-                          {/if}
-                        </div>
-                      </div>
-                      <div class="attachment-actions">
-                        <a href="/file/download/{$file['id']}" target="_blank" class="btn btn-sm btn-outline-primary">
-                          <i class="fas fa-download"></i> 下载
-                        </a>
-                      </div>
-                    </div>
-                    {if $ext === 'pdf'}
-                      <div class="attachment-preview-pdf mt-3">
-                        <div class="preview-header">
-                          <i class="fas fa-eye"></i> PDF预览
-                        </div>
-                        <iframe src="/pdfjs/web/viewer.html?file=/{$file['path']}" style="width:100%;height:600px;border:1px solid #dee2e6;border-radius: 0.375rem;" frameborder="0"></iframe>
-                      </div>
-                    {/if}
-                  {/foreach}
-                </div>
-              </div>
-            {/if}
-          </div>
-          
-          <div class="pn-page">
-            <div class="operating">
-              <a class="a-print" href="javascript:void(0);">打印本页</a>
-              <a class="a-close" href="javascript:void(0);" onClick="closeWindow();">关闭窗口</a>
-            </div>
-            
-            <!-- 上下篇链接 - 需要在控制器中获取 -->
-            {ifset $prevArticle}
-              <aside class="dot">上一篇:<a href="/article/{$prevArticle['id']}">{$prevArticle['title']}</a></aside>
-            {/ifset}
-            
-            {ifset $nextArticle}
-              <aside class="dot">下一篇: <a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
-            {/ifset}
-            
-            {if isset($tags) && $tags && count($tags)}
-              <div class="article-tags mt-3">
-                <em>标签：</em>
-                {foreach $tags as $index => $tag}
-                  <a href="/search?tag={$tag['name']|urlencode}" class="tag-link">{$tag['name']}</a>{if !$index == count($tags) - 1}, {/if}
-                {/foreach}
-              </div>
-            {/if}
-            
-            {if isset($relatedArticles) && $relatedArticles && count($relatedArticles)}
-              <div class="related-articles mt-4">
-                <h4 class="related-title">相关文章</h4>
-                <ul class="related-list">
-                  {foreach $relatedArticles as $related}
-                    <li>
-                      <a href="/article/{$related['id']}" title="{$related['title']}">
-                        {$related['title']}
-                      </a>
-                      <span class="related-date">{date('Y-m-d', strtotime($related['published_at']))}</span>
-                    </li>
-                  {/foreach}
-                </ul>
-              </div>
-            {/if}
-          </div>
-        </article>
-      </div>
+<nav class="crumbs" aria-label="breadcrumb">
+    <div class="auto auto_1150" itemscope itemtype="http://schema.org/BreadcrumbList">
+        <em>您的当前位置：</em>
+        {ifset $breadcrumbs}
+            {foreach $breadcrumbs as $crumb}
+                <span itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
+                    <a itemprop="item" href="{$crumb['url']}">
+                        <span itemprop="name">{$crumb['title']}</span>
+                    </a>
+                    <meta itemprop="position" content="{$iterator->counter}">
+                </span>
+                {if !$iterator->last}&nbsp;&gt;&nbsp;{/if}
+            {/foreach}
+            &nbsp;&gt;&nbsp;
+            <span itemprop="itemListElement" itemscope itemtype="http://schema.org/ListItem">
+                <span itemprop="name">{$article['title']}</span>
+                <meta itemprop="position" content="{count($breadcrumbs) + 1}">
+            </span>
+        {else}
+            首页 &gt; 文章详情
+        {/ifset}
     </div>
-    <!--Artinfo end--> 
-  </div>
-  <div class="clear"></div>
+</nav>
+
+<div class="auto auto_1150 article-layout">
+    <div class="sidebar-column">
+        {include 'sidebar.latte'}
+    </div>
+    <div class="content-column">
+        <article class="article-card" id="print-area">
+            <div class="article-card-head">
+                <div class="article-card-title">
+                    <h2>{$article['title']}</h2>
+                    <div class="article-meta">
+                        <span>发布时间：{date('Y-m-d H:i', strtotime($article['published_at']))}</span>
+                        <span>阅读次数：{$article['views'] ?? 0} 次</span>
+                    </div>
+                </div>
+            </div>
+            <div class="article-body" id="news_content">
+                <div class="article-tools">
+                    <label class="font-label">字号：</label>
+                    <a href="javascript:void(0);" class="btn-font" data-size="20">大</a>
+                    <a href="javascript:void(0);" class="btn-font" data-size="18">中</a>
+                    <a href="javascript:void(0);" class="btn-font" data-size="16">小</a>
+                    <span class="separator">|</span>
+                    <a class="a-print action-link" href="javascript:void(0);">打印</a>
+                    <a class="action-link" id="btn-article-close" href="javascript:void(0);">关闭</a>
+                </div>
+                {if isset($article['content'])}
+                    {$article['content']|noescape}
+                {else}
+                    <p class="empty-state">暂无内容</p>
+                {/if}
+            </div>
+
+            {if isset($attachments) && $attachments && count($attachments)}
+                <section class="article-attachments">
+                    <header>
+                        <h3>相关附件</h3>
+                        <p>按类型预览、下载文件</p>
+                    </header>
+                    <div class="attachment-grid">
+                        {foreach $attachments as $file}
+                            {var $ext = pathinfo($file['original_name'], \PATHINFO_EXTENSION)}
+                            {var $sizeKb = round($file['size'] / 1024, 2)}
+                            <div class="attachment-card">
+                                <div class="attachment-card-icon">
+                                    {if $ext === 'pdf'}
+                                        <i class="fas fa-file-pdf text-danger"></i>
+                                    {elseif $ext === 'doc' || $ext === 'docx'}
+                                        <i class="fas fa-file-word text-blue"></i>
+                                    {elseif $ext === 'xls' || $ext === 'xlsx'}
+                                        <i class="fas fa-file-excel text-green"></i>
+                                    {elseif $ext === 'ppt' || $ext === 'pptx'}
+                                        <i class="fas fa-file-powerpoint text-orange"></i>
+                                    {elseif $ext === 'zip' || $ext === 'rar' || $ext === '7z'}
+                                        <i class="fas fa-file-archive text-purple"></i>
+                                    {else}
+                                        <i class="fas fa-file text-gray"></i>
+                                    {/if}
+                                </div>
+                                <div class="attachment-card-body">
+                                    <div class="attachment-card-title">
+                                        <a href="/file/download/{$file['id']}" target="_blank">{$file['original_name']}</a>
+                                    </div>
+                                    <div class="attachment-card-meta">
+                                        <span>.{$ext}</span>
+                                        <span>{$sizeKb} KB</span>
+                                        {if $file['description']}
+                                            <span>{$file['description']}</span>
+                                        {/if}
+                                    </div>
+                                </div>
+                                <div class="attachment-card-actions">
+                                    <a href="/file/download/{$file['id']}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-download"></i> 下载
+                                    </a>
+                                </div>
+                                {if $ext === 'pdf'}
+                                    <div class="attachment-preview">
+                                        <div class="preview-header">
+                                            <i class="fas fa-eye"></i> PDF 预览
+                                        </div>
+                                        <iframe src="/pdfjs/web/viewer.html?file=/{$file['path']}" frameborder="0"></iframe>
+                                    </div>
+                                {/if}
+                            </div>
+                        {/foreach}
+                    </div>
+                </section>
+            {/if}
+
+            <div class="article-footer">
+                <div class="article-navigation">
+                    {ifset $prevArticle}
+                        <aside class="nav-link">上一篇：<a href="/article/{$prevArticle['id']}">{$prevArticle['title']}</a></aside>
+                    {/ifset}
+                    {ifset $nextArticle}
+                        <aside class="nav-link">下一篇：<a href="/article/{$nextArticle['id']}">{$nextArticle['title']}</a></aside>
+                    {/ifset}
+                </div>
+                {if isset($tags) && $tags && count($tags)}
+                    <div class="tag-row">
+                        <span>标签：</span>
+                        {foreach $tags as $index => $tag}
+                            <a href="/search?tag={$tag['name']|urlencode}" class="tag-pill">{$tag['name']}</a>{if $index !== count($tags) - 1}<span class="tag-sep">·</span>{/if}
+                        {/foreach}
+                    </div>
+                {/if}
+                {if isset($relatedArticles) && $relatedArticles && count($relatedArticles)}
+                    <div class="related-articles">
+                        <header>
+                            <h3>相关文章推荐</h3>
+                        </header>
+                        <ul>
+                            {foreach $relatedArticles as $related}
+                                <li>
+                                    <a href="/article/{$related['id']}" title="{$related['title']}">
+                                        {$related['title']}
+                                    </a>
+                                    <span class="related-date">{date('Y-m-d', strtotime($related['published_at']))}</span>
+                                </li>
+                            {/foreach}
+                        </ul>
+                    </div>
+                {/if}
+            </div>
+        </article>
+    </div>
 </div>
 
 <script nonce="{$csp_nonce}">
-//设置字体 
 function SetFont(size)
 {
-  var divBody = document.getElementById("news_content");
-  if(!divBody)
-  {
-    return;
-  }
-  divBody.style.fontSize = size + "px";
-  var divChildBody = divBody.childNodes;
-  for(var i = 0; i < divChildBody.length; i++)
-  {
-    if (divChildBody[i].nodeType==1)
+    var divBody = document.getElementById("news_content");
+    if(!divBody)
     {
-      divChildBody[i].style.fontSize = size + "px";
+        return;
     }
-  }
+    divBody.style.fontSize = size + "px";
+    var divChildBody = divBody.childNodes;
+    for(var i = 0; i < divChildBody.length; i++)
+    {
+        if (divChildBody[i].nodeType===1)
+        {
+            divChildBody[i].style.fontSize = size + "px";
+        }
+    }
 }
-$(".a-print").click(function(){
-    $("#print-area").printArea();
+
+document.addEventListener('DOMContentLoaded', function () {
+    var printButton = document.querySelector('.a-print');
+    if (printButton) {
+        printButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.printArea === 'function') {
+                jQuery('#print-area').printArea();
+                return;
+            }
+            if (typeof window.print === 'function') {
+                window.print();
+            }
+        });
+    }
+
+    var fontButtons = document.querySelectorAll('.btn-font');
+    for (var i = 0; i < fontButtons.length; i++) {
+        fontButtons[i].addEventListener('click', function (event) {
+            event.preventDefault();
+            var size = parseInt(this.getAttribute('data-size'), 10);
+            if (!isNaN(size)) {
+                SetFont(size);
+            }
+        });
+    }
+
+    var closeButton = document.getElementById('btn-article-close');
+    if (closeButton) {
+        closeButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            window.location.href = '/';
+        });
+    }
 });
- function closeWindow() {
-    var userAgent = navigator.userAgent;
-    if (userAgent.indexOf("Firefox") != -1 || userAgent.indexOf("Chrome") != -1) {
-        location.href = "about:blank";
-    } else {
-        window.opener = null;
-        window.open('', '_self');
-    }
-    window.close();
-}
 </script>
+
 <style>
-.article-attachments {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    border: 1px solid #e9ecef;
+.page-banner {
+    position: relative;
+    height: 260px;
+    overflow: hidden;
+    border-radius: 0.8rem;
+    margin-bottom: 1rem;
 }
-
-.article-attachments .title {
-    color: #2c3e50;
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #3498db;
+.page-banner span {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
 }
-
-.attachments-container {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
+.page-banner span {
+    background-size: cover;
+    background-position: center center;
+    filter: blur(1px);
 }
-
-.attachment-item {
-    display: flex;
-    align-items: center;
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: box-shadow 0.3s ease;
+.page-banner img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
 }
-
-.attachment-item:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+.page-banner-overlay {
+    position: relative;
+    padding: 2rem;
+    color: #fff;
+    height: 100%;
 }
-
-.attachment-icon {
-    font-size: 24px;
-    margin-right: 15px;
-    min-width: 30px;
+.article-layout::after {
+    content: '';
+    display: table;
+    clear: both;
 }
-
-.attachment-info {
-    flex: 1;
+.sidebar-column {
+    width: 23%;
+    float: left;
+    margin-right: 2%;
 }
-
-.attachment-name {
-    font-weight: bold;
-    margin-bottom: 5px;
+.content-column {
+    width: 75%;
+    float: left;
 }
-
-.attachment-meta {
-    font-size: 12px;
-    color: #6c757d;
+.article-card {
+    background: #fff;
+    border-radius: 0.8rem;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    border: 1px solid #edf1f7;
+    margin-bottom: 8px;
 }
-
-.attachment-actions {
-    margin-left: 15px;
+.article-card-head {
+    overflow: hidden;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #e8eef7;
+    margin-bottom: 1rem;
 }
-
-.attachment-preview-pdf {
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+.article-card-title {
+    float: left;
+    width: 100%;
 }
-
-.attachment-preview-pdf .preview-header {
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #2c3e50;
+.article-card-title h2 {
+    margin: 0;
+    font-size: 2.1rem;
+    line-height: 1.4;
+    color: #0f172a;
 }
-
-.article-tags {
-    padding: 15px 0;
-    border-top: 1px dashed #dee2e6;
-    color: #6c757d;
+.article-meta {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 3px solid #38bdf8;
 }
-
-.article-tags .tag-link {
+.crumbs {
+    font-size: 0.9rem;
+}
+.crumbs em {
+    color: #64748b;
+}
+.font-label {
+    color: #64748b;
+    margin-right: 0.4rem;
+}
+.font-label,
+.btn-font,
+.action-link,
+.separator {
     display: inline-block;
-    padding: 3px 10px;
-    background: #e9ecef;
-    color: #495057;
-    border-radius: 15px;
+    vertical-align: middle;
+}
+.btn-font {
+    margin: 0 0.3rem;
+    color: #ffffff;
+    background: #0ea5e9;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
     text-decoration: none;
-    margin: 2px;
-    font-size: 12px;
-    transition: all 0.3s ease;
+    font-size: 0.8rem;
 }
-
-.article-tags .tag-link:hover {
-    background: #3498db;
-    color: white;
+.btn-font:hover {
+    background: #0284c7;
 }
-
+.separator {
+    margin: 0 0.4rem;
+    color: rgba(255,255,255,0.6);
+}
+.action-link {
+    color: #f8fafc;
+    background: rgba(15,23,42,0.35);
+    padding: 0.2rem 0.8rem;
+    border-radius: 0.4rem;
+    text-decoration: none;
+    margin-left: 0.4rem;
+    font-size: 0.85rem;
+}
+.article-body {
+    margin-top: 1.5rem;
+    line-height: 1.8;
+}
+.article-tools {
+    text-align: right;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+.article-tools .action-link,
+.article-tools .btn-font,
+.article-tools .font-label,
+.article-tools .separator {
+    white-space: nowrap;
+}
+.article-body p {
+    margin: 0 0 1rem;
+}
+.article-body img {
+    max-width: 100%;
+    height: auto;
+}
+.empty-state {
+    text-align: center;
+    color: #94a3b8;
+}
+.article-attachments {
+    margin-top: 2rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1.5rem;
+}
+.article-attachments header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+.article-attachments header p {
+    margin: 0.4rem 0 1rem;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+.attachment-grid {
+    overflow: hidden;
+}
+.attachment-card {
+    float: left;
+    width: 48%;
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border-radius: 0.6rem;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    position: relative;
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+    min-height: 120px;
+}
+.attachment-card:nth-child(2n) {
+    margin-left: 4%;
+}
+.attachment-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 15px 35px rgba(59,130,246,0.15);
+}
+.attachment-card-icon {
+    font-size: 1.8rem;
+    color: #0ea5e9;
+    margin-bottom: 0.5rem;
+}
+.attachment-card-title a {
+    font-weight: 600;
+    color: #111827;
+    text-decoration: none;
+}
+.attachment-card-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+.attachment-card-body {
+    padding-right: 6.5rem;
+}
+.attachment-card-title {
+    word-break: break-all;
+}
+.attachment-card-actions {
+    position: absolute;
+    bottom: 0.8rem;
+    right: 0.8rem;
+}
+.attachment-preview {
+    width: 100%;
+    height: 220px;
+    margin-top: 0.8rem;
+    border: 1px solid #cbd5f5;
+    border-radius: 0.4rem;
+    overflow: hidden;
+    background: #fff;
+}
+.attachment-preview iframe {
+    width: 100%;
+    height: 100%;
+}
+.article-footer {
+    margin-top: 2rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1.5rem;
+}
+.article-navigation {
+    overflow: hidden;
+}
+.nav-link {
+    float: left;
+    min-width: 45%;
+    color: #0f172a;
+}
+.nav-link a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.crumbs a {
+    color: #2563eb;
+    text-decoration: none;
+}
+.crumbs a:hover {
+    text-decoration: underline;
+}
+.tag-row {
+    margin-top: 1rem;
+}
+.tag-pill {
+    display: inline-block;
+    margin-right: 0.4rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #0c4a6e;
+    text-decoration: none;
+    font-size: 0.85rem;
+}
+.tag-sep {
+    margin: 0 0.4rem;
+    color: #94a3b8;
+}
 .related-articles {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 20px;
+    margin-top: 1.5rem;
 }
-
-.related-articles .related-title {
-    color: #2c3e50;
-    font-size: 18px;
-    font-weight: bold;
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #3498db;
+.related-articles header h3 {
+    margin-bottom: 0.8rem;
 }
-
-.related-list {
-    list-style: none;
+.related-articles ul {
     padding: 0;
     margin: 0;
+    list-style: none;
 }
-
-.related-list li {
-    padding: 10px 0;
-    border-bottom: 1px solid #e9ecef;
+.related-articles li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #e2e8f0;
+    overflow: hidden;
 }
-
-.related-list li:last-child {
+.related-articles li:last-child {
     border-bottom: none;
 }
-
-.related-list a {
-    color: #495057;
+.related-articles a {
+    color: #0f172a;
     text-decoration: none;
-    transition: color 0.3s ease;
 }
-
-.related-list a:hover {
-    color: #3498db;
-}
-
 .related-date {
     float: right;
-    color: #6c757d;
-    font-size: 12px;
+    color: #94a3b8;
+}
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .article-card,
+    .article-card * {
+        visibility: visible;
+    }
+    .article-card {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+    }
+    .article-tools,
+    .article-footer {
+        page-break-inside: avoid;
+    }
+    .article-footer {
+        display: none !important;
+    }
+}
+@media (max-width: 992px) {
+    .sidebar-column,
+    .content-column {
+        width: 100%;
+        float: none;
+        margin-right: 0;
+    }
+    .article-tools {
+        text-align: left;
+        white-space: normal;
+    }
+    .attachment-card,
+    .attachment-card:nth-child(2n) {
+        width: 100%;
+        margin-left: 0;
+    }
 }
 </style>
 {/block}
