@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Core\Database;
+use App\Core\App;
 use App\Services\LogService;
 
 /**
@@ -133,9 +134,15 @@ class SystemController extends AdminBaseController
                     if (!empty($endDate)) {
                         $conditions['create_time[<=]'] = $endDate . ' 23:59:59';
                     }
-                    
-                    $logs = LogService::getLogs($conditions, $limit, $offset);
-                    $total = LogService::getLogsCount($conditions);
+
+                    $driverType = App::getConfig('log.driver', 'file');
+                    if ($driverType === 'monolog') {
+                        $logs = LogService::getFileLogs($conditions, $limit, $offset, $startDate, $endDate);
+                        $total = LogService::getFileLogsCount($conditions, $startDate, $endDate);
+                    } else {
+                        $logs = LogService::getLogs($conditions, $limit, $offset);
+                        $total = LogService::getLogsCount($conditions);
+                    }
                     $title = '操作日志';
                     break;
                 

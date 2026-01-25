@@ -495,6 +495,40 @@ class LogService
     }
 
     /**
+     * 从日志文件读取操作日志（Monolog 格式）
+     *
+     * @param array<string, mixed> $conditions
+     * @param int $limit
+     * @param int $offset
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<int, array<string, mixed>>
+     */
+    public static function getFileLogs(array $conditions = [], int $limit = 50, int $offset = 0, string $startDate = '', string $endDate = ''): array
+    {
+        $entries = self::collectFileLogs($conditions, $startDate, $endDate);
+        if (empty($entries)) {
+            return [];
+        }
+
+        return array_slice($entries, $offset, $limit);
+    }
+
+    /**
+     * 获取日志文件中的记录总数（Monolog 格式）
+     *
+     * @param array<string, mixed> $conditions
+     * @param string $startDate
+     * @param string $endDate
+     * @return int
+     */
+    public static function getFileLogsCount(array $conditions = [], string $startDate = '', string $endDate = ''): int
+    {
+        $entries = self::collectFileLogs($conditions, $startDate, $endDate);
+        return count($entries);
+    }
+
+    /**
      * 获取日志总数
      * 注意：此方法仅在使用数据库驱动时有效
      *
@@ -511,6 +545,170 @@ class LogService
             error_log('[LogService] 获取日志总数失败: ' . $e->getMessage());
             return 0;
         }
+    }
+
+    /**
+     * 读取并过滤日志文件
+     *
+     * @param array<string, mixed> $conditions
+     * @param string $startDate
+     * @param string $endDate
+     * @return array<int, array<string, mixed>>
+     */
+    private static function collectFileLogs(array $conditions, string $startDate, string $endDate): array
+    {
+        $logDir = \App\Core\App::getConfig('log.file.dir', '');
+        if ($logDir === '') {
+            $logDir = dirname(__DIR__, 2) . '/storage/logs';
+        }
+        $format = \App\Core\App::getConfig('log.file.format', 'app-{date}.log');
+        $pattern = str_replace('{date}', '*', $format);
+        $files = glob($logDir . '/' . $pattern) ?: [];
+        if (empty($files)) {
+            return [];
+        }
+
+        $startTs = $startDate !== '' ? strtotime($startDate . ' 00:00:00') : null;
+        $endTs = $endDate !== '' ? strtotime($endDate . ' 23:59:59') : null;
+
+        $files = array_values(array_filter($files, function (string $file) use ($startTs, $endTs): bool {
+            if ($startTs === null && $endTs === null) {
+                return true;
+            }
+            if (!preg_match('/\d{4}-\d{2}-\d{2}/', basename($file), $m)) {
+                return true;
+            }
+            $fileTs = strtotime($m[0] . ' 00:00:00');
+            if ($startTs !== null && $fileTs < $startTs) {
+                return false;
+            }
+            if ($endTs !== null && $fileTs > $endTs) {
+                return false;
+            }
+            return true;
+        }));
+
+        rsort($files);
+
+        $actionFilter = (string)($conditions['action'] ?? '');
+        $adminIdFilter = (int)($conditions['admin_id'] ?? 0);
+
+        $entries = [];
+        foreach ($files as $file) {
+            $handle = fopen($file, 'r');
+            if ($handle === false) {
+                continue;
+            }
+            while (($line = fgets($handle)) !== false) {
+                $parsed = self::parseMonologLine($line);
+                if ($parsed === null) {
+                    continue;
+                }
+                $timestamp = $parsed['timestamp'];
+
+                if ($startTs !== null && $timestamp < $startTs) {
+                    continue;
+                }
+                if ($endTs !== null && $timestamp > $endTs) {
+                    continue;
+                }
+
+                $context = $parsed['context'];
+                $action = (string)($context['action'] ?? '');
+                $adminId = (int)($context['admin_id'] ?? 0);
+
+                if ($actionFilter !== '' && $action !== $actionFilter) {
+                    continue;
+                }
+                if ($adminIdFilter > 0 && $adminId !== $adminIdFilter) {
+                    continue;
+                }
+
+                $entries[] = [
+                    'timestamp' => $timestamp,
+                    'admin_id' => $adminId,
+                    'admin_name' => (string)($context['admin_name'] ?? $context['username'] ?? 'system'),
+                    'action' => $action,
+                    'message' => (string)($context['message'] ?? $parsed['message']),
+                    'target' => $context['target'] ?? '',
+                    'ip' => (string)($context['ip'] ?? ''),
+                    'create_time' => $parsed['create_time'],
+                ];
+            }
+            fclose($handle);
+        }
+
+        usort($entries, function (array $a, array $b): int {
+            return $b['timestamp'] <=> $a['timestamp'];
+        });
+
+        $total = count($entries);
+        foreach ($entries as $index => &$entry) {
+            $entry['id'] = $total - $index;
+        }
+        unset($entry);
+
+        return $entries;
+    }
+
+    /**
+     * 解析 Monolog 日志行
+     *
+     * @param string $line
+     * @return array<string, mixed>|null
+     */
+    private static function parseMonologLine(string $line): ?array
+    {
+        $line = trim($line);
+        if ($line === '') {
+            return null;
+        }
+
+        $timeEnd = strpos($line, '] ');
+        if ($timeEnd === false || $line[0] !== '[') {
+            return null;
+        }
+
+        $timeStr = substr($line, 1, $timeEnd - 1);
+        try {
+            $dt = new \DateTime($timeStr);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        $rest = substr($line, $timeEnd + 2);
+        $contextPos = strrpos($rest, ' {');
+        $extraPos = strrpos($rest, ' [');
+        if ($contextPos === false || $extraPos === false || $extraPos < $contextPos) {
+            return null;
+        }
+
+        $messagePart = substr($rest, 0, $contextPos);
+        $contextJson = substr($rest, $contextPos + 1, $extraPos - ($contextPos + 1));
+
+        $colonPos = strpos($messagePart, ': ');
+        if ($colonPos === false) {
+            return null;
+        }
+
+        $left = substr($messagePart, 0, $colonPos);
+        $message = substr($messagePart, $colonPos + 2);
+
+        $dotPos = strrpos($left, '.');
+        $level = $dotPos !== false ? substr($left, $dotPos + 1) : '';
+
+        $context = json_decode($contextJson, true);
+        if (!is_array($context)) {
+            $context = [];
+        }
+
+        return [
+            'timestamp' => $dt->getTimestamp(),
+            'create_time' => $dt->format('Y-m-d H:i:s'),
+            'level' => strtolower($level),
+            'message' => $message,
+            'context' => $context,
+        ];
     }
 
     /**
@@ -543,7 +741,6 @@ class LogService
         }
     }
 }
-
 
 
 
