@@ -32,6 +32,7 @@ class SessionService
         if (session_status() === PHP_SESSION_NONE) {
             $cookieSecure = self::resolveCookieSecure();
             $cookieSameSite = self::resolveCookieSameSite();
+            $savePath = self::resolveSessionSavePath();
 
             // 设置 Session 配置
             ini_set('session.cookie_httponly', self::$config['cookie_httponly'] ? '1' : '0');
@@ -40,6 +41,9 @@ class SessionService
             ini_set('session.cookie_samesite', $cookieSameSite);
             ini_set('session.cookie_lifetime', (string)self::$config['cookie_lifetime']);
             ini_set('session.gc_maxlifetime', (string)self::$config['gc_maxlifetime']);
+            if ($savePath !== '') {
+                ini_set('session.save_path', $savePath);
+            }
 
             // 使用更安全的 Session ID 生成方式
             if (function_exists('random_bytes')) {
@@ -86,6 +90,21 @@ class SessionService
         }
 
         return (string)self::$config['cookie_samesite'];
+    }
+
+    /**
+     * 解析 session 保存路径（环境变量优先）
+     *
+     * @return string
+     */
+    private static function resolveSessionSavePath(): string
+    {
+        $env = getenv('SESSION_SAVE_PATH');
+        if ($env !== false && $env !== '') {
+            return (string)$env;
+        }
+
+        return '/tmp/yycms-sessions';
     }
 
     /**
