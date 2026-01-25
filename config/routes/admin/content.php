@@ -81,5 +81,7 @@ return [
     // 缓存管理
     'GET /admin/cache' => ['Admin\\CacheController', 'index'],
     'POST /admin/cache/clear-latte' => ['Admin\\CacheController', 'clearLatte'],
+    'POST /admin/cache/clear-app' => ['Admin\\CacheController', 'clearApp'],
+    'POST /admin/cache/clear-search' => ['Admin\\CacheController', 'clearSearch'],
     'POST /admin/cache/clear-all' => ['Admin\\CacheController', 'clearAll'],
 ];

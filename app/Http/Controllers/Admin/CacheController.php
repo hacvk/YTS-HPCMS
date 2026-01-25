@@ -4,12 +4,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Core\Security;
+use App\Core\Database;
 use App\Services\LogService;
 use App\Http\Router;
 use App\Services\SearchService;
 use App\Services\SearchCacheService;
 use App\Services\SearchLogService;
 use App\Services\SearchRateLimitService;
+use App\Services\CacheService;
 
 /**
  * 缓存管理控制器
@@ -27,39 +29,21 @@ class CacheController extends AdminBaseController
             // 获取缓存目录信息
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache';
             $latteCacheDir = $cacheDir . '/latte';
+            $appCacheDir = $cacheDir . '/app';
 
-            $latteFiles = [];
-            $latteTotalSize = 0;
-            $latteFileCount = 0;
-
-            if (is_dir($latteCacheDir)) {
-                $files = scandir($latteCacheDir);
-                foreach ($files as $file) {
-                    if ($file !== '.' && $file !== '..') {
-                        $filepath = $latteCacheDir . '/' . $file;
-                        if (is_file($filepath) && !str_ends_with($file, '.lock')) {
-                            $size = filesize($filepath);
-                            $mtime = filemtime($filepath);
-                            $latteFiles[] = [
-                                'name' => $file,
-                                'size' => $size,
-                                'size_formatted' => $this->formatSize($size),
-                                'modified' => $mtime,
-                                'modified_formatted' => date('Y-m-d H:i:s', $mtime),
-                            ];
-                            $latteTotalSize += $size;
-                            $latteFileCount++;
-                        }
-                    }
-                }
-            }
+            $latteStats = $this->getDirectoryStats($latteCacheDir, true, 200, ['lock']);
+            $appStats = $this->getDirectoryStats($appCacheDir, false, 0);
 
             $this->render('admin/cache/index', [
                 'title' => '缓存管理',
-                'latte_files' => $latteFiles,
-                'latte_file_count' => $latteFileCount,
-                'latte_total_size' => $latteTotalSize,
-                'latte_total_size_formatted' => $this->formatSize($latteTotalSize),
+                'latte_files' => $latteStats['files'],
+                'latte_file_count' => $latteStats['count'],
+                'latte_total_size' => $latteStats['size'],
+                'latte_total_size_formatted' => $this->formatSize($latteStats['size']),
+                'latte_display_limit' => $latteStats['display_limit'],
+                'app_cache_file_count' => $appStats['count'],
+                'app_cache_total_size' => $appStats['size'],
+                'app_cache_total_size_formatted' => $this->formatSize($appStats['size']),
             ]);
         } catch (\Exception $e) {
             $this->errorJson('加载缓存管理页面失败: ' . $e->getMessage());
@@ -140,6 +124,14 @@ class CacheController extends AdminBaseController
                     $this->clearDirectory($cacheDir . '/' . $dir);
                 }
             }
+
+            // 清理应用缓存（Symfony Cache）
+            try {
+                $cacheService = new CacheService();
+                $cacheService->clear();
+            } catch (\Exception $e) {
+                error_log('清理应用缓存时出错: ' . $e->getMessage());
+            }
             
             // 清除路由缓存文件
             Router::clearRouteCache();
@@ -154,7 +146,12 @@ class CacheController extends AdminBaseController
             
             // 同时清理搜索缓存
             try {
-                $searchService = $this->container->get(SearchService::class);
+                $db = Database::get();
+                $cacheService ??= new CacheService();
+                $searchCacheService = new SearchCacheService($db, $cacheService);
+                $searchLogService = new SearchLogService($db);
+                $searchRateLimitService = new SearchRateLimitService($db, $cacheService);
+                $searchService = new SearchService($db, $searchCacheService, $searchRateLimitService, $searchLogService);
                 $searchService->cleanup();
             } catch (\Exception $e) {
                 error_log('清理搜索缓存时出错: ' . $e->getMessage());
@@ -227,9 +224,11 @@ class CacheController extends AdminBaseController
             }
 
             // 获取服务实例
-            $searchCacheService = $this->container->get(SearchCacheService::class);
-            $searchLogService = $this->container->get(SearchLogService::class);
-            $searchRateLimitService = $this->container->get(SearchRateLimitService::class);
+            $db = Database::get();
+            $cacheService = new CacheService();
+            $searchCacheService = new SearchCacheService($db, $cacheService);
+            $searchLogService = new SearchLogService($db);
+            $searchRateLimitService = new SearchRateLimitService($db, $cacheService);
 
             // 清理各类搜索缓存
             $cacheResult = $searchCacheService->cleanupExpired();
@@ -251,6 +250,43 @@ class CacheController extends AdminBaseController
     }
 
     /**
+     * 清空应用缓存（Symfony Cache）
+     *
+     * @return void
+     */
+    public function clearApp(): void
+    {
+        if (!$this->isPost()) {
+            $this->errorJson('请求方法错误');
+        }
+
+        try {
+            $csrfToken = $this->post('csrf_token', '');
+            if (!Security::checkCsrfToken($csrfToken)) {
+                $this->errorJson('CSRF Token 验证失败');
+            }
+
+            (new CacheService())->clear();
+
+            $appCacheDir = dirname(__DIR__, 4) . '/storage/cache/app';
+            if (is_dir($appCacheDir)) {
+                $this->clearDirectory($appCacheDir);
+            }
+
+            LogService::record(
+                $this->getAdminId(),
+                $this->getAdminUsername(),
+                'cache_clear',
+                '清空应用缓存'
+            );
+
+            $this->successJson('应用缓存清空成功', null, '/admin/cache');
+        } catch (\Exception $e) {
+            $this->errorJson('清空应用缓存失败: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * 格式化文件大小
      *
      * @param int $size 字节数
@@ -265,5 +301,69 @@ class CacheController extends AdminBaseController
             $i++;
         }
         return round($size, 2) . ' ' . $units[$i];
+    }
+
+    /**
+     * 统计目录大小与文件数
+     *
+     * @param string $directory
+     * @param bool $listFiles
+     * @param int $limit
+     * @param array<int, string> $excludeExtensions
+     * @return array{count:int,size:int,files:array<int,array<string,mixed>>,display_limit:int}
+     */
+    private function getDirectoryStats(string $directory, bool $listFiles = false, int $limit = 200, array $excludeExtensions = []): array
+    {
+        $count = 0;
+        $size = 0;
+        $files = [];
+
+        if (!is_dir($directory)) {
+            return [
+                'count' => 0,
+                'size' => 0,
+                'files' => [],
+                'display_limit' => $limit,
+            ];
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($directory, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $fileInfo) {
+            if (!$fileInfo->isFile()) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($fileInfo->getFilename(), PATHINFO_EXTENSION));
+            if ($ext !== '' && in_array($ext, $excludeExtensions, true)) {
+                continue;
+            }
+            $count++;
+            $size += $fileInfo->getSize();
+            if ($listFiles) {
+                $files[] = [
+                    'name' => str_replace($directory . '/', '', $fileInfo->getPathname()),
+                    'size' => $fileInfo->getSize(),
+                    'size_formatted' => $this->formatSize($fileInfo->getSize()),
+                    'modified' => $fileInfo->getMTime(),
+                    'modified_formatted' => date('Y-m-d H:i:s', $fileInfo->getMTime()),
+                ];
+            }
+        }
+
+        if ($listFiles && !empty($files)) {
+            usort($files, fn($a, $b) => $b['modified'] <=> $a['modified']);
+            if ($limit > 0) {
+                $files = array_slice($files, 0, $limit);
+            }
+        }
+
+        return [
+            'count' => $count,
+            'size' => $size,
+            'files' => $files,
+            'display_limit' => $limit,
+        ];
     }
 }
