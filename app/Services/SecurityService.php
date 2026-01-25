@@ -200,18 +200,6 @@ class SecurityService
      */
     public function sanitizeHtml(string $html): string
     {
-        // 确保 HTMLPurifier 类可用（旧版路径已迁移至 legacy）
-        if (!class_exists('HTMLPurifier')) {
-            $autoload = dirname(__DIR__, 2) . '/legacy/Lib/HTMLPurifier/HTMLPurifier.auto.php';
-            $autoload2 = dirname(__DIR__, 2) . '/legacy/Lib/HTMLPurifier/HTMLPurifier.autoload.php';
-
-            if (is_file($autoload)) {
-                require_once $autoload;
-            } elseif (is_file($autoload2)) {
-                require_once $autoload2;
-            }
-        }
-
         if (!class_exists('HTMLPurifier') || !class_exists('HTMLPurifier_Config')) {
             throw new \RuntimeException('HTMLPurifier 未安装或自动加载失败');
         }

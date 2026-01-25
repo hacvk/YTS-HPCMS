@@ -43,12 +43,6 @@ class View
      */
     private function initEngine(): void
     {
-        // 预加载 Latte 必要的类（仅在未通过 Composer 安装时）
-        if (!class_exists(Engine::class)) {
-            require_once dirname(__DIR__, 2) . '/legacy/Lib/Latte/src/Latte/exceptions.php';
-            require_once dirname(__DIR__, 2) . '/legacy/Lib/Latte/src/Latte/PositionAwareException.php';
-        }
-
         // 创建缓存目录（如果不存在）
         if (!is_dir($this->cacheDir)) {
             @mkdir($this->cacheDir, 0777, true);
