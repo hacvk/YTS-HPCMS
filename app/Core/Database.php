@@ -7,13 +7,6 @@ use Medoo\Medoo;
 use App\Services\LogService;
 
 /**
- * 数据库连接异常
- */
-class DatabaseException extends \Exception
-{
-}
-
-/**
  * 数据库类（单例模式）
  */
 class Database

@@ -22,13 +22,13 @@ class Autoloader
 
         // 如果 composer 已加载对应类，则不注册内置库映射
         if (!class_exists('Medoo\\Medoo')) {
-            // 注意：Medoo 这里直接指向文件
-            $this->registerNamespace('Medoo\\', __DIR__ . '/../Lib/Medoo.php');
+            // 注意：Medoo 这里直接指向文件（旧版路径已迁移至 legacy）
+            $this->registerNamespace('Medoo\\', __DIR__ . '/../../legacy/Lib/Medoo.php');
         }
 
         if (!class_exists('Latte\\Engine')) {
-            // 注意：Latte 指向目录
-            $this->registerNamespace('Latte\\', __DIR__ . '/../Lib/Latte/src/Latte/');
+            // 注意：Latte 指向目录（旧版路径已迁移至 legacy）
+            $this->registerNamespace('Latte\\', __DIR__ . '/../../legacy/Lib/Latte/src/Latte/');
         }
     }
 
