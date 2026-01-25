@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Services\CacheService;
 use App\Services\SettingService;
+use App\Models\Setting;
+use App\Services\LogService;
 
 /**
  * 后台首页控制器
@@ -48,6 +50,7 @@ class DashboardController extends AdminBaseController
                 'user' => $this->getUserInfo(),
                 'system_info' => $this->getSystemInfo(),
                 'site_config' => $siteConfig,
+                'maintenance' => $this->getMaintenanceSettings(),
             ]);
 
         } catch (\Exception $e) {
@@ -66,8 +69,59 @@ class DashboardController extends AdminBaseController
                 'system_info' => $this->getSystemInfo(),
                 'error' => $e->getMessage(),
                 'site_config' => $siteConfig,
+                'maintenance' => $this->getMaintenanceSettings(),
             ]);
         }
+    }
+
+    public function toggleMaintenance(): void
+    {
+        if (!$this->validatePostAndCsrf()) {
+            return;
+        }
+
+        $enabled = $this->post('enabled', '0');
+        $enabled = in_array($enabled, ['1', 'true', 'on', 'yes'], true) ? '1' : '0';
+        $message = trim((string)$this->post('message', ''));
+
+        if ($message === '') {
+            $message = '网站正在升级维护中，给您带来不便敬请谅解。';
+        }
+
+        $this->settingService->updateSetting('site_maintenance_enabled', $enabled);
+        $this->settingService->updateSetting('site_maintenance_message', $message);
+        $this->settingService->updateSetting('site_maintenance_updated_at', date('Y-m-d H:i:s'));
+
+        LogService::record(
+            $this->getAdminId(),
+            $this->getAdminUsername(),
+            'maintenance_toggle',
+            $enabled === '1' ? '开启关站维护' : '关闭关站维护'
+        );
+
+        $statusText = $enabled === '1' ? '已开启' : '已关闭';
+        $this->successJson('关站状态已更新：' . $statusText, [
+            'enabled' => $enabled,
+            'message' => $message,
+        ]);
+    }
+
+    /**
+     * @return array{enabled:bool,message:string,updated_at:string}
+     */
+    private function getMaintenanceSettings(): array
+    {
+        $setting = new Setting($this->db);
+        $enabled = $setting->get('site_maintenance_enabled', '0') === '1';
+        $message = $setting->get('site_maintenance_message', '');
+        $message = trim($message) !== '' ? $message : '网站正在升级维护中，给您带来不便敬请谅解。';
+        $updatedAt = $setting->get('site_maintenance_updated_at', '');
+
+        return [
+            'enabled' => $enabled,
+            'message' => $message,
+            'updated_at' => $updatedAt,
+        ];
     }
 
     /**
@@ -240,7 +294,7 @@ class DashboardController extends AdminBaseController
             'create_time'
         ], [
             'ORDER' => ['id' => 'DESC'],
-            'LIMIT' => 10,
+            'LIMIT' => 13,
         ]);
     }
 

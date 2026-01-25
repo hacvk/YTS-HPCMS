@@ -68,6 +68,7 @@ class App
         // 注册中间件
         $router->registerMiddleware(\App\Http\Middleware\LogMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\PerformanceMiddleware::class);
+        $router->registerMiddleware(\App\Http\Middleware\MaintenanceMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\SecurityMiddleware::class);
         $router->registerMiddleware(\App\Http\Middleware\VisitorLogMiddleware::class);
         

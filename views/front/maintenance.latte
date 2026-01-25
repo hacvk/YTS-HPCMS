@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{e($site_name)} - 网站维护中</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+            background: #0b4fa8;
+            color: #0f172a;
+        }
+        .maintenance-wrap {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0ea5e9, #1d4ed8);
+            display: table;
+            width: 100%;
+            padding: 48px 20px;
+        }
+        .maintenance-cell {
+            display: table-cell;
+            vertical-align: middle;
+        }
+        .maintenance-card {
+            background: #ffffff;
+            max-width: 720px;
+            margin: 0 auto;
+            border-radius: 16px;
+            padding: 36px 40px 28px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25);
+        }
+        .maintenance-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            color: #fff;
+            background: #ef4444;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .maintenance-title {
+            font-size: 28px;
+            margin: 0 0 8px;
+            color: #0f172a;
+        }
+        .maintenance-subtitle {
+            font-size: 15px;
+            color: #475569;
+            margin: 0 0 20px;
+        }
+        .maintenance-message {
+            font-size: 16px;
+            color: #1f2937;
+            background: #f1f5f9;
+            border-radius: 12px;
+            padding: 16px 18px;
+            line-height: 1.8;
+        }
+        .maintenance-meta {
+            margin-top: 18px;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .maintenance-footer {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .maintenance-footer a {
+            color: #64748b;
+            text-decoration: none;
+        }
+        .maintenance-footer a:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 640px) {
+            .maintenance-card {
+                padding: 28px 24px;
+            }
+            .maintenance-title {
+                font-size: 22px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="maintenance-wrap">
+        <div class="maintenance-cell">
+            <div class="maintenance-card">
+                <span class="maintenance-badge">NOTICE</span>
+                <h1 class="maintenance-title">{e($site_name)} 正在维护升级</h1>
+                <p class="maintenance-subtitle">我们正在进行系统优化与安全加固，请稍后再试。</p>
+                <div class="maintenance-message">
+                    {e($message)}
+                </div>
+                <div class="maintenance-meta">
+                    {if $updated_at}最近更新时间：{e($updated_at)}{/if}
+                </div>
+                <div class="maintenance-footer">
+                    {if $icp}
+                        <span>
+                            <a href="//beian.miit.gov.cn" target="_blank">{e($icp)}</a>
+                        </span>
+                    {/if}
+                    {if $beian}
+                        <span>
+                            &nbsp;|&nbsp;
+                            <a href="{e($beian_url)}{e($beian)}" target="_blank">{e($beian)}</a>
+                        </span>
+                    {/if}
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

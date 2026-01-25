@@ -10,4 +10,5 @@ return [
     'POST /admin/login/login' => ['Admin\\LoginController', 'login'],
     'GET /admin/logout' => ['Admin\\LoginController', 'logout'],
     'GET /admin/dashboard' => ['Admin\\DashboardController', 'index'],
+    'POST /admin/dashboard/maintenance' => ['Admin\\DashboardController', 'toggleMaintenance'],
 ];

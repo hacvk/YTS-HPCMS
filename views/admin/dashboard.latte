@@ -185,10 +185,15 @@
             <!-- 最近日志 -->
             <div class="col-lg-6 mb-4">
                 <div class="card shadow mb-4">
-                    <div class="card-header py-3">
+                    <div class="card-header py-3 d-flex align-items-center justify-content-between">
                         <h6 class="m-0 font-weight-bold text-primary">
                             <i class="bi bi-clock-history"></i> 最近日志
                         </h6>
+                        <div class="d-flex gap-2">
+                            <a href="/admin/system/logs?type=system" class="btn btn-sm btn-outline-primary">系统日志</a>
+                            <a href="/admin/system/logs?type=operation" class="btn btn-sm btn-outline-primary">操作日志</a>
+                            <a href="/admin/visitor/logs" class="btn btn-sm btn-outline-primary">访问日志</a>
+                        </div>
                     </div>
                     <div class="card-body">
                         {if count($recent_logs) > 0}
@@ -223,7 +228,78 @@
                 </div>
             </div>
         </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-shield-exclamation"></i> 关站维护
+                </h6>
+                <span class="badge {if $maintenance['enabled']}bg-danger{else}bg-success{/if}">
+                    {if $maintenance['enabled']}已开启{else}已关闭{/if}
+                </span>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">
+                    启用后，前台将显示维护提示页面。后台不受影响。
+                    {if $maintenance['updated_at']}<span class="ms-2">最近更新：{$maintenance['updated_at']}</span>{/if}
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">维护提示文案</label>
+                    <textarea id="maintenance-message" class="form-control" rows="3">{$maintenance['message']}</textarea>
+                </div>
+                <button id="btn-maintenance-toggle" class="btn {if $maintenance['enabled']}btn-success{else}btn-danger{/if}">
+                    {if $maintenance['enabled']}取消关站{else}开启关站{/if}
+                </button>
+            </div>
+        </div>
     </div>
+
+    <script nonce="{$csp_nonce}">
+    document.addEventListener('DOMContentLoaded', function () {
+        var toggleButton = document.getElementById('btn-maintenance-toggle');
+        if (!toggleButton) {
+            return;
+        }
+        toggleButton.addEventListener('click', function () {
+            var isEnabled = toggleButton.classList.contains('btn-success');
+            var targetEnabled = isEnabled ? '0' : '1';
+            var firstConfirm = confirm(isEnabled ? '确定要关闭关站维护吗？' : '确定要开启关站维护吗？');
+            if (!firstConfirm) {
+                return;
+            }
+            var secondConfirm = confirm('请再次确认，此操作将影响前台访问。');
+            if (!secondConfirm) {
+                return;
+            }
+
+            var messageInput = document.getElementById('maintenance-message');
+            var message = messageInput ? messageInput.value : '';
+            var tokenMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = tokenMeta ? tokenMeta.content : '';
+
+            fetch('/admin/dashboard/maintenance', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: 'csrf_token=' + encodeURIComponent(csrfToken) + '&enabled=' + encodeURIComponent(targetEnabled) + '&message=' + encodeURIComponent(message)
+            })
+            .then(function (response) {
+                return response.json();
+            })
+            .then(function (data) {
+                if (data.code === 0) {
+                    window.location.reload();
+                    return;
+                }
+                alert(data.message || '操作失败');
+            })
+            .catch(function () {
+                alert('操作失败，请稍后重试');
+            });
+        });
+    });
+    </script>
 
     <style>
         .card {
