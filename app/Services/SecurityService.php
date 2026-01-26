@@ -211,9 +211,12 @@ class SecurityService
         $config->set('URI.SafeIframeRegexp', ''); // 禁止 iframe
 
         // 定义缓存目录（避免每次重新解析定义，提升性能）
-        $cacheDir = dirname(__DIR__, 3) . '/storage/cache/htmlpurifier';
-        if (!is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0755, true);
+        $cacheDir = dirname(__DIR__, 2) . '/storage/cache/htmlpurifier';
+        if (!is_dir($cacheDir) && !@mkdir($cacheDir, 0755, true)) {
+            throw new \RuntimeException('HTMLPurifier 缓存目录不可写: ' . $cacheDir);
+        }
+        if (!is_writable($cacheDir)) {
+            throw new \RuntimeException('HTMLPurifier 缓存目录不可写: ' . $cacheDir);
         }
         $config->set('Cache.SerializerPath', $cacheDir);
 

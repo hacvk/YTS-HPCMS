@@ -297,7 +297,13 @@ class FileService
 
         // 第二步：验证 MIME 类型
         $allowedTypes = $options['allowed_types'] ?? self::DEFAULT_ALLOWED_TYPES;
-        $mimeType = mime_content_type($uploadedFile['tmp_name']);
+        $mimeType = self::detectMimeType((string)$uploadedFile['tmp_name']);
+        if ($mimeType === null) {
+            return [
+                'valid' => false,
+                'message' => '无法识别文件类型（请确认已启用 fileinfo 扩展）'
+            ];
+        }
         if (!in_array($mimeType, $allowedTypes, true)) {
             return [
                 'valid' => false,
@@ -333,8 +339,8 @@ class FileService
         }
 
         // 第五步：检查文件内容是否包含 PHP 代码 (新增)
-        $content = file_get_contents($uploadedFile['tmp_name']);
-        if (preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $content)) {
+        $contentSample = self::readFileSample((string)$uploadedFile['tmp_name']);
+        if ($contentSample !== '' && preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $contentSample)) {
             return [
                 'valid' => false,
                 'message' => '文件内容包含危险代码'
@@ -462,8 +468,8 @@ class FileService
         }
  
         // 检查文件内容 (新增)
-        $content = file_get_contents($uploadedFile['tmp_name']);
-        if (preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $content)) {
+        $contentSample = self::readFileSample((string)$uploadedFile['tmp_name']);
+        if ($contentSample !== '' && preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $contentSample)) {
             return [
                 'valid' => false,
                 'message' => '文件内容包含危险代码'
@@ -512,8 +518,65 @@ class FileService
                 $value = (int)$limit;
                 break;
         }
-        
+
         return $value;
+    }
+
+    /**
+     * 可靠获取文件 MIME 类型
+     *
+     * @param string $filePath
+     * @return string|null
+     */
+    private static function detectMimeType(string $filePath): ?string
+    {
+        if ($filePath === '' || !is_file($filePath)) {
+            return null;
+        }
+
+        if (function_exists('finfo_open')) {
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            if ($finfo !== false) {
+                $mimeType = finfo_file($finfo, $filePath);
+                finfo_close($finfo);
+                if (is_string($mimeType) && $mimeType !== '') {
+                    return $mimeType;
+                }
+            }
+        }
+
+        if (function_exists('mime_content_type')) {
+            $mimeType = @mime_content_type($filePath);
+            if (is_string($mimeType) && $mimeType !== '') {
+                return $mimeType;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 读取文件内容样本（避免大文件导致内存耗尽）
+     *
+     * @param string $filePath
+     * @param int $limit
+     * @return string
+     */
+    private static function readFileSample(string $filePath, int $limit = 262144): string
+    {
+        if ($filePath === '' || !is_file($filePath)) {
+            return '';
+        }
+
+        $handle = fopen($filePath, 'rb');
+        if ($handle === false) {
+            return '';
+        }
+
+        $data = fread($handle, $limit);
+        fclose($handle);
+
+        return is_string($data) ? $data : '';
     }
 
     /**
@@ -583,7 +646,7 @@ class FileService
             throw new \RuntimeException('无效的文件扩展名');
         }
         
-        $mimeType = mime_content_type($uploadedFile['tmp_name']);
+        $mimeType = self::detectMimeType((string)$uploadedFile['tmp_name']) ?? 'application/octet-stream';
 
         $relativePath = '';
         $fileName = '';
@@ -874,7 +937,7 @@ class FileService
             $imageUrl = ltrim($imageUrl, '/');
             
             // 验证URL格式，确保是上传目录下的文件
-            if (!preg_match('/^uploads\/images\//', $imageUrl)) {
+            if (!preg_match('/^uploads\//', $imageUrl)) {
                 error_log('[FileService] 封面图片删除失败：URL格式不正确 ' . $imageUrl);
                 return false;
             }

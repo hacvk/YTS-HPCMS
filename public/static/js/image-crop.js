@@ -140,6 +140,28 @@
                 }
             });
         }
+
+        // 绑定裁剪工具按钮（避免 inline handler）
+        modalEl.addEventListener("click", (event) => {
+            const target = event.target.closest("[data-crop-action]");
+            if (!target) {
+                return;
+            }
+            event.preventDefault();
+            const action = target.getAttribute("data-crop-action");
+            const value = parseFloat(target.getAttribute("data-crop-value") || "0");
+            if (action === "zoom") {
+                if (cropper) cropper.zoom(value);
+                return;
+            }
+            if (action === "rotate") {
+                if (cropper) cropper.rotate(value);
+                return;
+            }
+            if (action === "reset") {
+                if (cropper) cropper.reset();
+            }
+        });
     });
 
     /* -------------------- 外部可调用 -------------------- */

@@ -82,8 +82,10 @@ class UploadController extends AdminBaseController
             // 返回成功响应（wangeditor 4.x 格式）
             \App\Services\ResponseService::handleWangEditorUploadResponse($result, true);
 
-        } catch (\Exception $e) {
-            error_log('文件上传失败: ' . $e->getMessage());
+        } catch (\App\Http\ResponseHaltException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            error_log('文件上传失败: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
             \App\Services\ResponseService::handleWangEditorUploadResponse(null, false, '上传失败: ' . $e->getMessage());
         }
     }
@@ -190,8 +192,14 @@ class UploadController extends AdminBaseController
             }
 
             // 验证URL格式，确保是上传目录下的图片
-            if (!preg_match('/^\/uploads\/images\//', $imageUrl)) {
-                $this->errorJson('无效的图片URL');
+            if (!preg_match('/^\/uploads\//', $imageUrl)) {
+                // 允许仅清理数据库（防止历史脏数据导致无法删除）
+                $cleared = FileService::clearContentCoverImage($imageUrl);
+                if ($cleared) {
+                    $this->successJson('图片不存在，已清理数据库记录');
+                } else {
+                    $this->errorJson('无效的图片URL');
+                }
                 return;
             }
 

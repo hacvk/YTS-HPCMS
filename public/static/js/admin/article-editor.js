@@ -243,7 +243,7 @@
         };
 
         // 删除封面图片函数
-        window.deleteCoverImage = function() {
+        window.deleteCoverImage = function(triggerBtn) {
             if (!confirm('确定要删除当前封面图片吗？此操作不可撤销！')) {
                 return;
             }
@@ -256,10 +256,12 @@
             }
 
             // 显示删除中状态
-            const deleteBtn = event.target;
-            const originalText = deleteBtn.innerHTML;
-            deleteBtn.disabled = true;
-            deleteBtn.innerHTML = '删除中...';
+            const deleteBtn = triggerBtn || null;
+            const originalText = deleteBtn ? deleteBtn.innerHTML : '';
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '删除中...';
+            }
 
             // 准备删除请求数据
             const formData = new FormData();
@@ -274,8 +276,10 @@
             })
             .then(response => response.json())
             .then(data => {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = originalText;
+                }
                 if (data.code === 0) {
                     // 删除成功，清空封面图片输入框和预览
                     coverImgInput.value = '';
@@ -290,11 +294,40 @@
                 }
             })
             .catch(error => {
-                deleteBtn.disabled = false;
-                deleteBtn.innerHTML = originalText;
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = originalText;
+                }
                 console.error('删除错误:', error);
                 alert('封面图片删除失败，请重试');
             });
         };
+
+        // 绑定封面图片相关按钮（避免 inline handler 触发 CSP）
+        const selectCoverBtn = document.getElementById('btnSelectCover');
+        if (selectCoverBtn) {
+            selectCoverBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                window.selectImage();
+            });
+        }
+
+        const cropCoverBtn = document.getElementById('cropButton');
+        if (cropCoverBtn) {
+            cropCoverBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (typeof window.selectImageWithCrop === 'function') {
+                    window.selectImageWithCrop('cover_img');
+                }
+            });
+        }
+
+        const deleteCoverBtn = document.getElementById('btnDeleteCover');
+        if (deleteCoverBtn) {
+            deleteCoverBtn.addEventListener('click', function (event) {
+                event.preventDefault();
+                window.deleteCoverImage(deleteCoverBtn);
+            });
+        }
     }
 })();
