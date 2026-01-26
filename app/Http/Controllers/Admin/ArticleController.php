@@ -160,10 +160,8 @@ class ArticleController extends AdminBaseController
         $this->requirePerm('admin:article:save');
 
         try {
-            // 从URL中获取ID参数
-            $uri = $_SERVER['REQUEST_URI'] ?? '';
-            preg_match('/\/admin\/article\/edit\/(\d+)/', $uri, $matches);
-            $id = $matches[1] ?? 0;
+            // 从路由参数或查询参数中获取ID
+            $id = (int)$this->get('id', 0);
             
             if ((int)$id <= 0) {
                 $this->error('文章ID无效');
@@ -339,10 +337,8 @@ class ArticleController extends AdminBaseController
         }
         
         try {
-            // 从URL中获取ID参数
-            $uri = $_SERVER['REQUEST_URI'] ?? '';
-            preg_match('/\/admin\/article\/delete\/(\d+)/', $uri, $matches);
-            $id = $matches[1] ?? 0;
+            // 从路由参数或查询参数中获取ID
+            $id = (int)$this->get('id', 0);
             
             if ((int)$id <= 0) {
                 $this->errorJson('文章ID无效');

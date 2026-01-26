@@ -139,11 +139,13 @@ class App
                 echo '</code></pre>';
                 echo '</body></html>';
             } else {
-                echo '<!DOCTYPE html><html><head><title>Internal Server Error</title><style>body{font-family:Arial,sans-serif;margin:40px;text-align:center;color:#333;}h1{color:#e74c3c;font-size:48px;}p{font-size:18px;margin-top:20px;}</style></head><body>';
-                echo '<h1>500</h1>';
-                echo '<p>Internal Server Error</p>';
-                echo '<p>We\'re sorry, but something went wrong on our end. Please try again later.</p>';
-                echo '</body></html>';
+                echo self::renderErrorPageHtml(
+                    500,
+                    '服务器开小差了',
+                    '我们已记录该问题，请稍后再试。',
+                    '返回首页',
+                    '/'
+                );
             }
         }
         
@@ -200,6 +202,58 @@ class App
     private static function isAjaxRequest(): bool
     {
         return isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+    }
+
+    public static function renderErrorPageHtml(int $statusCode, string $title, string $message, string $actionText = '返回首页', string $actionUrl = '/'): string
+    {
+        $statusCodeText = htmlspecialchars((string)$statusCode);
+        $titleText = htmlspecialchars($title);
+        $messageText = htmlspecialchars($message);
+        $actionTextEscaped = htmlspecialchars($actionText);
+        $actionUrlEscaped = htmlspecialchars($actionUrl);
+
+        return '<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>' . $statusCodeText . ' - ' . $titleText . '</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f6f8fb; color: #1f2a44; }
+        .wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; }
+        .card { width: 100%; max-width: 860px; background: #fff; border-radius: 18px; box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12); padding: 36px; display: flex; gap: 28px; }
+        .badge { width: 88px; height: 88px; border-radius: 20px; background: linear-gradient(135deg, #4f8cff, #67c2ff); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 32px; font-weight: 700; }
+        .content { flex: 1; }
+        h1 { margin: 0 0 8px; font-size: 28px; }
+        p { margin: 0 0 20px; color: #5b667a; line-height: 1.6; }
+        .meta { font-size: 13px; color: #99a3b3; margin-bottom: 18px; }
+        .actions a { display: inline-block; padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: 600; }
+        .actions a.primary { background: #2f6fed; color: #fff; margin-right: 12px; }
+        .actions a.ghost { border: 1px solid #d6dbe6; color: #5b667a; }
+        @media (max-width: 720px) {
+            .card { flex-direction: column; align-items: flex-start; }
+            .badge { width: 72px; height: 72px; font-size: 24px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="card">
+            <div class="badge">' . $statusCodeText . '</div>
+            <div class="content">
+                <div class="meta">请求已停止处理</div>
+                <h1>' . $titleText . '</h1>
+                <p>' . $messageText . '</p>
+                <div class="actions">
+                    <a class="primary" href="' . $actionUrlEscaped . '">' . $actionTextEscaped . '</a>
+                    <a class="ghost" href="javascript:history.back()">返回上一页</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>';
     }
 
     /**

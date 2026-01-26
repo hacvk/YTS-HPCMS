@@ -405,31 +405,20 @@ class Router
 
     private function staticResourceNotFoundResponse(): Response
     {
-        $html = '<!DOCTYPE html>
-<html>
-<head>
-    <title>404 Not Found</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; text-align: center; }
-        h1 { color: #e74c3c; }
-    </style>
-</head>
-<body>
-    <h1>404</h1>
-    <p>资源未找到</p>
-</body>
-</html>';
+        $html = App::renderErrorPageHtml(404, '资源未找到', '该静态资源不存在或已被移除。');
         return new Response($html, 404);
     }
 
     private function notFoundResponse(): Response
     {
-        return new Response('404 Not Found', 404);
+        $html = App::renderErrorPageHtml(404, '页面不存在', '访问的页面可能已被删除或地址输入有误。');
+        return new Response($html, 404);
     }
 
     private function methodNotAllowedResponse(): Response
     {
-        return new Response('405 Method Not Allowed', 405);
+        $html = App::renderErrorPageHtml(405, '请求方式不被允许', '请检查请求方法或稍后重试。');
+        return new Response($html, 405);
     }
 
     private function dispatchErrorResponse(Request $request, \Throwable $e): Response
@@ -464,7 +453,8 @@ class Router
             return new Response($html, 500);
         }
 
-        return $this->notFoundResponse();
+        $html = App::renderErrorPageHtml(500, '服务器内部错误', '我们已记录该问题，请稍后再试。');
+        return new Response($html, 500);
     }
 
     private static function getAdminPath(): string

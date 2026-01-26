@@ -42,7 +42,7 @@ class SecurityMiddleware
         if (in_array($scriptName, $debugScripts, true)) {
             // 生产环境直接拒绝
             if (!App::isDebug()) {
-                return new Response('Not Found', 404);
+                return new Response(App::renderErrorPageHtml(404, '页面不存在', '访问的页面可能已被删除或地址输入有误。'), 404);
             }
 
             // 开发环境检查 IP
@@ -50,7 +50,7 @@ class SecurityMiddleware
             $clientIp = $_SERVER['REMOTE_ADDR'] ?? '';
 
             if (!in_array($clientIp, $allowedIps, true)) {
-                return new Response('Access denied', 403);
+                return new Response(App::renderErrorPageHtml(403, '无权限访问', '当前请求未被授权访问该资源。'), 403);
             }
         }
 
