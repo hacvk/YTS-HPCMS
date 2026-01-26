@@ -1,0 +1,349 @@
+/* front-pages: page-specific styles */
+.article-body {
+    margin-top: 1.5rem;
+    line-height: 1.8;
+}
+
+.article-body p {
+    margin: 0 0 1rem;
+}
+
+.article-body img {
+    max-width: 100%;
+    height: auto;
+}
+
+.article-inline-pdfs {
+    border: 1px solid #e6ebf2;
+    border-radius: 12px;
+    padding: 16px;
+    background: #f9fbff;
+    margin-bottom: 18px;
+}
+
+.article-inline-pdfs .inline-pdf-title {
+    font-weight: 600;
+    color: #2d3a4a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.article-inline-pdfs .inline-pdf-item {
+    border: 1px solid #e6ebf2;
+    border-radius: 10px;
+    background: #fff;
+    padding: 12px;
+    margin-bottom: 12px;
+}
+
+.article-inline-pdfs .inline-pdf-item:last-child {
+    margin-bottom: 0;
+}
+
+.article-inline-pdfs .inline-pdf-name {
+    font-size: 14px;
+    color: #4a5568;
+    margin-bottom: 10px;
+}
+
+.article-inline-pdfs iframe {
+    width: 100%;
+    height: 520px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+}
+
+.article-attachments {
+    margin-top: 2rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1.5rem;
+}
+
+.article-attachments header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+.article-attachments header p {
+    margin: 0.4rem 0 1rem;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.attachment-grid {
+    overflow: hidden;
+}
+
+.attachment-card {
+    float: left;
+    width: 48%;
+    margin-bottom: 1rem;
+    padding: 0.9rem;
+    border-radius: 0.6rem;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    position: relative;
+    transition: border 0.3s ease, box-shadow 0.3s ease;
+    min-height: 120px;
+}
+
+.attachment-card:nth-child(2n) {
+    margin-left: 4%;
+}
+
+.attachment-card:hover {
+    border-color: #38bdf8;
+    box-shadow: 0 15px 35px rgba(59,130,246,0.15);
+}
+
+.attachment-card-icon {
+    font-size: 1.8rem;
+    color: #0ea5e9;
+    margin-bottom: 0.5rem;
+}
+
+.attachment-card-title a {
+    font-weight: 600;
+    color: #111827;
+    text-decoration: none;
+}
+
+.attachment-card-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+}
+
+.attachment-card-body {
+    padding-right: 6.5rem;
+}
+
+.attachment-card-title {
+    word-break: break-all;
+}
+
+.attachment-card-actions {
+    position: absolute;
+    bottom: 0.8rem;
+    right: 0.8rem;
+}
+
+.attachment-preview {
+    width: 100%;
+    height: 220px;
+    margin-top: 0.8rem;
+    border: 1px solid #cbd5f5;
+    border-radius: 0.4rem;
+    overflow: hidden;
+    background: #fff;
+}
+
+.attachment-preview iframe {
+    width: 100%;
+    height: 100%;
+}
+
+.article-footer {
+    margin-top: 2rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 1.5rem;
+}
+
+.article-navigation {
+    overflow: hidden;
+}
+
+.nav-link {
+    float: left;
+    min-width: 45%;
+    color: #0f172a;
+}
+
+.nav-link a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.related-articles {
+    margin-top: 1.5rem;
+}
+
+.related-articles header h3 {
+    margin-bottom: 0.8rem;
+}
+
+.related-articles ul {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.related-articles li {
+    padding: 0.6rem 0;
+    border-bottom: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.related-articles li:last-child {
+    border-bottom: none;
+}
+
+.related-articles a {
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.related-date {
+    float: right;
+    color: #94a3b8;
+}
+
+/* doctor detail page */
+.Artinfo {
+    margin: 0 0 40px;
+    color: #333;
+    font-size: 16px;
+    font-family: "宋体";
+}
+
+.doctor-card {
+    background: #fff;
+    border-radius: 0.8rem;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    border: 1px solid #edf1f7;
+    margin-bottom: 8px;
+}
+
+.doctor-card.auto.w_96 {
+    width: 100%;
+    max-width: 100%;
+}
+
+.Artinfo > .auto {
+    border: 0;
+    box-shadow: none;
+}
+
+.doctor-tools {
+    text-align: right;
+    margin-bottom: 0.8rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.action-link {
+    color: #f8fafc;
+    background: rgba(15,23,42,0.35);
+    padding: 0.2rem 0.8rem;
+    border-radius: 0.4rem;
+    text-decoration: none;
+    margin-left: 0.4rem;
+    font-size: 0.85rem;
+}
+
+.Doctor_info { padding: 3% 0; }
+
+.Doctor_info .txt-list { margin-bottom: 4%; padding-bottom: 4%; }
+.Doctor_info .txt-list .pic { width: 30%; }
+.Doctor_info .txt-list .info { line-height: 30px; font-size: 15px; color: #666; }
+.Doctor_info .txt-list .content b { color: #474747; }
+
+.Doctor_info .pic img {
+    border-radius: 0.6rem;
+    box-shadow: 0 10px 24px rgba(15,23,42,0.12);
+}
+
+.Doctor_info .content .yname {
+    font-size: 1.6rem;
+    color: #0f172a;
+}
+
+.Doctor_info .txt-info {
+    margin-top: 1.5rem;
+    border-top: 1px solid #e8eef7;
+    padding-top: 1rem;
+}
+
+.Doctor_info .txt-info h3 {
+    margin: 0.4rem 0 0.6rem;
+    color: #0f172a;
+    font-size: 1.1rem;
+}
+
+.Doctor_info .txt-info .inner {
+    line-height: 1.8;
+    font-size: 15px;
+    color: #666;
+}
+
+@media (max-width: 768px) {
+    .Doctor_info .txt-list .ytable,
+    .Doctor_info .txt-list .ytable-cell,
+    .Doctor_info .txt-list .yname {
+        display: block;
+    }
+    .Doctor_info .txt-list .pic {
+        width: 100%;
+        text-align: center;
+    }
+    .Doctor_info .txt-list .yname {
+        text-align: center;
+        margin-bottom: 0;
+    }
+    .Doctor_info .txt-list .info {
+        margin-top: 20px;
+    }
+}
+
+.Artinfo .pn-page {
+    margin-top: 1.2rem;
+    border-top: 1px solid #e2e8f0;
+    padding-top: 0.8rem;
+}
+
+.Artinfo .pn-page aside { padding: 10px 0; }
+.Artinfo .pn-page aside a { color: #666; }
+.Artinfo .pn-page aside a:hover { color: #0068b7; }
+
+@media (max-width: 992px) {
+    .doctor-tools {
+        text-align: left;
+        white-space: normal;
+    }
+}
+
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .article-card,
+    .article-card * {
+        visibility: visible;
+    }
+    .article-card {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        box-shadow: none;
+        border: none;
+    }
+    .article-tools,
+    .article-footer {
+        page-break-inside: avoid;
+    }
+    .article-footer {
+        display: none !important;
+    }
+}
+
+@media (max-width: 992px) {
+    .attachment-card,
+    .attachment-card:nth-child(2n) {
+        width: 100%;
+        margin-left: 0;
+    }
+}

@@ -1,6 +1,11 @@
+{var $disable_legacy_css = true}
 {extends 'layout.latte'}
 
 {block head}
+    <link rel="stylesheet" href="{asset('static/front/css/front-core.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-layout.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-widgets.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-pages.css')}" />
     {if isset($article['keywords'])}
         <meta name="keywords" content="{$article['keywords']}">
     {/if}
@@ -178,86 +183,4 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<style>
-.content-wrap:after {
-    content: '';
-    display: table;
-    clear: both;
-}
-.content-wrap {
-    position: relative;
-    z-index: 1;
-}
-.doctor-card {
-    background: #fff;
-    border-radius: 0.8rem;
-    padding: 1.5rem;
-    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
-    border: 1px solid #edf1f7;
-    margin-bottom: 8px;
-}
-.doctor-card.auto.w_96 {
-    width: 100%;
-    max-width: 100%;
-}
-.Artinfo > .auto {
-    border: 0;
-    box-shadow: none;
-}
-.doctor-tools {
-    text-align: right;
-    margin-bottom: 0.8rem;
-    font-size: 0.9rem;
-    white-space: nowrap;
-}
-.action-link {
-    color: #f8fafc;
-    background: rgba(15,23,42,0.35);
-    padding: 0.2rem 0.8rem;
-    border-radius: 0.4rem;
-    text-decoration: none;
-    margin-left: 0.4rem;
-    font-size: 0.85rem;
-}
-.Doctor_info .pic img {
-    border-radius: 0.6rem;
-    box-shadow: 0 10px 24px rgba(15,23,42,0.12);
-}
-.Doctor_info .content .yname {
-    font-size: 1.6rem;
-    color: #0f172a;
-}
-.Doctor_info .txt-info {
-    margin-top: 1.5rem;
-    border-top: 1px solid #e8eef7;
-    padding-top: 1rem;
-}
-.Doctor_info .txt-info h3 {
-    margin: 0.4rem 0 0.6rem;
-    color: #0f172a;
-    font-size: 1.1rem;
-}
-.Doctor_info .txt-info .inner {
-    line-height: 1.8;
-}
-.crumbs {
-    font-size: 0.9rem;
-}
-.crumbs em {
-    color: #64748b;
-}
-.crumbs a {
-    color: #2563eb;
-    text-decoration: none;
-}
-.crumbs a:hover {
-    text-decoration: underline;
-}
-@media (max-width: 992px) {
-    .doctor-tools {
-        text-align: left;
-        white-space: normal;
-    }
-}
-</style>
 {/block}
