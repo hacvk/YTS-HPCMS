@@ -74,3 +74,6 @@ doc/
 
 # 可选：避免忽略名称中 test 是正常业务的文件（如果有例外，比如 TestService.php 不想忽略，加 ! 排除）
 # !app/Service/TestService.php
+
+# 上传文件（运行时目录）
+public/uploads/
