@@ -52,6 +52,7 @@ class DoctorService
             // 处理 keshi 字段
             $rawKeshi = $row['keshi'] ?? null;
             $keshiIds = $this->parseKeshiIds($rawKeshi);
+            $row['keshi_ids'] = $keshiIds;
 
             // 批量查询科室标题
             $deptTitleById = $this->fetchDepartmentTitles($keshiIds);
@@ -77,110 +78,259 @@ class DoctorService
      */
     public function getFilterData(int $categoryId): array
     {
+        return $this->getFilterDataByCategoryIds([$categoryId]);
+    }
+
+    /**
+     * 根据专家栏目ID集合获取筛选数据
+     *
+     * @param array<int> $categoryIds
+     * @return array<string, mixed>
+     */
+    public function getFilterDataByCategoryIds(array $categoryIds): array
+    {
         try {
-            // 获取所有专家数据（从当前栏目）
-            $allDoctors = $this->db->select('sys_content', ['attributes'], [
-                'category_id' => $categoryId,
-                'status' => 1
-            ]);
-
-            // 收集所有科室ID和职称
-            $allKeshiIds = [];
-            $allZhichengSet = [];
-
-            foreach ($allDoctors ?: [] as $doctor) {
-                if (isset($doctor['attributes']) && !empty($doctor['attributes'])) {
-                    $attrs = is_string($doctor['attributes']) 
-                        ? json_decode($doctor['attributes'], true) 
-                        : $doctor['attributes'];
-
-                    if (!is_array($attrs)) {
-                        continue;
-                    }
-
-                    // 提取职称
-                    if (isset($attrs['zhicheng']) && !empty($attrs['zhicheng'])) {
-                        $zhicheng = trim((string)$attrs['zhicheng']);
-                        if ($zhicheng !== '') {
-                            $allZhichengSet[$zhicheng] = true;
-                        }
-                    }
-
-                    // 提取科室ID（keshi 字段）
-                    if (isset($attrs['keshi'])) {
-                        $rawKeshi = $attrs['keshi'];
-                        $keshiIds = $this->parseKeshiIds($rawKeshi);
-
-                        foreach ($keshiIds as $kid) {
-                            if ($kid > 0) {
-                                $allKeshiIds[$kid] = true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 获取临床科室和医技科室分类
-            $clinicalDepts = [];
-            $medicalTechDepts = [];
-
-            if (!empty($allKeshiIds)) {
-                $clinicalCategoryIds = $this->getCategoryIdsWithChildren([10, 12]);
-                $medicalTechCategoryIds = $this->getCategoryIdsWithChildren([13, 14]);
-
-                $keshiIdsArray = array_keys($allKeshiIds);
-                $deptContents = $this->db->select('sys_content', ['id', 'title', 'category_id'], [
-                    'id' => $keshiIdsArray,
-                    'status' => 1,
-                    'ORDER' => ['title' => 'ASC']
-                ]);
-
-                foreach ($deptContents ?: [] as $dept) {
-                    $deptItem = [
-                        'id' => (int)($dept['id'] ?? 0),
-                        'title' => (string)($dept['title'] ?? ''),
-                        'category_id' => (int)($dept['category_id'] ?? 0)
-                    ];
-
-                    // 根据 category_id 分类
-                    $catId = (int)($dept['category_id'] ?? 0);
-                    if (in_array($catId, $clinicalCategoryIds, true)) {
-                        $clinicalDepts[] = $deptItem;
-                    } elseif (in_array($catId, $medicalTechCategoryIds, true)) {
-                        $medicalTechDepts[] = $deptItem;
-                    }
-                    // 如果不在预定义分类中，则不显示（避免显示无关科室）
-                }
-            }
-
-            // 获取职称列表
-            $zhichengOptions = array_keys($allZhichengSet);
-            if (empty($zhichengOptions)) {
-                // 如果数据库中没有，使用预定义列表
-                $zhichengOptions = [
-                    '主任医师', '副主任医师', '主治医师', '住院医师',
-                    '主任中医师', '副主任中医师',
-                    '主任技师', '副主任技师', '主管技师', '技师'
+            $departmentCategories = $this->getDepartmentCategories(9);
+            $deptCategoryIds = array_values(array_filter(
+                array_map(fn($row) => (int)($row['id'] ?? 0), $departmentCategories),
+                fn($v) => $v > 0
+            ));
+            $deptArticles = $this->getDepartmentArticlesByCategoryIds($deptCategoryIds);
+            $deptGroups = [];
+            foreach ($departmentCategories as $deptCategory) {
+                $deptId = (int)($deptCategory['id'] ?? 0);
+                $deptGroups[] = [
+                    'id' => $deptId,
+                    'name' => (string)($deptCategory['name'] ?? ''),
+                    'items' => $deptArticles['groups'][$deptId] ?? []
                 ];
-            } else {
-                sort($zhichengOptions);
             }
+            $zhichengOptions = $this->collectTitlesByDoctorCategories($categoryIds);
 
             return [
-                'departments' => [
-                    'clinical' => $clinicalDepts,
-                    'medical_tech' => $medicalTechDepts
-                ],
+                'departments' => $deptGroups,
+                'dept_index' => $deptArticles['index'] ?? [],
                 'titles' => $zhichengOptions
             ];
         } catch (\Throwable $e) {
             error_log('获取筛选数据失败 ' . $e->getMessage());
             error_log('堆栈跟踪: ' . $e->getTraceAsString());
             return [
-                'departments' => ['clinical' => [], 'medical_tech' => []],
+                'departments' => [],
+                'dept_index' => [],
                 'titles' => []
             ];
         }
+    }
+
+    /**
+     * 获取科室栏目（父栏目ID固定为 9）
+     *
+     * @param int $parentId
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDepartmentCategories(int $parentId = 9): array
+    {
+        try {
+            return $this->db->select('sys_category', ['id', 'name', 'slug', 'parent_id'], [
+                'parent_id' => $parentId,
+                'is_hidden' => 0,
+                'ORDER' => ['sort' => 'ASC', 'id' => 'ASC']
+            ]) ?: [];
+        } catch (\Throwable $e) {
+            error_log('获取科室栏目失败: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * 获取科室下的专家列表，并支持筛选
+     *
+     * @param array<int> $departmentIds
+     * @param array<string, mixed> $filters
+     * @param int $page
+     * @param int $limit
+     * @return array{list: array<int, array<string, mixed>>, total: int}
+     */
+    public function getDoctorListByCategories(array $categoryIds, array $filters, int $page, int $limit): array
+    {
+        if (empty($categoryIds)) {
+            return ['list' => [], 'total' => 0];
+        }
+
+        $rows = $this->db->select(
+            'sys_content(content)',
+            [
+                '[>]sys_category(category)' => ['category_id' => 'id']
+            ],
+            [
+                'content.id',
+                'content.category_id',
+                'content.title',
+                'content.cover_img',
+                'content.summary',
+                'content.status',
+                'content.views',
+                'content.published_at',
+                'content.is_top',
+                'content.is_image_news',
+                'content.attributes',
+                'category.name(category_name)',
+                'category.slug(category_slug)'
+            ],
+            [
+                'content.category_id' => $categoryIds,
+                'content.status' => 1,
+                'ORDER' => ['content.id' => 'DESC']
+            ]
+        ) ?: [];
+
+        $list = $this->decodeAttributesBatch($rows);
+        $processed = $this->processDoctorList(['list' => $list, 'total' => count($list)]);
+        $list = $processed['list'] ?? [];
+
+        $selectedDeptIds = array_values(array_unique(array_filter(
+            array_map(fn($v) => (int)$v, $filters['dept_ids'] ?? []),
+            fn($v) => $v > 0
+        )));
+        $selectedTitles = array_values(array_unique(array_filter(
+            array_map(fn($v) => trim((string)$v), $filters['titles'] ?? []),
+            fn($v) => $v !== ''
+        )));
+        $keyword = trim((string)($filters['keyword'] ?? ''));
+
+        $filtered = [];
+        foreach ($list as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            if (!empty($selectedDeptIds)) {
+                $rowDeptIds = $row['keshi_ids'] ?? [];
+                if (!is_array($rowDeptIds)) {
+                    $rowDeptIds = [];
+                }
+                $matchedDept = false;
+                foreach ($rowDeptIds as $did) {
+                    if (in_array((int)$did, $selectedDeptIds, true)) {
+                        $matchedDept = true;
+                        break;
+                    }
+                }
+                if (!$matchedDept) {
+                    continue;
+                }
+            }
+
+            if (!empty($selectedTitles)) {
+                $titleText = trim((string)($row['zhicheng'] ?? ''));
+                $matched = false;
+                foreach ($selectedTitles as $t) {
+                    if ($t !== '' && $titleText === $t) {
+                        $matched = true;
+                        break;
+                    }
+                }
+                if (!$matched) {
+                    continue;
+                }
+            }
+
+            if ($keyword !== '') {
+                $haystack = strtolower(
+                    (string)($row['title'] ?? '') . ' ' .
+                    (string)($row['summary'] ?? '') . ' ' .
+                    (string)($row['description'] ?? '')
+                );
+                if (strpos($haystack, strtolower($keyword)) === false) {
+                    continue;
+                }
+            }
+
+            $filtered[] = $row;
+        }
+
+        $total = count($filtered);
+        $offset = max(0, ($page - 1) * $limit);
+        $paged = array_slice($filtered, $offset, $limit);
+
+        return [
+            'list' => $paged,
+            'total' => $total
+        ];
+    }
+
+    /**
+     * 读取科室下的职称集合
+     *
+     * @param array<int> $departmentIds
+     * @return array<int, string>
+     */
+    private function collectTitlesByDoctorCategories(array $categoryIds): array
+    {
+        if (empty($categoryIds)) {
+            return [];
+        }
+
+        $rows = $this->db->select('sys_content', ['attributes'], [
+            'category_id' => $categoryIds,
+            'status' => 1
+        ]) ?: [];
+
+        $titles = [];
+        foreach ($rows as $row) {
+            $merged = $this->decodeAttributes($row);
+            $zhicheng = trim((string)($merged['zhicheng'] ?? $merged['title2'] ?? $merged['position'] ?? ''));
+            if ($zhicheng !== '') {
+                $titles[$zhicheng] = true;
+            }
+        }
+
+        $titleList = array_keys($titles);
+        if (empty($titleList)) {
+            return [
+                '主任医师', '副主任医师', '主治医师', '住院医师',
+                '主任中医师', '副主任中医师',
+                '主任技师', '副主任技师', '主管技师', '技师'
+            ];
+        }
+        sort($titleList);
+        return $titleList;
+    }
+
+    /**
+     * 反序列化 attributes 字段
+     *
+     * @param array<string, mixed> $row
+     * @return array<string, mixed>
+     */
+    private function decodeAttributes(array $row): array
+    {
+        if (isset($row['attributes']) && is_string($row['attributes']) && $row['attributes'] !== '') {
+            $decoded = json_decode($row['attributes'], true);
+            if (is_array($decoded)) {
+                unset($row['attributes']);
+                $row = array_merge($row, $decoded);
+            }
+        }
+        return $row;
+    }
+
+    /**
+     * 批量反序列化 attributes 字段
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function decodeAttributesBatch(array $rows): array
+    {
+        $out = [];
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $out[] = $this->decodeAttributes($row);
+            }
+        }
+        return $out;
     }
 
     /**
@@ -268,6 +418,47 @@ class DoctorService
         } catch (\Throwable $e) {
             error_log('科室标题查询失败: ' . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * 获取科室栏目下的科室文章列表
+     *
+     * @param array<int> $categoryIds 科室栏目ID列表
+     * @return array{groups: array<int, array<int, array{id:int, title:string}>>, index: array<int, int>}
+     */
+    private function getDepartmentArticlesByCategoryIds(array $categoryIds): array
+    {
+        if (empty($categoryIds)) {
+            return ['groups' => [], 'index' => []];
+        }
+
+        try {
+            $rows = $this->db->select('sys_content', ['id', 'title', 'category_id'], [
+                'category_id' => $categoryIds,
+                'status' => 1,
+                'ORDER' => ['id' => 'ASC']
+            ]) ?: [];
+
+            $groups = [];
+            $index = [];
+            foreach ($rows as $row) {
+                $contentId = (int)($row['id'] ?? 0);
+                $categoryId = (int)($row['category_id'] ?? 0);
+                if ($contentId <= 0 || $categoryId <= 0) {
+                    continue;
+                }
+                $groups[$categoryId][] = [
+                    'id' => $contentId,
+                    'title' => (string)($row['title'] ?? '')
+                ];
+                $index[$contentId] = $categoryId;
+            }
+
+            return ['groups' => $groups, 'index' => $index];
+        } catch (\Throwable $e) {
+            error_log('获取科室文章失败: ' . $e->getMessage());
+            return ['groups' => [], 'index' => []];
         }
     }
 

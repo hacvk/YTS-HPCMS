@@ -41,32 +41,37 @@
             <!-- 所在科室筛选 -->
             <div class="filter-section">
                 <div class="filter-title">所在科室：</div>
-                <div class="dept-tabs">
-                    <button type="button" class="dept-tab active" data-tab="clinical">临床科室</button>
-                    <button type="button" class="dept-tab" data-tab="medical_tech">医技科室</button>
-                </div>
-                <div class="dept-grid" id="clinical-depts">
-                    {var $clinicalDepts = $filterData['departments']['clinical'] ?? []}
-                    {if count($clinicalDepts) > 0}
-                        {foreach $clinicalDepts as $dept}
-                            <label class="dept-item">
-                                <input type="checkbox" name="dept" value="{$dept['id']}">
-                                <span>{$dept['title']}</span>
-                            </label>
+                {var $deptGroups = $filterData['departments'] ?? []}
+                {var $selectedDeptIds = $filterData['selected_depts'] ?? []}
+                {var $activeDeptGroupId = (int)($filterData['active_dept_group'] ?? 0)}
+                {if $activeDeptGroupId === 0 && count($deptGroups) > 0}
+                    {var $activeDeptGroupId = (int)($deptGroups[0]['id'] ?? 0)}
+                {/if}
+                {if count($deptGroups) > 0}
+                    <div class="dept-tabs">
+                        {foreach $deptGroups as $deptGroup}
+                            {var $deptGroupId = (int)($deptGroup['id'] ?? 0)}
+                            <a href="#" class="dept-tab{if $deptGroupId === $activeDeptGroupId} active{/if}" data-tab="dept-{$deptGroupId}">{$deptGroup['name'] ?? ''}</a>
                         {/foreach}
-                    {/if}
-                </div>
-                <div class="dept-grid" id="medical_tech-depts" style="display: none;">
-                    {var $medicalTechDepts = $filterData['departments']['medical_tech'] ?? []}
-                    {if count($medicalTechDepts) > 0}
-                        {foreach $medicalTechDepts as $dept}
-                            <label class="dept-item">
-                                <input type="checkbox" name="dept" value="{$dept['id']}">
-                                <span>{$dept['title']}</span>
-                            </label>
-                        {/foreach}
-                    {/if}
-                </div>
+                    </div>
+                    {foreach $deptGroups as $deptGroup}
+                        {var $deptGroupId = (int)($deptGroup['id'] ?? 0)}
+                        {var $deptItems = $deptGroup['items'] ?? []}
+                        <div class="dept-grid dept-group{if $deptGroupId === $activeDeptGroupId} active{/if}" id="dept-{$deptGroupId}"{if $deptGroupId !== $activeDeptGroupId} style="display:none;"{/if}>
+                            {if count($deptItems) > 0}
+                                {foreach $deptItems as $dept}
+                                    {var $deptId = (int)($dept['id'] ?? 0)}
+                                    <label class="dept-item">
+                                        <input type="checkbox" name="dept" value="{$deptId}" {if in_array($deptId, $selectedDeptIds)}checked{/if}>
+                                        <span>{$dept['title'] ?? $dept['name'] ?? ''}</span>
+                                    </label>
+                                {/foreach}
+                            {else}
+                                <div style="padding:6px 0;color:#888;">暂无科室</div>
+                            {/if}
+                        </div>
+                    {/foreach}
+                {/if}
             </div>
             
             <!-- 职称筛选 -->
@@ -74,10 +79,11 @@
                 <div class="filter-title">职称：</div>
                 <div class="title-grid">
                     {var $titles = $filterData['titles'] ?? []}
+                    {var $selectedTitles = $filterData['selected_titles'] ?? []}
                     {if count($titles) > 0}
                         {foreach $titles as $titleItem}
                             <label class="title-item">
-                                <input type="checkbox" name="title" value="{$titleItem}">
+                                <input type="checkbox" name="title" value="{$titleItem}" {if in_array($titleItem, $selectedTitles)}checked{/if}>
                                 <span>{$titleItem}</span>
                             </label>
                         {/foreach}
@@ -90,7 +96,7 @@
                 <div class="search-wrapper">
                     <span class="filter-title">医师信息</span>
                     <div class="search-box">
-                        <input type="text" id="doctor-search" class="search-input" placeholder="搜索疾病或者医生姓名">
+                        <input type="text" id="doctor-search" class="search-input" placeholder="搜索疾病或者医生姓名" value="{$filterData['keyword'] ?? ''}">
                         <button type="button" class="btn-search">
                             <i class="bi bi-search"></i> 搜索
                         </button>
@@ -104,20 +110,24 @@
                 {var $list = $articles['list'] ?? []}
                 {if count($list) > 0}
                     {foreach $list as $a}
-                        <li>
+                        {var $deptName = ''}
+                        {if isset($a['keshi']) && is_array($a['keshi']) && count($a['keshi']) > 0}
+                            {var $deptName = $a['keshi'][0][2] ?? ''}
+                        {/if}
+                        {var $titleText = $a['zhicheng'] ?? ''}
+                        <li data-dept-id="{$deptId}" data-title="{$titleText}">
                             <div class="ytable">
                                 <div class="pic ytable-cell"><a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}"><img src="{$a['pic'] ?? $a['cover_img'] ?? ''}" width="150" height="210"></a></div>
                                 <div class="txt ytable-cell">
                                     <h3 class="dot">
                                         <a href="{$a['link'] ?? '/article/' . ($a['id'] ?? '')}">{$a['title'] ?? ''}</a>
-                                        {ifset $a['zhicheng']}<span>{$a['zhicheng']}</span>{/ifset}
+                                        {if $titleText}<span>{$titleText}</span>{/if}
                                     </h3>
                                     <aside>
-                                        {var $deptList = $a['keshi'] ?? []}
-                                        {if is_array($deptList) && count($deptList) > 0}
-                                            {foreach $deptList as $dept}
-                                                {if is_array($dept)}
-                                                    <a href="/article/{$dept[1] ?? ''}">{$dept[2] ?? '查看'}</a><br>
+                                        {if isset($a['keshi']) && is_array($a['keshi']) && count($a['keshi']) > 0}
+                                            {foreach $a['keshi'] as $dept}
+                                                {if is_array($dept) && isset($dept[2])}
+                                                    <span>{$dept[2]}</span>{if !$iterator->last}<br>{/if}
                                                 {/if}
                                             {/foreach}
                                         {/if}

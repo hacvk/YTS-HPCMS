@@ -90,6 +90,7 @@ class CategoryController extends BaseController
             $isChannel = !empty($currentCategory) && $currentCategory['is_channel'] == 1;
 
             // 如果当前栏目是频道，则获取所有子分类的文章
+            $allCategoryIds = [$categoryId];
             if ($isChannel) {
                 // 获取当前栏目的所有子分类ID
                 $subCategoryIds = $this->categoryService->getAllChildrenIds($categoryId);
@@ -117,11 +118,30 @@ class CategoryController extends BaseController
 
             $tplBase = basename($listTemplate);
             if ($tplBase === 'doctorlist.latte' || $tplBase === 'doctorlist') {
-                // 处理专家列表数据
-                $articles = $this->doctorService->processDoctorList($articles);
+                $selectedDeptIds = $this->parseIdList((string)$this->get('dept', ''));
+                $selectedTitles = $this->parseStringList((string)$this->get('title', ''));
+                $keyword = trim((string)$this->get('keyword', ''));
 
-                // 获取筛选数据（科室和职称）
-                $filterData = $this->doctorService->getFilterData($categoryId);
+                $articles = $this->doctorService->getDoctorListByCategories($allCategoryIds, [
+                    'dept_ids' => $selectedDeptIds,
+                    'titles' => $selectedTitles,
+                    'keyword' => $keyword
+                ], $page, $limit);
+
+                $filterData = $this->doctorService->getFilterDataByCategoryIds($allCategoryIds);
+                $filterData['selected_depts'] = $selectedDeptIds;
+                $filterData['selected_titles'] = $selectedTitles;
+                $filterData['keyword'] = $keyword;
+                $activeDeptGroupId = 0;
+                if (!empty($selectedDeptIds) && !empty($filterData['dept_index']) && is_array($filterData['dept_index'])) {
+                    foreach ($selectedDeptIds as $deptId) {
+                        if (isset($filterData['dept_index'][$deptId])) {
+                            $activeDeptGroupId = (int)$filterData['dept_index'][$deptId];
+                            break;
+                        }
+                    }
+                }
+                $filterData['active_dept_group'] = $activeDeptGroupId;
             }
 
             // 计算分页信息
@@ -129,7 +149,18 @@ class CategoryController extends BaseController
             $totalPages = (int)max(1, ceil($total / $limit));
 
             // 构建分页HTML
-            $pagination = $this->generatePagination($page, $totalPages, '/c/' . $slug);
+            $queryParts = [];
+            if (!empty($filterData['selected_depts'])) {
+                $queryParts['dept'] = implode(',', $filterData['selected_depts']);
+            }
+            if (!empty($filterData['selected_titles'])) {
+                $queryParts['title'] = implode(',', $filterData['selected_titles']);
+            }
+            if (!empty($filterData['keyword'])) {
+                $queryParts['keyword'] = $filterData['keyword'];
+            }
+            $queryString = !empty($queryParts) ? ('?' . http_build_query($queryParts)) : '';
+            $pagination = $this->generatePagination($page, $totalPages, '/c/' . $slug, $queryString);
 
             // 使用 SiteService 构建导航数据
             $navItems = $this->siteService->buildNav();
@@ -392,7 +423,7 @@ class CategoryController extends BaseController
      * @param string $baseUrl 基础URL
      * @return string 分页HTML
      */
-    private function generatePagination(int $currentPage, int $totalPages, string $baseUrl): string
+    private function generatePagination(int $currentPage, int $totalPages, string $baseUrl, string $queryString = ''): string
     {
         if ($totalPages <= 1) {
             return '';
@@ -403,7 +434,7 @@ class CategoryController extends BaseController
         // 上一页
         if ($currentPage > 1) {
             $prevPage = $currentPage - 1;
-            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $prevPage, ENT_QUOTES, 'UTF-8') . '" class="prev">上一页</a>';
+            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $prevPage . $queryString, ENT_QUOTES, 'UTF-8') . '" class="prev">上一页</a>';
         }
 
         // 页码链接
@@ -411,7 +442,7 @@ class CategoryController extends BaseController
         $endPage = min($totalPages, $currentPage + 4);
 
         if ($startPage > 1) {
-            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/1', ENT_QUOTES, 'UTF-8') . '">1</a>';
+            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/1' . $queryString, ENT_QUOTES, 'UTF-8') . '">1</a>';
             if ($startPage > 2) {
                 $pagination .= '<span class="ellipsis">...</span>';
             }
@@ -421,7 +452,7 @@ class CategoryController extends BaseController
             if ($i === $currentPage) {
                 $pagination .= '<span class="current">' . $i . '</span>';
             } else {
-                $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $i, ENT_QUOTES, 'UTF-8') . '">' . $i . '</a>';
+                $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $i . $queryString, ENT_QUOTES, 'UTF-8') . '">' . $i . '</a>';
             }
         }
 
@@ -429,17 +460,53 @@ class CategoryController extends BaseController
             if ($endPage < $totalPages - 1) {
                 $pagination .= '<span class="ellipsis">...</span>';
             }
-            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $totalPages, ENT_QUOTES, 'UTF-8') . '">' . $totalPages . '</a>';
+            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $totalPages . $queryString, ENT_QUOTES, 'UTF-8') . '">' . $totalPages . '</a>';
         }
 
         // 下一页
         if ($currentPage < $totalPages) {
             $nextPage = $currentPage + 1;
-            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $nextPage, ENT_QUOTES, 'UTF-8') . '" class="next">下一页</a>';
+            $pagination .= '<a href="' . htmlspecialchars($baseUrl . '/page/' . $nextPage . $queryString, ENT_QUOTES, 'UTF-8') . '" class="next">下一页</a>';
         }
 
         $pagination .= '</div>';
 
         return $pagination;
+    }
+
+    /**
+     * 解析 ID 列表（逗号分隔）
+     *
+     * @param string $raw
+     * @return array<int>
+     */
+    private function parseIdList(string $raw): array
+    {
+        if ($raw === '') {
+            return [];
+        }
+        $parts = array_filter(array_map('trim', explode(',', $raw)), fn($v) => $v !== '');
+        $ids = [];
+        foreach ($parts as $p) {
+            if (ctype_digit($p)) {
+                $ids[] = (int)$p;
+            }
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * 解析字符串列表（逗号分隔）
+     *
+     * @param string $raw
+     * @return array<int, string>
+     */
+    private function parseStringList(string $raw): array
+    {
+        if ($raw === '') {
+            return [];
+        }
+        $parts = array_filter(array_map('trim', explode(',', $raw)), fn($v) => $v !== '');
+        return array_values(array_unique($parts));
     }
 }
