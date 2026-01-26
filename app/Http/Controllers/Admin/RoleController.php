@@ -93,7 +93,7 @@ class RoleController extends AdminBaseController
         $status = (int)$this->post('status', 1);
         $sort = (int)$this->post('sort', 0);
         $remark = trim((string)$this->post('remark', ''));
-        $permKeys = $this->post('perm_keys', []);
+        $permKeys = (array)($this->request->request->all('perm_keys') ?? []);
         if (!is_array($permKeys)) {
             $permKeys = [];
         }

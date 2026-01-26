@@ -65,6 +65,9 @@
         editor.config.uploadImgMaxLength = 10; // 一次最多上传10张图片
         editor.config.uploadImgTimeout = 30000; // 30秒超时
         editor.config.uploadFileName = 'file';
+        editor.config.uploadImgHeaders = {
+            'X-Requested-With': 'XMLHttpRequest'
+        };
         editor.config.uploadImgParams = {
             csrf_token: csrfToken,
             module: 'article'
@@ -115,10 +118,18 @@
                     // 发送 AJAX 请求
                     fetch(form.action, {
                         method: 'POST',
-                        body: formData
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
                     })
-                    .then(function(response) {
-                        return response.json();
+                    .then(async function(response) {
+                        const text = await response.text();
+                        try {
+                            return JSON.parse(text);
+                        } catch (err) {
+                            throw new Error(text.slice(0, 200) || '服务器返回非JSON');
+                        }
                     })
                     .then(function(data) {
                         if (data.code === 0) {
@@ -204,9 +215,19 @@
                 // 上传文件
                 fetch('/admin/upload/upload', {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
                 })
-                .then(response => response.json())
+                .then(async response => {
+                    const text = await response.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (err) {
+                        throw new Error(text.slice(0, 200) || '服务器返回非JSON');
+                    }
+                })
                 .then(data => {
                     coverImgInput.disabled = false;
                     if (data.errno === 0 && data.data && data.data.length > 0) {

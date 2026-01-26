@@ -118,6 +118,7 @@ class PermissionService
         $add('内容管理', 'admin:article:delete', '文章管理（删除）');
         $add('内容管理', 'admin:page:save', '单页管理（新增/编辑）');
         $add('内容管理', 'admin:page:delete', '单页管理（删除）');
+        $add('内容管理', 'admin:upload:crop', '图片裁剪（上传裁剪）');
         
         // 系统日志权限
         $add('系统', 'admin:system:logs:view', '系统日志（查看）');

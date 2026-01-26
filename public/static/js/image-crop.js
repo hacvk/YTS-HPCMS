@@ -119,8 +119,20 @@
                     const articleId = articleIdInput ? articleIdInput.value : 0;
                     fd.append("article_id", articleId);
 
-                    const resp = await fetch("/admin/upload/uploadCrop", { method: "POST", body: fd });
-                    const json = await resp.json();
+                    const resp = await fetch("/admin/upload/uploadCrop", {
+                        method: "POST",
+                        body: fd,
+                        headers: {
+                            "X-Requested-With": "XMLHttpRequest"
+                        }
+                    });
+                    const text = await resp.text();
+                    let json;
+                    try {
+                        json = JSON.parse(text);
+                    } catch (parseErr) {
+                        throw new Error(text.slice(0, 200) || "服务器返回非JSON");
+                    }
 
                     if (json.code === 0 && json.data && json.data.url) {
                         const inputEl = document.getElementById(currentTargetId);

@@ -1224,7 +1224,7 @@ class FileService
                 return ['success' => false, 'message' => '源图片不存在'];
             }
 
-            // 限制裁剪来源必须在 public/uploads 内
+            // 限制裁剪来源必须在 public/uploads 内（允许系统临时文件用于 Base64 裁剪）
             $realSourcePath = realpath($sourcePath);
             if ($realSourcePath === false) {
                 return ['success' => false, 'message' => '源图片路径无效'];
@@ -1232,8 +1232,17 @@ class FileService
 
             $publicDir = dirname(__DIR__, 2) . '/public';
             $allowedBaseDir = realpath($publicDir . '/uploads');
-            if ($allowedBaseDir === false || strpos($realSourcePath, $allowedBaseDir) !== 0) {
-                return ['success' => false, 'message' => '不允许的图片路径'];
+            $tempDir = realpath(sys_get_temp_dir());
+
+            $isTempUpload = false;
+            if ($tempDir !== false && str_starts_with($realSourcePath, $tempDir . DIRECTORY_SEPARATOR)) {
+                $isTempUpload = str_contains(basename($realSourcePath), 'upload_');
+            }
+
+            if (!$isTempUpload) {
+                if ($allowedBaseDir === false || strpos($realSourcePath, $allowedBaseDir) !== 0) {
+                    return ['success' => false, 'message' => '不允许的图片路径'];
+                }
             }
 
             // 获取图片信息
@@ -1407,6 +1416,11 @@ class FileService
     {
         $publicDir = dirname(__DIR__, 2) . '/public';
         
+        // 如果已经是完整路径（包含临时路径等）
+        if (file_exists($imagePath)) {
+            return $imagePath;
+        }
+
         // 如果是绝对路径（以 / 开头或 Windows 绝对路径格式）
         if (str_starts_with($imagePath, '/') || strpos($imagePath, ':') !== false) {
             // 如果是网站根目录下的绝对路径（以 / 开头）
@@ -1414,11 +1428,6 @@ class FileService
                 return $publicDir . $imagePath;
             }
             // 否则是 Windows 系统的绝对路径（如 C:\...）
-            return $imagePath;
-        }
-        
-        // 如果已经是完整路径
-        if (file_exists($imagePath)) {
             return $imagePath;
         }
         
