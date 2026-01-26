@@ -76,34 +76,34 @@ a:hover { color: #0068b7; }
 
 
 /*全站页脚开始2023-2-15-YGG */
-.footer_dyseo { background: #0068b7; padding: 30px 0 50px; }
-.footer_dyseo, .footer_dyseo a { color: #fff; }
-.footer_dyseo dl { border-bottom: 1px solid rgba(255,255,255,.15); padding: 15px 0; margin-bottom: 20px; }
-.footer_dyseo dt { border-bottom: 1px solid rgba(255,255,255,.15); height: 30px; margin-bottom: 15px; position: relative; }
-.footer_dyseo dt a { position: absolute; bottom: -1px; display: inline-block; font-size: 20px; color: #fff; font-weight: bold; line-height: 48px; border-bottom: 2px solid #fff; }
-.footer_dyseo dd a { color: #fff; padding-right: 34px; }
-.footer_dyseo .copyright { padding-left: 100px; background: url(../images/sydw_icon.png) no-repeat 10px top; line-height: 32px; min-height: 72px; }
-.footer_dyseo .copyright span { display: block; opacity: 0.4; }
-.footer_dyseo .copyright span a { text-decoration: underline; }
-.footer_dyseo .share ul > * { float: left; }
-.footer_dyseo .share li { width: 91px; margin-left: 20px; }
-.footer_dyseo .share li img { display: block; width: 100%; }
-.footer_dyseo .share ol aside { text-align: right; padding-bottom: 25px; }
-.footer_dyseo .share ol .bshare-custom a { float: left; width: 32px; height: 32px; border-radius: 50%; background: url(../images/footer_dyseo_qq.png) no-repeat center center #00a0e9; padding: 0; margin: 0 0 0 6px; }
-.footer_dyseo .share ol .bshare-custom a.bshare-sinaminiblog { background-image: url(../images/footer_dyseo_sina.png); }
-.footer_dyseo .share ol .bshare-custom a.bshare-weixin { background-image: url(../images/footer_dyseo_wx.png); }
+.site_footer { background: #0068b7; padding: 30px 0 50px; }
+.site_footer, .site_footer a { color: #fff; }
+.site_footer dl { border-bottom: 1px solid rgba(255,255,255,.15); padding: 15px 0; margin-bottom: 20px; }
+.site_footer dt { border-bottom: 1px solid rgba(255,255,255,.15); height: 30px; margin-bottom: 15px; position: relative; }
+.site_footer dt a { position: absolute; bottom: -1px; display: inline-block; font-size: 20px; color: #fff; font-weight: bold; line-height: 48px; border-bottom: 2px solid #fff; }
+.site_footer dd a { color: #fff; padding-right: 34px; }
+.site_footer .footer_copyright { padding-left: 100px; background: url(../images/sydw_icon.png) no-repeat 10px top; line-height: 32px; min-height: 72px; }
+.site_footer .footer_copyright span { display: block; opacity: 0.4; }
+.site_footer .footer_copyright span a { text-decoration: underline; }
+.site_footer .footer_share_list > * { float: left; }
+.site_footer .footer_share_list li { width: 91px; margin-left: 20px; }
+.site_footer .footer_share_list li img { display: block; width: 100%; }
+.site_footer .footer_share_list ol aside { text-align: right; padding-bottom: 25px; }
+.site_footer .footer_share_list ol .bshare-custom a { float: left; width: 32px; height: 32px; border-radius: 50%; background: url(../images/footer_dyseo_qq.png) no-repeat center center #00a0e9; padding: 0; margin: 0 0 0 6px; }
+.site_footer .footer_share_list ol .bshare-custom a.bshare-sinaminiblog { background-image: url(../images/footer_dyseo_sina.png); }
+.site_footer .footer_share_list ol .bshare-custom a.bshare-weixin { background-image: url(../images/footer_dyseo_wx.png); }
 
-.footer_dyseo .copyright p{ margin:0; line-height:24px; padding-bottom:5px;}
+.site_footer .footer_copyright p{ margin:0; line-height:24px; padding-bottom:5px;}
 @media(min-width:1025px) {
-.footer_dyseo .copyright {/* max-width: 760px; */width: 68%;}
+.site_footer .footer_copyright {/* max-width: 760px; */width: 68%;}
 }
 
 @media(max-width:1024px) {
-.footer_dyseo .share { display: table; margin: 0 auto; }
-.footer_dyseo .copyright { padding-left: 100px; }
+.site_footer .footer_share { display: table; margin: 0 auto; }
+.site_footer .footer_copyright { padding-left: 100px; }
 }
 @media (max-width: 480px) {
-    .footer_dyseo dd a {
+    .site_footer dd a {
         padding-right: 0;
         float: left;
         width: 50%;
@@ -113,20 +113,19 @@ a:hover { color: #0068b7; }
 }
 .bd_weixin_popup, .bd_weixin_popup * { box-sizing: content-box; }
 /*
- .foot_nav 为demo编号
+ .side_toolbar 为demo编号
  */
-
-.foot_nav { width: 84px; padding: 0 5px; height: auto; position: fixed; bottom:20%; right:2%; z-index: 10; background: #fff; border-radius: 4px; box-shadow: 3px 3px 20px rgba(0,0,0,0.1); }
-.foot_nav a { display: block; width: 74px; border-radius: 4px; padding-top: 60px; padding-bottom: 12px; background-image: url(../images/foot_nav-icon.png); background-repeat: no-repeat; font-size: 15px; color: #777; text-align: center; margin-bottom: 4px; position: relative; border-bottom: 1px solid #ededed; transition: .3s; }
-.foot_nav span{ position:absolute; top:0; left:-100px; display:none;}
-.foot_nav span img{ width:90px; height:90px; border:1px solid #000;}
-.foot_nav a:hover span{ display:block;}
-.foot_nav .icon1 { background-position: center top; }
-.foot_nav .icon2 { background-position: center -85px; }
-.foot_nav .icon3 { background-position: center -170px; }
-.foot_nav .top { background-position: center -340px; padding-top: 15px; border-bottom: none; }
-.foot_nav .top b { display: block; font-weight: normal; color: #000; }
-.foot_nav button{
+.side_toolbar { width: 84px; padding: 0 5px; height: auto; position: fixed; bottom:20%; right:2%; z-index: 10; background: #fff; border-radius: 4px; box-shadow: 3px 3px 20px rgba(0,0,0,0.1); }
+.side_toolbar a { display: block; width: 74px; border-radius: 4px; padding-top: 60px; padding-bottom: 12px; background-image: url(../images/foot_nav-icon.png); background-repeat: no-repeat; font-size: 15px; color: #777; text-align: center; margin-bottom: 4px; position: relative; border-bottom: 1px solid #ededed; transition: .3s; }
+.side_toolbar span{ position:absolute; top:0; left:-100px; display:none;}
+.side_toolbar span img{ width:90px; height:90px; border:1px solid #000;}
+.side_toolbar a:hover span{ display:block;}
+.side_toolbar .side_toolbar_wechat { background-position: center top; }
+.side_toolbar .side_toolbar_route { background-position: center -85px; }
+.side_toolbar .side_toolbar_service { background-position: center -170px; }
+.side_toolbar .side_toolbar_top { background-position: center -340px; padding-top: 15px; border-bottom: none; }
+.side_toolbar .side_toolbar_top b { display: block; font-weight: normal; color: #000; }
+.side_toolbar button{
     position: absolute;
     right: 100%;
     top: 50%;
@@ -140,21 +139,21 @@ a:hover { color: #0068b7; }
     margin-top: -40px;
     display: none;
 }
-.foot_nav button.active{
+.side_toolbar button.active{
     background-image: url(../images/more.png);
 }
 @media (max-width: 768px) {
-    .foot_nav button{
+    .side_toolbar button{
         display: block;
     }
-    .foot_nav{
+    .side_toolbar{
         left: inherit;
         right: -70px;
         bottom: 30px;
         top: inherit;
         width: 70px;
     }
-    .foot_nav a{
+    .side_toolbar a{
         font-size: 12px;
         width: 60px;
     }
