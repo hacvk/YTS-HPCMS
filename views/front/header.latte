@@ -1,15 +1,15 @@
-<div class="Top_dyseo">
-    <div class="today">
+<div class="top_bar">
+    <div class="top_bar_notice">
         <dl class="auto auto_1150 clearfix">
             <dd><a href="/" class="gethome">返回首页</a></dd>
             <dt class="fl">您好！欢迎您访问{$hospitalName ?? ''}官网</dt>
         </dl>
     </div>
 
-    <div class="header-top auto auto_1150">
+    <div class="top_bar_inner auto auto_1150">
         <div class="logo"><a href="/"><img src="{setting('site_logo', '')}"></a></div>
 
-        <dl class="header-right">
+        <dl class="top_bar_search">
             <dt>
                 <form method="get" action="/search/">
                     <input type="text" class="text" id="TopKey" name="keyword" value="">
@@ -22,15 +22,15 @@
         <script nonce="{$csp_nonce}">
             if($(window).width() < 769) {
                 $('.search-btn').click(function() {
-                    $('.header-right dt').stop().slideToggle(300);
+                    $('.top_bar_search dt').stop().slideToggle(300);
                 })
             }
         </script>
     </div>
 
-    <div class="header-bottom">
-        <header class="header auto auto_1150">
-            <nav class="header-menu sub-vertical clearfix sub-slideDown">
+    <div class="main_nav_wrap">
+        <header class="main_nav auto auto_1150">
+            <nav class="main_nav_menu header-menu sub-vertical clearfix sub-slideDown">
                 <ul class="ul clearfix">
                     <li class="home"><em><a href="/">首页</a></em></li>
                     {ifset $navItems}
@@ -38,8 +38,8 @@
                             <li>
                                 <em><a href="{$item['url']}" class="{$item['class'] ?? ''}">{$item['name']}</a></em>
                                 {if !empty($item['children'])}
-                                    <div class="sub">
-                                        <div class="sub-menu">
+                                    <div class="sub main_nav_sub">
+                                        <div class="sub-menu main_nav_submenu">
                                             <dl>
                                                 {foreach $item['children'] as $child}
                                                     <dt><a href="{$child['url']}" class="{$child['class'] ?? ''}">{$child['name']}</a></dt>

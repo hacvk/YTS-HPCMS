@@ -1,18 +1,18 @@
 <!-- Sidebar Navigation -->
-<div class="leftmenu">
-    <div class="tit"><i class="wap-open"></i><b>栏目导航</b></div>
-    <ul class="ul">
+<div class="sidebar_nav">
+    <div class="sidebar_nav_title"><i class="sidebar_nav_toggle"></i><b>栏目导航</b></div>
+    <ul class="sidebar_nav_list">
         {ifset $sidebarItems}
             {if count($sidebarItems) > 0}
                 {foreach $sidebarItems as $item}
-                    <li pagename="{$item['name']}">
+                    <li data-page-name="{$item['name']}">
                         <a href="{$item['url']}">{$item['name']}</a>
                     </li>
                 {/foreach}
             {else}
                 <!-- 如果没有子栏目，则显示当前顶级栏目本身 -->
                 {ifset $category}
-                    <li pagename="{$category['name']}">
+                    <li data-page-name="{$category['name']}">
                         <a href="/c/{$category['slug']}">{$category['name']}</a>
                     </li>
                 {/ifset}
@@ -25,8 +25,8 @@
   // 移动端菜单
   leftmenu();
   function leftmenu() {
-      var btn = $(".leftmenu .wap-open"),
-          _this = $(".leftmenu ul")
+      var btn = $(".sidebar_nav .sidebar_nav_toggle"),
+          _this = $(".sidebar_nav .sidebar_nav_list")
       btn.click(function (e) {
           $(this).toggleClass("on");
           _this.stop(true, true).fadeToggle();
@@ -40,14 +40,14 @@
           e.stopPropagation();
       });
   }
-  $('.leftmenu ul li').each(function () {
-      var isPageName = $(this).attr('pagename');
+  $('.sidebar_nav .sidebar_nav_list li').each(function () {
+      var isPageName = $(this).data('page-name');
       if (location.href.indexOf(isPageName) >= 0 || location.href.indexOf(isPageName.toLowerCase()) >= 0) {
-          $(this).addClass('aon');
+          $(this).addClass('is_active');
       }
   })
 </script>
-    <div class="menubox_l">
+    <div class="sidebar_actions">
         <a href=""><img src="{asset('uploads/images/menu1.png')}"></a>
         <a href=""><img src="{asset('uploads/images/menu2.png')}"></a>
         <a href=""><img src="{asset('uploads/images/menu3.png')}"></a>

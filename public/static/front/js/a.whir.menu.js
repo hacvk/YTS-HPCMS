@@ -66,7 +66,9 @@
 	$(".header-menu li").each(function(index) {
      	$(this).attr("id", "m" + index);
 	});
-    $("#m"+m).addClass("aon");
+    if (typeof m !== "undefined") {
+        $("#m"+m).addClass("aon");
+    }
 	open_menu()
 });
 
@@ -105,7 +107,9 @@ function menu() {
 		});
 		$(this).bind("mouseleave",function(e) {
 			$(this).removeClass("hover aon");
-			$("#m"+m).addClass("aon");
+			if (typeof m !== "undefined") {
+				$("#m"+m).addClass("aon");
+			}
 		});
 		//
 		var sub_num = $(this).find(".sub").length
