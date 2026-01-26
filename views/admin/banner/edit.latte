@@ -5,7 +5,7 @@
 {block content}
 <div class="container-fluid">
     <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
-    <form method="post" action="/admin/banner/save" id="bannerForm">
+    <form method="post" action="{$admin_path}/banner/save" id="bannerForm">
         <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <input type="hidden" name="id" value="{$banner['id'] ?? 0}">
 
@@ -50,7 +50,7 @@
         </div>
 
         <button type="submit" class="btn btn-primary">保存</button>
-        <a class="btn btn-secondary" href="/admin/banner">返回</a>
+        <a class="btn btn-secondary" href="{$admin_path}/banner">返回</a>
     </form>
 </div>
 
@@ -67,7 +67,7 @@ document.getElementById('bannerForm').addEventListener('submit', function(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 保存中...';
   
-  fetch('/admin/banner/save', {
+  fetch('{$admin_path}/banner/save', {
     method: 'POST',
     body: formData
   })
@@ -76,7 +76,7 @@ document.getElementById('bannerForm').addEventListener('submit', function(e) {
     if (d.code === 0) {
       alert(d.message || '保存成功');
       // 跳转到列表页
-      window.location.href = d.url || '/admin/banner';
+      window.location.href = d.url || '{$admin_path}/banner';
     } else {
       alert(d.message || '保存失败');
       // 恢复按钮状态
@@ -125,7 +125,7 @@ function selectImage() {
     fd.append('csrf_token', csrfToken);
 
     // 使用正确的上传路径
-    fetch('/admin/upload/do', { method: 'POST', body: fd })
+    fetch('{$admin_path}/upload/do', { method: 'POST', body: fd })
       .then(r => r.json())
       .then(d => {
         if (d.errno === 0 && d.data && d.data.length) {

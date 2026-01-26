@@ -17,7 +17,7 @@
             </h6>
         </div>
         <div class="card-body">
-            <form id="settingForm" action="/admin/setting/save" method="post">
+            <form id="settingForm" action="{$admin_path}/setting/save" method="post">
                 <!-- CSRF Token -->
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{$csrf_token}">
                 
@@ -155,7 +155,7 @@ function deleteImage(inputId, previewId, fieldName) {
         formData.append('field_name', fieldName);
         formData.append('csrf_token', csrfToken);
         
-        fetch('/admin/setting/delete-image', {
+        fetch('{$admin_path}/setting/delete-image', {
             method: 'POST',
             body: formData
         })
@@ -256,7 +256,7 @@ function selectImage(inputId) {
         targetInput.disabled = true;
         
         // 上传文件
-        fetch('/admin/upload/do', {
+        fetch('{$admin_path}/upload/do', {
             method: 'POST',
             body: formData
         })
@@ -330,7 +330,7 @@ document.getElementById('settingForm')?.addEventListener('submit', function(e) {
                 alert(data.message);
             }
             // 跳转到指定URL或刷新页面
-            window.location.href = data.url || '/admin/setting';
+            window.location.href = data.url || '{$admin_path}/setting';
         } else {
             // 保存失败，显示错误信息
             alert(data.message || '保存失败');

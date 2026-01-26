@@ -1,5 +1,6 @@
 // 文章编辑器初始化和相关功能
 (function() {
+    var adminBase = window.ADMIN_PATH || '/admin';
     // 网站根目录是 /public，所以静态资源路径应该是 /static/...
     const wangEditorPath = '/static/wangeditor/cdn/wangEditor.min.js';
 
@@ -60,7 +61,7 @@
         editor.config.placeholder = '请输入文章内容...';
 
         // 配置图片上传
-        editor.config.uploadImgServer = '/admin/upload/upload';
+        editor.config.uploadImgServer = adminBase + '/upload/upload';
         editor.config.uploadImgMaxSize = 2 * 1024 * 1024; // 2M
         editor.config.uploadImgMaxLength = 10; // 一次最多上传10张图片
         editor.config.uploadImgTimeout = 30000; // 30秒超时
@@ -138,7 +139,7 @@
                                 alert(data.message);
                             }
                             // 跳转到指定URL或文章列表
-                            window.location.href = data.url || '/admin/article';
+                            window.location.href = data.url || (adminBase + '/article');
                         } else {
                             // 保存失败，显示错误信息
                             alert(data.message || '保存失败');
@@ -213,7 +214,7 @@
                 coverImgInput.disabled = true;
 
                 // 上传文件
-                fetch('/admin/upload/upload', {
+                fetch(adminBase + '/upload/upload', {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -291,7 +292,7 @@
             formData.append('csrf_token', csrfToken);
 
             // 发送删除请求
-            fetch('/admin/upload/deleteCoverImage', {
+            fetch(adminBase + '/upload/deleteCoverImage', {
                 method: 'POST',
                 body: formData
             })

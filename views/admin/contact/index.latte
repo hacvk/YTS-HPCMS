@@ -17,7 +17,7 @@
             </h6>
         </div>
         <div class="card-body">
-            <form id="contactForm" action="/admin/contact/save" method="post">
+            <form id="contactForm" action="{$admin_path}/contact/save" method="post">
                 <!-- CSRF Token -->
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{$csrf_token}">
                 
@@ -156,7 +156,7 @@ function selectImage(inputId) {
         targetInput.disabled = true;
         
         // 上传文件
-        fetch('/admin/upload/do', {
+        fetch('{$admin_path}/upload/do', {
             method: 'POST',
             body: formData
         })
@@ -220,7 +220,7 @@ document.getElementById('contactForm')?.addEventListener('submit', function(e) {
                 alert(data.message);
             }
             // 跳转到指定URL或刷新页面
-            window.location.href = data.url || '/admin/contact';
+            window.location.href = data.url || '{$admin_path}/contact';
         } else {
             // 保存失败，显示错误信息
             alert(data.message || '保存失败');

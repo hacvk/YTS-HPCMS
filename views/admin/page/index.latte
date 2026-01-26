@@ -7,7 +7,7 @@
     <!-- 页面顶部操作栏 -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
-        <a href="/admin/page/add" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+        <a href="{$admin_path}/page/add" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> 添加单页
         </a>
     </div>
@@ -62,14 +62,14 @@
                             </td>
                             <td>
                                 {if $page['has_content']}
-                                <a href="/admin/page/edit/{$page['category_id']}" class="btn btn-info btn-sm">
+                                <a href="{$admin_path}/page/edit/{$page['category_id']}" class="btn btn-info btn-sm">
                                     <i class="fas fa-edit"></i> 编辑
                                 </a>
                                 <button type="button" class="btn btn-danger btn-sm" onclick="deletePage({$page['content']['id']})">
                                     <i class="fas fa-trash"></i> 删除
                                 </button>
                                 {else}
-                                <a href="/admin/page/add?category_id={$page['category_id']}" class="btn btn-primary btn-sm">
+                                <a href="{$admin_path}/page/add?category_id={$page['category_id']}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-plus"></i> 创建
                                 </a>
                                 {/if}
@@ -102,7 +102,7 @@ function deletePage(id) {
             csrfToken = csrfInput ? csrfInput.value : '';
         }
         
-        fetch('/admin/page/delete/' + id, {
+        fetch('{$admin_path}/page/delete/' + id, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -113,7 +113,7 @@ function deletePage(id) {
         .then(function(data) {
             if (data.code === 0) {
                 alert(data.message);
-                window.location.href = '/admin/page';
+                window.location.href = '{$admin_path}/page';
             } else {
                 alert(data.message);
             }

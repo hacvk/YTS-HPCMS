@@ -124,7 +124,7 @@
             <p>请登录您的账号</p>
         </div>
 
-        <form action="/admin/login" method="POST">
+        <form action="{$admin_path}/login" method="POST">
             <input type="hidden" name="csrf_token" value="{$csrf_token}">
 
             <div class="form-group">
@@ -164,7 +164,7 @@
                         style="flex:1;"
                     >
                     <img 
-                        src="/admin/login/captcha" 
+                        src="{$admin_path}/login/captcha" 
                         alt="验证码" 
                         id="captchaImg" 
                         style="cursor:pointer;height:40px;border-radius:6px;"
@@ -176,7 +176,7 @@
             <script nonce="{$csp_nonce}">
                 // 点击验证码图片刷新
                 document.getElementById('captchaImg').addEventListener('click', function () {
-                    this.src = '/admin/login/captcha?rand=' + Date.now();
+                    this.src = '{$admin_path}/login/captcha?rand=' + Date.now();
                 });
                 
                 // 登录失败时自动刷新验证码
@@ -206,7 +206,7 @@
                     .then(data => {
                         if (data.code !== 0) {
                             // 登录失败，刷新验证码
-                            captchaImg.src = '/admin/login/captcha?rand=' + Date.now();
+                            captchaImg.src = '{$admin_path}/login/captcha?rand=' + Date.now();
                             // 清空验证码输入框
                             document.getElementById('captcha').value = '';
                             // 显示错误提示
@@ -216,13 +216,13 @@
                             if (data.url) {
                                 window.location.href = data.url;
                             } else {
-                                window.location.href = '/admin/dashboard';
+                                window.location.href = '{$admin_path}/dashboard';
                             }
                         }
                     })
                     .catch(error => {
                         console.error('登录失败:', error);
-                        captchaImg.src = '/admin/login/captcha?rand=' + Date.now();
+                        captchaImg.src = '{$admin_path}/login/captcha?rand=' + Date.now();
                         document.getElementById('captcha').value = '';
                         alert('登录失败：' + error.message);
                     })

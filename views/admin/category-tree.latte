@@ -49,11 +49,11 @@
         </td>
         <td>
             <div class="btn-group" role="group">
-                <a href="/admin/category/edit?id={$category['id']}" class="btn btn-sm btn-outline-primary btn-icon" title="编辑">
+                <a href="{$admin_path}/category/edit?id={$category['id']}" class="btn btn-sm btn-outline-primary btn-icon" title="编辑">
                     <i class="bi bi-pencil"></i>
                 </a>
                 {if $category['parent_id'] == 0}
-                    <a href="/admin/category/add?parent_id={$category['id']}" class="btn btn-sm btn-outline-success btn-icon" title="添加子栏目">
+                    <a href="{$admin_path}/category/add?parent_id={$category['id']}" class="btn btn-sm btn-outline-success btn-icon" title="添加子栏目">
                         <i class="bi bi-plus"></i>
                     </a>
                 {/if}

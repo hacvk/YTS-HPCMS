@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">角色列表</h2>
         {if $can_save}
-            <a href="/admin/role/edit" class="btn btn-primary">新增角色</a>
+            <a href="{$admin_path}/role/edit" class="btn btn-primary">新增角色</a>
         {/if}
     </div>
 
@@ -47,7 +47,7 @@
                                         <span class="text-muted">系统内置</span>
                                     {else}
                                         {if $can_save}
-                                            <a class="btn btn-sm btn-outline-primary" href="/admin/role/edit?id={$r['id']}">编辑</a>
+                                            <a class="btn btn-sm btn-outline-primary" href="{$admin_path}/role/edit?id={$r['id']}">编辑</a>
                                         {/if}
                                         {if $can_delete}
                                             <button type="button" class="btn btn-sm btn-outline-danger" data-id="{$r['id']}" onclick="deleteRole(this)">删除</button>
@@ -72,7 +72,7 @@ function deleteRole(btn) {
     if (!id) return;
     if (!confirm('确定删除该角色？')) return;
 
-    fetch('/admin/role/delete', {
+    fetch('{$admin_path}/role/delete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -84,7 +84,7 @@ function deleteRole(btn) {
         })
     }).then(r => r.json()).then(res => {
         if (res.code === 0) {
-            location.href = res.url || '/admin/role';
+            location.href = res.url || '{$admin_path}/role';
         } else {
             alert(res.message || '删除失败');
         }

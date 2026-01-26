@@ -190,9 +190,9 @@
                             <i class="bi bi-clock-history"></i> 最近日志
                         </h6>
                         <div class="d-flex gap-2">
-                            <a href="/admin/system/logs?type=system" class="btn btn-sm btn-outline-primary">系统日志</a>
-                            <a href="/admin/system/logs?type=operation" class="btn btn-sm btn-outline-primary">操作日志</a>
-                            <a href="/admin/visitor/logs" class="btn btn-sm btn-outline-primary">访问日志</a>
+                            <a href="{$admin_path}/system/logs?type=system" class="btn btn-sm btn-outline-primary">系统日志</a>
+                            <a href="{$admin_path}/system/logs?type=operation" class="btn btn-sm btn-outline-primary">操作日志</a>
+                            <a href="{$admin_path}/visitor/logs" class="btn btn-sm btn-outline-primary">访问日志</a>
                         </div>
                     </div>
                     <div class="card-body">
@@ -277,7 +277,7 @@
             var tokenMeta = document.querySelector('meta[name="csrf-token"]');
             var csrfToken = tokenMeta ? tokenMeta.content : '';
 
-            fetch('/admin/dashboard/maintenance', {
+            fetch('{$admin_path}/dashboard/maintenance', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'

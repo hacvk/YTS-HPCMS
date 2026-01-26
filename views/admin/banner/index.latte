@@ -8,15 +8,15 @@
     <h1 class="h3 mb-4 text-gray-800">{$title}</h1>
     <div class="row mb-3">
         <div class="col-md-6">
-            <a class="btn btn-primary mr-2" href="/admin/banner/edit"><i class="fas fa-plus"></i> 新增 Banner</a>
-            <a class="btn btn-success" href="/admin/banner/edit?type=indexFast"><i class="fas fa-plus"></i> 新增首页快捷方式</a>
-            <a class="btn btn-warning" href="/admin/banner/edit?type=indexZt"><i class="fas fa-plus"></i> 新增首页专题</a>
+            <a class="btn btn-primary mr-2" href="{$admin_path}/banner/edit"><i class="fas fa-plus"></i> 新增 Banner</a>
+            <a class="btn btn-success" href="{$admin_path}/banner/edit?type=indexFast"><i class="fas fa-plus"></i> 新增首页快捷方式</a>
+            <a class="btn btn-warning" href="{$admin_path}/banner/edit?type=indexZt"><i class="fas fa-plus"></i> 新增首页专题</a>
         </div>
         <div class="col-md-6 text-right">
-            <a class="btn btn-{if $current_type == ''}primary{else}secondary{/if} mr-1" href="/admin/banner">全部</a>
-            <a class="btn btn-{if $current_type == 'banner'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=banner">轮播图</a>
-            <a class="btn btn-{if $current_type == 'indexFast'}primary{else}secondary{/if} mr-1" href="/admin/banner?type=indexFast">首页快捷方式</a>
-            <a class="btn btn-{if $current_type == 'indexZt'}primary{else}secondary{/if}" href="/admin/banner?type=indexZt">首页专题</a>
+            <a class="btn btn-{if $current_type == ''}primary{else}secondary{/if} mr-1" href="{$admin_path}/banner">全部</a>
+            <a class="btn btn-{if $current_type == 'banner'}primary{else}secondary{/if} mr-1" href="{$admin_path}/banner?type=banner">轮播图</a>
+            <a class="btn btn-{if $current_type == 'indexFast'}primary{else}secondary{/if} mr-1" href="{$admin_path}/banner?type=indexFast">首页快捷方式</a>
+            <a class="btn btn-{if $current_type == 'indexZt'}primary{else}secondary{/if}" href="{$admin_path}/banner?type=indexZt">首页专题</a>
         </div>
     </div>
     <table class="table table-bordered table-hover">
@@ -46,7 +46,7 @@
             <td>{$b['sort']}</td>
             <td>{if $b['status']}✔{/if}</td>
             <td>
-                <a class="btn btn-sm btn-info" href="/admin/banner/edit?id={$b['id']}">编辑</a>
+                <a class="btn btn-sm btn-info" href="{$admin_path}/banner/edit?id={$b['id']}">编辑</a>
                 <button class="btn btn-sm btn-danger" onclick="delBanner({$b['id']})">删除</button>
             </td>
         </tr>
@@ -65,7 +65,7 @@ function delBanner(id){
   const csrfToken = bannerCsrfToken;
   f.append('csrf_token', csrfToken);
   
-  fetch('/admin/banner/delete', { method: 'POST', body: f })
+  fetch('{$admin_path}/banner/delete', { method: 'POST', body: f })
     .then(r => r.json())
     .then(d => {
       alert(d.message);

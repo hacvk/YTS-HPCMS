@@ -12,7 +12,7 @@
     <!-- 筛选搜索框 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/log">
+            <form class="form-inline" method="get" action="{$admin_path}/log">
                 <div class="form-group mr-3 mb-2">
                     <label for="action" class="mr-2">操作类型：</label>
                     <select class="form-control" id="action" name="action">
@@ -36,7 +36,7 @@
                 <button type="submit" class="btn btn-primary mb-2">
                     <i class="fas fa-search"></i> 搜索
                 </button>
-                <a href="/admin/log" class="btn btn-secondary mb-2 ml-2">
+                <a href="{$admin_path}/log" class="btn btn-secondary mb-2 ml-2">
                     <i class="fas fa-redo"></i> 重置
                 </a>
             </form>
@@ -118,7 +118,7 @@
             <div class="pagination justify-content-center mt-4">
                 <ul class="pagination">
                     <li class="page-item {if $page == 1}disabled{/if}">
-                        <a class="page-link" href="/admin/log?page={$page-1}&action={$action}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
+                        <a class="page-link" href="{$admin_path}/log?page={$page-1}&action={$action}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -127,23 +127,23 @@
                     {var $startPage = max(1, $page - 4)}
                     {var $endPage = min($totalPages, $startPage + 8)} 
                     {if $startPage > 1}
-                    <li class="page-item"><a class="page-link" href="/admin/log?page=1&action={$action}&start_date={$start_date}&end_date={$end_date}">1</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/log?page=1&action={$action}&start_date={$start_date}&end_date={$end_date}">1</a></li>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                     {/if}
                     
                     {for $i = $startPage; $i <= $endPage; $i++}
                     <li class="page-item {if $i == $page}active{/if}">
-                        <a class="page-link" href="/admin/log?page={$i}&action={$action}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
+                        <a class="page-link" href="{$admin_path}/log?page={$i}&action={$action}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
                     </li>
                     {/for}
                     
                     {if $endPage < $totalPages}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <li class="page-item"><a class="page-link" href="/admin/log?page={$totalPages}&action={$action}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/log?page={$totalPages}&action={$action}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
                     {/if}
                     
                     <li class="page-item {if $page == $totalPages}disabled{/if}">
-                        <a class="page-link" href="/admin/log?page={$page+1}&action={$action}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
+                        <a class="page-link" href="{$admin_path}/log?page={$page+1}&action={$action}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -175,7 +175,7 @@ function cleanLogs() {
                      document.getElementById('csrf_token')?.value || '';
     
     // 发送清理请求
-    fetch('/admin/log/clean', {
+    fetch('{$admin_path}/log/clean', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

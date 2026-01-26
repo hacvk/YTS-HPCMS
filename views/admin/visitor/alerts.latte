@@ -12,7 +12,7 @@
     <!-- 筛选搜索框 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/visitor/alerts">
+            <form class="form-inline" method="get" action="{$admin_path}/visitor/alerts">
                 <div class="row w-100">
                     <div class="col-md-2 mb-2">
                         <select class="form-control" id="risk_level" name="risk_level">
@@ -50,10 +50,10 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> 搜索
                             </button>
-                            <a href="/admin/visitor/alerts" class="btn btn-secondary">
+                            <a href="{$admin_path}/visitor/alerts" class="btn btn-secondary">
                                 <i class="fas fa-redo"></i> 重置
                             </a>
-                            <a href="/admin/visitor/alerts?risk_level={$riskLevel}&alert_type={$alertType}&status={$status}&start_date={$startDate}&end_date={$endDate}&export=csv" class="btn btn-outline-primary">
+                            <a href="{$admin_path}/visitor/alerts?risk_level={$riskLevel}&alert_type={$alertType}&status={$status}&start_date={$startDate}&end_date={$endDate}&export=csv" class="btn btn-outline-primary">
                                 <i class="fas fa-file-export"></i> 导出
                             </a>
                         </div>
@@ -207,16 +207,16 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">待处理告警列表</h6>
             <div class="btn-group" role="group">
-                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                <a href="{$admin_path}/visitor/logs" class="btn btn-primary btn-sm">
                     <i class="fas fa-list"></i> 日志列表
                 </a>
-                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                <a href="{$admin_path}/visitor/stats" class="btn btn-success btn-sm">
                     <i class="fas fa-chart-bar"></i> 统计
                 </a>
-                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                <a href="{$admin_path}/visitor/alerts" class="btn btn-warning btn-sm">
                     <i class="fas fa-exclamation-triangle"></i> 告警
                 </a>
-                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                <a href="{$admin_path}/visitor/anomaly-report" class="btn btn-info btn-sm">
                     <i class="fas fa-file-alt"></i> 检测报告
                 </a>
             </div>
@@ -314,7 +314,7 @@ function handleAlert(alertId) {
                      document.getElementById('csrf_token')?.value || '';
 
     // 发送处理请求
-    fetch('/admin/visitor/alerts/handle', {
+    fetch('{$admin_path}/visitor/alerts/handle', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

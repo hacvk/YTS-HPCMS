@@ -15,26 +15,26 @@
             <ul class="nav nav-tabs" id="logTab" role="tablist">
                 <li class="nav-item">
                     <a class="nav-link {if $type == 'operation'}active{/if}" 
-                       href="/admin/system/logs?type=operation&start_date={$start_date}&end_date={$end_date}">操作日志</a>
+                       href="{$admin_path}/system/logs?type=operation&start_date={$start_date}&end_date={$end_date}">操作日志</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {if $type == 'performance'}active{/if}" 
-                       href="/admin/system/logs?type=performance&start_date={$start_date}&end_date={$end_date}">性能日志</a>
+                       href="{$admin_path}/system/logs?type=performance&start_date={$start_date}&end_date={$end_date}">性能日志</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {if $type == 'error'}active{/if}" 
-                       href="/admin/system/logs?type=error&start_date={$start_date}&end_date={$end_date}">错误日志</a>
+                       href="{$admin_path}/system/logs?type=error&start_date={$start_date}&end_date={$end_date}">错误日志</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {if $type == 'slow_query'}active{/if}" 
-                       href="/admin/system/logs?type=slow_query&start_date={$start_date}&end_date={$end_date}">慢查询日志</a>
+                       href="{$admin_path}/system/logs?type=slow_query&start_date={$start_date}&end_date={$end_date}">慢查询日志</a>
                 </li>
             </ul>
         </div>
         
         <div class="card-body">
             <!-- 筛选搜索框 -->
-            <form class="form-inline mb-3" method="get" action="/admin/system/logs">
+            <form class="form-inline mb-3" method="get" action="{$admin_path}/system/logs">
                 <input type="hidden" name="type" value="{$type}">
                 
                 {if $type == 'operation'}
@@ -62,7 +62,7 @@
                 <button type="submit" class="btn btn-primary mb-2">
                     <i class="fas fa-search"></i> 搜索
                 </button>
-                <a href="/admin/system/logs?type={$type}" class="btn btn-secondary mb-2 ml-2">
+                <a href="{$admin_path}/system/logs?type={$type}" class="btn btn-secondary mb-2 ml-2">
                     <i class="fas fa-redo"></i> 重置
                 </a>
                 
@@ -204,7 +204,7 @@
             <div class="pagination justify-content-center mt-4">
                 <ul class="pagination">
                     <li class="page-item {if $page == 1}disabled{/if}">
-                        <a class="page-link" href="/admin/system/logs?type={$type}&page={max(1, $page-1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
+                        <a class="page-link" href="{$admin_path}/system/logs?type={$type}&page={max(1, $page-1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -213,23 +213,23 @@
                     {var $startPage = max(1, $page - 4)}
                     {var $endPage = min($totalPages, $startPage + 8)} 
                     {if $startPage > 1}
-                    <li class="page-item"><a class="page-link" href="/admin/system/logs?type={$type}&page=1&start_date={$start_date}&end_date={$end_date}">1</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/system/logs?type={$type}&page=1&start_date={$start_date}&end_date={$end_date}">1</a></li>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                     {/if}
                     
                     {for $i = $startPage; $i <= $endPage; $i++}
                     <li class="page-item {if $i == $page}active{/if}">
-                        <a class="page-link" href="/admin/system/logs?type={$type}&page={$i}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
+                        <a class="page-link" href="{$admin_path}/system/logs?type={$type}&page={$i}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
                     </li>
                     {/for}
                     
                     {if $endPage < $totalPages}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <li class="page-item"><a class="page-link" href="/admin/system/logs?type={$type}&page={$totalPages}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/system/logs?type={$type}&page={$totalPages}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
                     {/if}
                     
                     <li class="page-item {if $page == $totalPages}disabled{/if}">
-                        <a class="page-link" href="/admin/system/logs?type={$type}&page={min($totalPages, $page+1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
+                        <a class="page-link" href="{$admin_path}/system/logs?type={$type}&page={min($totalPages, $page+1)}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -269,7 +269,7 @@ function cleanLogs() {
                      document.getElementById('csrf_token')?.value || '';
     
     // 发送清理请求
-    fetch('/admin/system/clean-logs', {
+    fetch('{$admin_path}/system/clean-logs', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

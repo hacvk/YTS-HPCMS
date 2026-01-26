@@ -4,7 +4,7 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">{$title}</h2>
-        <a href="/admin/admin" class="btn btn-outline-secondary">返回</a>
+        <a href="{$admin_path}/admin" class="btn btn-outline-secondary">返回</a>
     </div>
 
     <form id="adminForm" class="row g-3">
@@ -82,7 +82,7 @@ document.getElementById('adminForm').addEventListener('submit', function(e) {
     const form = e.target;
     const data = new URLSearchParams(new FormData(form));
 
-    fetch('/admin/admin/save', {
+    fetch('{$admin_path}/admin/save', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -91,7 +91,7 @@ document.getElementById('adminForm').addEventListener('submit', function(e) {
         body: data
     }).then(r => r.json()).then(res => {
         if (res.code === 0) {
-            location.href = res.url || '/admin/admin';
+            location.href = res.url || '{$admin_path}/admin';
         } else {
             alert(res.message || '保存失败');
         }

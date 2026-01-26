@@ -31,22 +31,7 @@ class LoginController extends BaseController
         // 注意：只在访问登录页面时检查，避免在登录处理时干扰
         $uri = $_SERVER['REQUEST_URI'] ?? '';
         
-        // 获取当前admin路径配置
-        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
-        
-        // 尝试从数据库直接获取配置
-        try {
-            $db = \App\Core\Database::get();
-            $settingModel = new \App\Models\Setting($db);
-            $settings = $settingModel->getAll();
-            $customPath = $settings['admin_path'] ?? null;
-            
-            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
-                $adminPath = $customPath;
-            }
-        } catch (\Exception $e) {
-            // 如果无法获取设置，使用默认值
-        }
+        $adminPath = $this->getAdminPath();
         
         if ($uri === $adminPath && SessionService::isLoggedIn()) {
             $this->redirect($adminPath . '/dashboard');
@@ -74,6 +59,7 @@ class LoginController extends BaseController
             'title' => '后台登录',
             'csrf_token' => $csrfToken,
             'system' => App::getConfig('system', []),
+            'admin_path' => $this->getAdminPath(),
         ]);
     }
 
@@ -228,22 +214,7 @@ class LoginController extends BaseController
             // 登录成功，清理失败计数
             $this->clearLoginAttempts($ip, $username);
 
-            // 获取当前admin路径配置
-            $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
-            
-            // 尝试从数据库直接获取配置
-            try {
-                $db = \App\Core\Database::get();
-                $settingModel = new \App\Models\Setting($db);
-                $settings = $settingModel->getAll();
-                $customPath = $settings['admin_path'] ?? null;
-                
-                if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
-                    $adminPath = $customPath;
-                }
-            } catch (\Exception $e) {
-                // 如果无法获取设置，使用默认值
-            }
+            $adminPath = $this->getAdminPath();
             
             // 返回成功 JSON
             $this->successJson('登录成功', null, $adminPath . '/dashboard');
@@ -361,6 +332,25 @@ class LoginController extends BaseController
         return 'login_attempt_' . md5($ip . '|' . $normalizedUser);
     }
 
+    private function getAdminPath(): string
+    {
+        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
+        try {
+            $db = \App\Core\Database::get();
+            $settingModel = new \App\Models\Setting($db);
+            $settings = $settingModel->getAll();
+            $customPath = $settings['admin_path'] ?? null;
+
+            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
+                $adminPath = $customPath;
+            }
+        } catch (\Exception $e) {
+            // 如果无法获取设置，使用默认值
+        }
+
+        return $adminPath;
+    }
+
     /**
      * 退出登录
      *
@@ -376,22 +366,7 @@ class LoginController extends BaseController
         // 安全地销毁 Session
         SessionService::destroy();
 
-        // 获取当前admin路径配置
-        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
-        
-        // 尝试从数据库直接获取配置
-        try {
-            $db = \App\Core\Database::get();
-            $settingModel = new \App\Models\Setting($db);
-            $settings = $settingModel->getAll();
-            $customPath = $settings['admin_path'] ?? null;
-            
-            if ($customPath && preg_match('/^\/[_a-zA-Z0-9-]+$/', $customPath)) {
-                $adminPath = $customPath;
-            }
-        } catch (\Exception $e) {
-            // 如果无法获取设置，使用默认值
-        }
+        $adminPath = $this->getAdminPath();
         
         // 跳转到登录页
         $this->redirect($adminPath);

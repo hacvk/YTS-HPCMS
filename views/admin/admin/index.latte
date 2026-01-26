@@ -5,7 +5,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">管理员列表</h2>
         {if $can_save}
-            <a href="/admin/admin/edit" class="btn btn-primary">新增管理员</a>
+            <a href="{$admin_path}/admin/edit" class="btn btn-primary">新增管理员</a>
         {/if}
     </div>
 
@@ -66,7 +66,7 @@
                                         <span class="text-muted">当前用户</span>
                                     {else}
                                         {if $can_save}
-                                            <a class="btn btn-sm btn-outline-primary" href="/admin/admin/edit?id={$a['id']}">编辑</a>
+                                            <a class="btn btn-sm btn-outline-primary" href="{$admin_path}/admin/edit?id={$a['id']}">编辑</a>
                                         {/if}
                                         {if $can_delete}
                                             <button type="button" class="btn btn-sm btn-outline-danger" data-id="{$a['id']}" onclick="deleteAdmin(this)">删除</button>
@@ -91,7 +91,7 @@ function deleteAdmin(btn) {
     if (!id) return;
     if (!confirm('确定删除该管理员？')) return;
 
-    fetch('/admin/admin/delete', {
+    fetch('{$admin_path}/admin/delete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -103,7 +103,7 @@ function deleteAdmin(btn) {
         })
     }).then(r => r.json()).then(res => {
         if (res.code === 0) {
-            location.href = res.url || '/admin/admin';
+            location.href = res.url || '{$admin_path}/admin';
         } else {
             alert(res.message || '删除失败');
         }

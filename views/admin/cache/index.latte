@@ -347,7 +347,7 @@ function clearLatteCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('/admin/cache/clear-latte', {
+    fetch('{$admin_path}/cache/clear-latte', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -367,7 +367,7 @@ function clearLatteCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '/admin/cache';
+            window.location.href = '{$admin_path}/cache';
         } else {
             alert(data.message);
         }
@@ -387,7 +387,7 @@ function clearSearchCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('/admin/cache/clear-search', {
+    fetch('{$admin_path}/cache/clear-search', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -407,7 +407,7 @@ function clearSearchCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '/admin/cache';
+            window.location.href = '{$admin_path}/cache';
         } else {
             alert(data.message);
         }
@@ -427,7 +427,7 @@ function clearAppCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('/admin/cache/clear-app', {
+    fetch('{$admin_path}/cache/clear-app', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -444,7 +444,7 @@ function clearAppCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '/admin/cache';
+            window.location.href = '{$admin_path}/cache';
         } else {
             alert(data.message);
         }
@@ -464,7 +464,7 @@ function clearAllCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('/admin/cache/clear-all', {
+    fetch('{$admin_path}/cache/clear-all', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -484,7 +484,7 @@ function clearAllCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '/admin/cache';
+            window.location.href = '{$admin_path}/cache';
         } else {
             alert(data.message);
         }

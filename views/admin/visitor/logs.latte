@@ -12,7 +12,7 @@
     <!-- 筛选搜索框 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/visitor/logs">
+            <form class="form-inline" method="get" action="{$admin_path}/visitor/logs">
                 <div class="row w-100">
                     <div class="col-md-2 mb-2">
                         <input type="text" class="form-control" id="ip" name="ip" value="{$ip}" placeholder="IP地址">
@@ -50,7 +50,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> 搜索
                             </button>
-                            <a href="/admin/visitor/logs" class="btn btn-secondary">
+                            <a href="{$admin_path}/visitor/logs" class="btn btn-secondary">
                                 <i class="fas fa-redo"></i> 重置
                             </a>
                         </div>
@@ -65,16 +65,16 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">访客日志列表</h6>
             <div class="btn-group" role="group">
-                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                <a href="{$admin_path}/visitor/logs" class="btn btn-primary btn-sm">
                     <i class="fas fa-list"></i> 日志列表
                 </a>
-                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                <a href="{$admin_path}/visitor/stats" class="btn btn-success btn-sm">
                     <i class="fas fa-chart-bar"></i> 统计
                 </a>
-                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                <a href="{$admin_path}/visitor/alerts" class="btn btn-warning btn-sm">
                     <i class="fas fa-exclamation-triangle"></i> 告警
                 </a>
-                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                <a href="{$admin_path}/visitor/anomaly-report" class="btn btn-info btn-sm">
                     <i class="fas fa-file-alt"></i> 检测报告
                 </a>
             </div>
@@ -140,7 +140,7 @@
             <div class="pagination justify-content-center mt-4">
                 <ul class="pagination">
                     <li class="page-item {if $page == 1}disabled{/if}">
-                        <a class="page-link" href="/admin/visitor/logs?page={$page-1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
+                        <a class="page-link" href="{$admin_path}/visitor/logs?page={$page-1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -149,23 +149,23 @@
                     {var $startPage = max(1, $page - 4)}
                     {var $endPage = min($totalPages, $startPage + 8)}
                     {if $startPage > 1}
-                    <li class="page-item"><a class="page-link" href="/admin/visitor/logs?page=1&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">1</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/visitor/logs?page=1&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">1</a></li>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                     {/if}
 
                     {for $i = $startPage; $i <= $endPage; $i++}
                     <li class="page-item {if $i == $page}active{/if}">
-                        <a class="page-link" href="/admin/visitor/logs?page={$i}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
+                        <a class="page-link" href="{$admin_path}/visitor/logs?page={$i}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$i}</a>
                     </li>
                     {/for}
 
                     {if $endPage < $totalPages}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <li class="page-item"><a class="page-link" href="/admin/visitor/logs?page={$totalPages}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/visitor/logs?page={$totalPages}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}">{$totalPages}</a></li>
                     {/if}
 
                     <li class="page-item {if $page == $totalPages}disabled{/if}">
-                        <a class="page-link" href="/admin/visitor/logs?page={$page+1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
+                        <a class="page-link" href="{$admin_path}/visitor/logs?page={$page+1}&ip={$ip}&url={$url}&status_code={$status_code}&is_bot={$is_bot}&start_date={$start_date}&end_date={$end_date}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>

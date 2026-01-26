@@ -12,7 +12,7 @@
     <!-- 日期筛选 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/visitor/anomaly-report">
+            <form class="form-inline" method="get" action="{$admin_path}/visitor/anomaly-report">
                 <div class="row w-100">
                     <div class="col-md-3 mb-2">
                         <input type="date" class="form-control" id="date" name="date" value="{$date}" placeholder="查询日期">
@@ -22,7 +22,7 @@
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> 查询
                             </button>
-                            <a class="btn btn-outline-primary" href="/admin/visitor/anomaly-report?date={$date}&export=csv">导出</a>
+                            <a class="btn btn-outline-primary" href="{$admin_path}/visitor/anomaly-report?date={$date}&export=csv">导出</a>
                         </div>
                     </div>
                 </div>
@@ -35,16 +35,16 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">总体统计 ({$date})</h6>
             <div class="btn-group" role="group">
-                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                <a href="{$admin_path}/visitor/logs" class="btn btn-primary btn-sm">
                     <i class="fas fa-list"></i> 日志列表
                 </a>
-                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                <a href="{$admin_path}/visitor/stats" class="btn btn-success btn-sm">
                     <i class="fas fa-chart-bar"></i> 统计
                 </a>
-                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                <a href="{$admin_path}/visitor/alerts" class="btn btn-warning btn-sm">
                     <i class="fas fa-exclamation-triangle"></i> 告警
                 </a>
-                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                <a href="{$admin_path}/visitor/anomaly-report" class="btn btn-info btn-sm">
                     <i class="fas fa-file-alt"></i> 检测报告
                 </a>
             </div>

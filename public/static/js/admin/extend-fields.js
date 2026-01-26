@@ -1,5 +1,6 @@
 // 扩展字段功能
 (function() {
+    var adminBase = window.ADMIN_PATH || '/admin';
     // 动态加载扩展字段（根据栏目类型）
     const categorySelect = document.getElementById('category_id');
     const extendFieldsContainer = document.getElementById('extend-fields');
@@ -20,7 +21,7 @@
         const categoryType = selectedOption.getAttribute('data-type') || 'article';
 
         // 调用后端接口获取字段配置
-        fetch('/admin/category/getModelFields?type=' + encodeURIComponent(categoryType))
+        fetch(adminBase + '/category/getModelFields?type=' + encodeURIComponent(categoryType))
             .then(function(response) {
                 return response.json();
             })
@@ -82,7 +83,7 @@
 
     // 加载栏目选项
     function loadCategoryOptions(parentId) {
-        return fetch('/admin/category/getContentOptions?category_id=' + encodeURIComponent(parentId))
+        return fetch(adminBase + '/category/getContentOptions?category_id=' + encodeURIComponent(parentId))
             .then(function(response) {
                 return response.json();
             })
@@ -231,7 +232,7 @@
             targetInput.value = '上传中...';
             targetInput.disabled = true;
 
-            fetch('/admin/upload/upload', {
+            fetch(adminBase + '/upload/upload', {
                 method: 'POST',
                 body: formData
             })

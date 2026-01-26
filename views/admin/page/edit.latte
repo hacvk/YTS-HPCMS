@@ -7,7 +7,7 @@
     <!-- 页面顶部标题 -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
-        <a href="/admin/page" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+        <a href="{$admin_path}/page" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
             <i class="fas fa-arrow-left fa-sm text-white-50"></i> 返回列表
         </a>
     </div>
@@ -88,7 +88,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> 保存
                     </button>
-                    <a href="/admin/page" class="btn btn-secondary">
+                    <a href="{$admin_path}/page" class="btn btn-secondary">
                         <i class="fas fa-times"></i> 取消
                     </a>
                 </div>
@@ -198,7 +198,7 @@
         
         editor.config.placeholder = '请输入单页内容...';
         
-        editor.config.uploadImgServer = '/admin/upload/upload';
+        editor.config.uploadImgServer = '{$admin_path}/upload/upload';
         editor.config.uploadImgMaxSize = 2 * 1024 * 1024;
         editor.config.uploadImgMaxLength = 10;
         editor.config.uploadImgTimeout = 30000;
@@ -247,7 +247,7 @@
                             if (data.message) {
                                 alert(data.message);
                             }
-                            window.location.href = data.url || '/admin/page';
+                            window.location.href = data.url || '{$admin_path}/page';
                         } else {
                             alert(data.message || '保存失败');
                             if (submitBtn) {
@@ -305,7 +305,7 @@
                 coverImgInput.value = '上传中...';
                 coverImgInput.disabled = true;
                 
-                fetch('/admin/upload/upload', {
+                fetch('{$admin_path}/upload/upload', {
                     method: 'POST',
                     body: formData
                 })

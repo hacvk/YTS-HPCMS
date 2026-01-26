@@ -7,7 +7,7 @@
     <!-- 页面顶部标题 -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
-        <a href="/admin/article" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+        <a href="{$admin_path}/article" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
             <i class="fas fa-arrow-left fa-sm text-white-50"></i> 返回列表
         </a>
     </div>
@@ -290,7 +290,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> 保存
                     </button>
-                    <a href="/admin/article" class="btn btn-secondary">
+                    <a href="{$admin_path}/article" class="btn btn-secondary">
                         <i class="fas fa-times"></i> 取消
                     </a>
                 </div>
@@ -675,7 +675,7 @@
                 formData.append('file_usage', 'document');
                 formData.append('csrf_token', csrfToken);
 
-                fetch('/admin/upload/upload', {
+                fetch('{$admin_path}/upload/upload', {
                     method: 'POST',
                     body: formData,
                     credentials: 'same-origin'
@@ -740,7 +740,7 @@
                 csrf_token: csrfToken
             });
 
-            fetch('/admin/file/update', {
+            fetch('{$admin_path}/file/update', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -783,7 +783,7 @@
                 csrf_token: csrfTokenDel
             });
 
-            fetch('/admin/file/delete/' + deleteId, {
+            fetch('{$admin_path}/file/delete/' + deleteId, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
@@ -815,7 +815,7 @@
 
         if (categoryId && categoryId > 0) {
             // 调用API获取栏目裁剪设置
-            fetch('/admin/category/getAllowCropByCategory?category_id=' + categoryId)
+            fetch('{$admin_path}/category/getAllowCropByCategory?category_id=' + categoryId)
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 0) {

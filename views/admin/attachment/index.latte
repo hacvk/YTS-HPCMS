@@ -53,7 +53,7 @@
     <!-- 筛选搜索框 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/attachment">
+            <form class="form-inline" method="get" action="{$admin_path}/attachment">
                 <div class="form-group mr-3 mb-2">
                     <label for="mime_type" class="mr-2">文件类型：</label>
                     <select class="form-control" id="mime_type" name="mime_type">
@@ -94,7 +94,7 @@
                 <button type="submit" class="btn btn-primary mb-2">
                     <i class="bi bi-search"></i> 搜索
                 </button>
-                <a href="/admin/attachment" class="btn btn-secondary mb-2 ml-2">
+                <a href="{$admin_path}/attachment" class="btn btn-secondary mb-2 ml-2">
                     <i class="bi bi-arrow-clockwise"></i> 重置
                 </a>
             </form>
@@ -209,7 +209,7 @@
             <div class="pagination justify-content-center mt-4">
                 <ul class="pagination">
                     <li class="page-item {if $page == 1}disabled{/if}">
-                        <a class="page-link" href="/admin/attachment?page={$page-1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Previous">
+                        <a class="page-link" href="{$admin_path}/attachment?page={$page-1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Previous">
                             <span aria-hidden="true">&laquo;</span>
                         </a>
                     </li>
@@ -218,23 +218,23 @@
                     {var $startPage = max(1, $page - 4)}
                     {var $endPage = min($totalPages, $startPage + 8)} 
                     {if $startPage > 1}
-                    <li class="page-item"><a class="page-link" href="/admin/attachment?page=1&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">1</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/attachment?page=1&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">1</a></li>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                     {/if}
                     
                     {for $i = $startPage; $i <= $endPage; $i++}
                     <li class="page-item {if $i == $page}active{/if}">
-                        <a class="page-link" href="/admin/attachment?page={$i}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$i}</a>
+                        <a class="page-link" href="{$admin_path}/attachment?page={$i}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$i}</a>
                     </li>
                     {/for}
                     
                     {if $endPage < $totalPages}
                     <li class="page-item disabled"><span class="page-link">...</span></li>
-                    <li class="page-item"><a class="page-link" href="/admin/attachment?page={$totalPages}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$totalPages}</a></li>
+                    <li class="page-item"><a class="page-link" href="{$admin_path}/attachment?page={$totalPages}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}">{$totalPages}</a></li>
                     {/if}
                     
                     <li class="page-item {if $page == $totalPages}disabled{/if}">
-                        <a class="page-link" href="/admin/attachment?page={$page+1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Next">
+                        <a class="page-link" href="{$admin_path}/attachment?page={$page+1}&mime_type={$mime_type}&related_type={$related_type}&file_usage={$file_usage}&keyword={$keyword}" aria-label="Next">
                             <span aria-hidden="true">&raquo;</span>
                         </a>
                     </li>
@@ -310,7 +310,7 @@ function deleteAttachment(id) {
     if (confirm('确定要删除这个附件吗？删除后无法恢复！')) {
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         
-        fetch('/admin/attachment/delete', {
+        fetch('{$admin_path}/attachment/delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -357,7 +357,7 @@ function batchDelete() {
     var ids = Array.from(checkedBoxes).map(function(cb) { return cb.value; }).join(',');
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    fetch('/admin/attachment/batchDelete', {
+    fetch('{$admin_path}/attachment/batchDelete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',

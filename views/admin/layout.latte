@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{$title ?? '控制台'} - {$system['name'] ?? 'YTS-HPCMS 后台管理系统'}</title>
     <meta name="csrf-token" content="{$csrf_token|noescape}">
+    <script nonce="{$csp_nonce}">window.ADMIN_PATH = '{$admin_path}';</script>
 
     <!-- Bootstrap 5 CSS -->
     <link href="/static/css/bootstrap.min.css" rel="stylesheet">
@@ -332,7 +333,7 @@
 <body>
     <!-- 侧边栏 -->
     <div class="sidebar">
-        <a href="/admin/dashboard" class="sidebar-brand">
+        <a href="{$admin_path}/dashboard" class="sidebar-brand">
             <i class="bi bi-speedometer2"></i>
             <span>YTS-HPCMS</span>
         </a>
@@ -513,7 +514,7 @@
                     {/if}
                 </div>
                 <span class="user-name">{$user['name'] ?? '管理员'}</span>
-                <a href="/admin/logout" class="btn-logout">
+                <a href="{$admin_path}/logout" class="btn-logout">
                     <i class="bi bi-box-arrow-right"></i> 退出
                 </a>
             </div>

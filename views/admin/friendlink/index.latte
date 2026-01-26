@@ -9,7 +9,7 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
         {if $can_save}
-            <a class="btn btn-primary" href="/admin/friendlink/edit">新增友情链接</a>
+            <a class="btn btn-primary" href="{$admin_path}/friendlink/edit">新增友情链接</a>
         {/if}
     </div>
 
@@ -41,7 +41,7 @@
                 <td>{if $l['status']}✔{/if}</td>
                 <td>
                     {if $can_save}
-                        <a class="btn btn-sm btn-info" href="/admin/friendlink/edit?id={$l['id']}">编辑</a>
+                        <a class="btn btn-sm btn-info" href="{$admin_path}/friendlink/edit?id={$l['id']}">编辑</a>
                     {/if}
                     {if $can_delete}
                         <button class="btn btn-sm btn-danger" onclick="delFriendLink({$l['id']})">删除</button>
@@ -60,7 +60,7 @@ function delFriendLink(id){
   const f = new FormData();
   f.append('id', id);
   f.append('csrf_token', friendLinkCsrfToken);
-  fetch('/admin/friendlink/delete', { method: 'POST', body: f })
+  fetch('{$admin_path}/friendlink/delete', { method: 'POST', body: f })
     .then(r => r.json())
     .then(d => {
       alert(d.message);

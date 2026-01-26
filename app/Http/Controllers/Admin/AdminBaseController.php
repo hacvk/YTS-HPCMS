@@ -66,13 +66,13 @@ abstract class AdminBaseController extends BaseController
         
         // 如果没有管理员 ID，说明未登录
         if ($adminId === null || !is_numeric($adminId)) {
-            $this->redirect('/admin');
+            $this->redirect($this->getAdminPath());
         }
 
         // 验证 Session 中的其他必要数据
         if (!SessionService::has('admin_username') || !SessionService::has('admin_login_time')) {
             SessionService::destroy();
-            $this->redirect('/admin');
+            $this->redirect($this->getAdminPath());
         }
 
         // 检查登录是否过期（24小时）
@@ -80,7 +80,7 @@ abstract class AdminBaseController extends BaseController
         if (time() - $loginTime > 86400) {
             // 安全地销毁 Session
             SessionService::destroy();
-            $this->redirect('/admin');
+            $this->redirect($this->getAdminPath());
         }
     }
 
@@ -108,7 +108,7 @@ abstract class AdminBaseController extends BaseController
         if (!$this->admin) {
             // 管理员不存在，清除 Session 并跳转
             SessionService::destroy();
-            $this->redirect('/admin');
+            $this->redirect($this->getAdminPath());
         }
     }
 
@@ -129,6 +129,10 @@ abstract class AdminBaseController extends BaseController
         
         // 动态加载快捷导航栏目
         $this->loadShortcutCategories($menu);
+
+        // 统一替换菜单中的后台路径
+        $adminPath = $this->getAdminPath();
+        $this->applyAdminPathToMenu($menu, $adminPath);
         
         // 根据管理员权限过滤菜单
         $this->menu = $this->filterMenuByPerm($menu);
@@ -150,6 +154,7 @@ abstract class AdminBaseController extends BaseController
         $this->assign('user', $this->admin);
         $this->assign('current_uri', $currentUri);
         $this->assign('csrf_token', Security::generateCsrfToken());
+        $this->assign('admin_path', $this->getAdminPath());
 
         // 注入系统信息（用于后台页面关于等展示）
         $this->assign('system', App::getConfig('system', []));
@@ -286,7 +291,7 @@ abstract class AdminBaseController extends BaseController
             $response = new JsonResponse([
                 'code' => 0,
                 'message' => $message,
-                'url' => $url ?? ''
+                'url' => $url ? $this->normalizeAdminPath($url) : ''
             ], 200);
             $response->setEncodingOptions(JSON_UNESCAPED_UNICODE);
             ResponseContext::set($response);
@@ -294,7 +299,7 @@ abstract class AdminBaseController extends BaseController
         }
 
         if ($url) {
-            return $this->redirect($url);
+            return $this->redirect($this->normalizeAdminPath($url));
         }
 
         $html = '<!DOCTYPE html>
@@ -387,7 +392,7 @@ abstract class AdminBaseController extends BaseController
         }
 
         if ($url !== null) {
-            $response['url'] = $url;
+            $response['url'] = $this->normalizeAdminPath($url);
         }
 
         return $this->json($response);
@@ -417,7 +422,7 @@ abstract class AdminBaseController extends BaseController
      */
     protected function redirect(string $url, int $statusCode = 302): RedirectResponse
     {
-        $response = new RedirectResponse($url, $statusCode);
+        $response = new RedirectResponse($this->normalizeAdminPath($url), $statusCode);
         ResponseContext::set($response);
         throw new ResponseHaltException($response);
     }
@@ -479,6 +484,8 @@ abstract class AdminBaseController extends BaseController
      */
     private function isRouteMatch(string $currentUri, string $route): bool
     {
+        $adminPath = $this->getAdminPath();
+        $adminPathEscaped = preg_quote($adminPath, '#');
         // 解析当前URI和目标路由
         $currentPath = parse_url($currentUri, PHP_URL_PATH) ?: '';
         $routeParams = parse_url($route, PHP_URL_QUERY) ? explode('?', $route, 2) : [$route, null];
@@ -498,7 +505,7 @@ abstract class AdminBaseController extends BaseController
                 if (!empty($currentQuery)) {
                     // 检查是否为编辑页面，如 /admin/article/edit/78
                     // 如果目标路由是带分类参数的文章列表页（如 /admin/article?cid=5），而当前是编辑页面，则匹配
-                    if (preg_match('#^/admin/article/edit/#', $currentPath) && $routePath === '/admin/article' && strpos($route, 'cid=') !== false) {
+                    if (preg_match('#^' . $adminPathEscaped . '/article/edit/#', $currentPath) && $routePath === $adminPath . '/article' && strpos($route, 'cid=') !== false) {
                         // 解析目标路由的分类ID
                         parse_str(parse_url($route, PHP_URL_QUERY) ?: '', $routeQueryParams);
                         $targetCid = $routeQueryParams['cid'] ?? null;
@@ -508,7 +515,7 @@ abstract class AdminBaseController extends BaseController
                         return $targetCid !== null;
                     }
                     // 检查是否为添加页面，如 /admin/article/add?cid=5
-                    if (preg_match('#^/admin/article/add#', $currentPath) && $routePath === '/admin/article' && strpos($currentUri, 'cid=') !== false) {
+                    if (preg_match('#^' . $adminPathEscaped . '/article/add#', $currentPath) && $routePath === $adminPath . '/article' && strpos($currentUri, 'cid=') !== false) {
                         return true;
                     }
                 }
@@ -581,7 +588,7 @@ abstract class AdminBaseController extends BaseController
             // 添加单页管理到快捷内容管理组
             $shortcutChildren[] = [
                 'title' => '单页管理',
-                'route' => '/admin/page',
+                'route' => $this->getAdminPath() . '/page',
                 'perm' => 'admin:page:view'
             ];
             
@@ -589,7 +596,7 @@ abstract class AdminBaseController extends BaseController
             foreach ($shortcutCategories as $category) {
                 $shortcutChildren[] = [
                     'title' => $category['name'],
-                    'route' => '/admin/article?cid=' . (int)$category['id'],
+                    'route' => $this->getAdminPath() . '/article?cid=' . (int)$category['id'],
                     'perm' => 'admin:article:view'
                 ];
             }
@@ -658,6 +665,50 @@ abstract class AdminBaseController extends BaseController
         }
 
         return $filtered;
+    }
+
+    private function applyAdminPathToMenu(array &$menu, string $adminPath): void
+    {
+        foreach ($menu as &$item) {
+            if (isset($item['route']) && is_string($item['route'])) {
+                $item['route'] = $this->normalizeAdminPath($item['route'], $adminPath);
+            }
+            if (isset($item['children']) && is_array($item['children'])) {
+                $this->applyAdminPathToMenu($item['children'], $adminPath);
+            }
+        }
+        unset($item);
+    }
+
+    private function normalizeAdminPath(string $url, ?string $adminPath = null): string
+    {
+        $adminPath = $adminPath ?? $this->getAdminPath();
+        if ($adminPath === '/admin') {
+            return $url;
+        }
+        if (preg_match('#^/admin(?=/|\\?|$)#', $url)) {
+            return preg_replace('#^/admin(?=/|\\?|$)#', $adminPath, $url) ?? $url;
+        }
+        return $url;
+    }
+
+    private function getAdminPath(): string
+    {
+        $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
+        try {
+            $db = \App\Core\Database::get();
+            $settingModel = new \App\Models\Setting($db);
+            $settings = $settingModel->getAll();
+            $customPath = $settings['admin_path'] ?? null;
+
+            if ($customPath && preg_match('/^\/[\_a-zA-Z0-9-]+$/', $customPath)) {
+                $adminPath = $customPath;
+            }
+        } catch (\Exception $e) {
+            // 如果无法获取设置，使用默认值
+        }
+
+        return $adminPath;
     }
 
     /**

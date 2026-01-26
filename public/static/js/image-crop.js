@@ -8,6 +8,7 @@
 (function () {
     "use strict";
 
+    var adminBase = window.ADMIN_PATH || "/admin";
     let cropper = null;          // Cropper 实例
     let currentTargetId = null;  // 目标 input 的 id
     let selectedAspectRatio = NaN; // 记录用户选中的比例(无 cropper 时暂存)
@@ -126,7 +127,7 @@
                     const articleId = articleIdInput ? articleIdInput.value : 0;
                     fd.append("article_id", articleId);
 
-                    const resp = await fetch("/admin/upload/uploadCrop", {
+                    const resp = await fetch(adminBase + "/upload/uploadCrop", {
                         method: "POST",
                         body: fd,
                         headers: {

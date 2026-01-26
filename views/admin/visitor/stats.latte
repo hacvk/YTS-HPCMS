@@ -12,7 +12,7 @@
     <!-- 日期筛选 -->
     <div class="card shadow mb-4">
         <div class="card-body">
-            <form class="form-inline" method="get" action="/admin/visitor/stats">
+            <form class="form-inline" method="get" action="{$admin_path}/visitor/stats">
                 <div class="row w-100">
                     <div class="col-md-2 mb-2">
                         <input type="date" class="form-control" id="date" name="date" value="{$date}" placeholder="查询日期">
@@ -32,8 +32,8 @@
                     </div>
                     <div class="col-md-2 mb-2">
                         <div class="btn-group w-100">
-                            <a class="btn btn-outline-primary" href="/admin/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=daily">导出日统计</a>
-                            <a class="btn btn-outline-secondary" href="/admin/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=range">导出范围</a>
+                            <a class="btn btn-outline-primary" href="{$admin_path}/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=daily">导出日统计</a>
+                            <a class="btn btn-outline-secondary" href="{$admin_path}/visitor/stats?date={$date}&start_date={$startDate}&end_date={$endDate}&export=range">导出范围</a>
                         </div>
                     </div>
                 </div>
@@ -46,16 +46,16 @@
         <div class="card-header py-3 d-flex justify-content-between align-items-center">
             <h6 class="m-0 font-weight-bold text-primary">每日统计 ({$date})</h6>
             <div class="btn-group" role="group">
-                <a href="/admin/visitor/logs" class="btn btn-primary btn-sm">
+                <a href="{$admin_path}/visitor/logs" class="btn btn-primary btn-sm">
                     <i class="fas fa-list"></i> 日志列表
                 </a>
-                <a href="/admin/visitor/stats" class="btn btn-success btn-sm">
+                <a href="{$admin_path}/visitor/stats" class="btn btn-success btn-sm">
                     <i class="fas fa-chart-bar"></i> 统计
                 </a>
-                <a href="/admin/visitor/alerts" class="btn btn-warning btn-sm">
+                <a href="{$admin_path}/visitor/alerts" class="btn btn-warning btn-sm">
                     <i class="fas fa-exclamation-triangle"></i> 告警
                 </a>
-                <a href="/admin/visitor/anomaly-report" class="btn btn-info btn-sm">
+                <a href="{$admin_path}/visitor/anomaly-report" class="btn btn-info btn-sm">
                     <i class="fas fa-file-alt"></i> 检测报告
                 </a>
             </div>

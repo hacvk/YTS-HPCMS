@@ -38,7 +38,7 @@
         </div>
 
         <button type="button" class="btn btn-primary" onclick="saveFriendLink()">保存</button>
-        <a class="btn btn-secondary" href="/admin/friendlink">返回</a>
+        <a class="btn btn-secondary" href="{$admin_path}/friendlink">返回</a>
     </form>
 </div>
 
@@ -46,11 +46,11 @@
 function saveFriendLink(){
   const form = document.getElementById('friendLinkForm');
   const f = new FormData(form);
-  fetch('/admin/friendlink/save', { method: 'POST', body: f })
+  fetch('{$admin_path}/friendlink/save', { method: 'POST', body: f })
     .then(r => r.json())
     .then(d => {
       alert(d.message);
-      if(d.code === 0) location.href = (d.url || '/admin/friendlink');
+      if(d.code === 0) location.href = (d.url || '{$admin_path}/friendlink');
     })
     .catch(err => {
       console.error('保存错误:', err);
