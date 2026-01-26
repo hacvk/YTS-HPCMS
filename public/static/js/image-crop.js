@@ -75,7 +75,14 @@
                     autoCropArea: 0.9,
                     background: true,
                     responsive: true,
-                    preview: ".preview-lg"
+                    preview: ".preview-lg",
+                    // 允许拖动已缩放的图片
+                    dragMode: "move",
+                    movable: true,
+                    zoomable: true,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: true
                 });
             }, 120); // 延迟确保容器尺寸稳定
         });
