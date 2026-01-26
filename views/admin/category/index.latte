@@ -69,15 +69,35 @@
 
 <script nonce="{$csp_nonce}">
 // 树形折叠/展开
-function toggleTree(id) {
+function toggleTree(id, toggleEl) {
     var rows = document.querySelectorAll('[data-parent="' + id + '"]');
+    var hasHidden = false;
     rows.forEach(function(row) {
         if (row.classList.contains('hidden-row')) {
+            hasHidden = true;
+        }
+    });
+
+    rows.forEach(function(row) {
+        if (hasHidden) {
             row.classList.remove('hidden-row');
         } else {
             row.classList.add('hidden-row');
         }
     });
+
+    if (toggleEl) {
+        var icon = toggleEl.querySelector('i');
+        if (icon) {
+            if (hasHidden) {
+                icon.classList.remove('bi-caret-right-fill');
+                icon.classList.add('bi-caret-down-fill');
+            } else {
+                icon.classList.remove('bi-caret-down-fill');
+                icon.classList.add('bi-caret-right-fill');
+            }
+        }
+    }
 }
 
 // 删除栏目
@@ -109,5 +129,27 @@ function deleteCategory(id, name) {
         alert('删除失败：' + error.message);
     });
 }
+
+// 绑定事件（避免 inline handler）
+document.addEventListener('click', function(event) {
+    var toggle = event.target.closest('[data-toggle-id]');
+    if (toggle) {
+        var id = toggle.getAttribute('data-toggle-id');
+        if (id) {
+            toggleTree(id, toggle);
+        }
+        return;
+    }
+
+    var delBtn = event.target.closest('.js-delete-category');
+    if (delBtn) {
+        var idAttr = delBtn.getAttribute('data-category-id') || '';
+        var nameAttr = delBtn.getAttribute('data-category-name') || '';
+        var id = parseInt(idAttr, 10) || 0;
+        if (id > 0) {
+            deleteCategory(id, nameAttr);
+        }
+    }
+});
 </script>
 {/block}

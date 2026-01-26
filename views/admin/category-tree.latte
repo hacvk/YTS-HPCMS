@@ -4,7 +4,7 @@
         <td>
             <div class="category-name">
                 {if count($category['children']) > 0}
-                    <span class="tree-toggle" onclick="toggleTree({$category['id']})">
+                    <span class="tree-toggle" data-toggle-id="{$category['id']}">
                         <i class="bi bi-caret-right-fill"></i>
                     </span>
                 {else}
@@ -57,7 +57,7 @@
                         <i class="bi bi-plus"></i>
                     </a>
                 {/if}
-                <button type="button" class="btn btn-sm btn-outline-danger btn-icon" onclick="deleteCategory({$category['id']}, '{$category['name']}')" title="删除">
+                <button type="button" class="btn btn-sm btn-outline-danger btn-icon js-delete-category" data-category-id="{$category['id']}" data-category-name="{$category['name']}" title="删除">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
@@ -68,4 +68,3 @@
         {include 'category-tree.latte', categories => $category['children'], level => $level + 1}
     {/if}
 {/foreach}
-
