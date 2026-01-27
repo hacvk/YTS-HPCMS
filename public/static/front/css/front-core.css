@@ -5,8 +5,8 @@ body {
     padding: 0;
     margin: 0 auto;
     font-size: 14px;
-    color: #666;
-    background-color: #fff;
+    color: #3A3A3A;
+    background-color: #F3ECE1;
     font-family: "Microsoft YaHei";
     -webkit-text-size-adjust: none;
     -webkit-tap-highlight: rgba(0,0,0,0);
@@ -46,12 +46,12 @@ table { border-collapse: collapse; border-spacing: 0; }
 table td { border-collapse: collapse; font-size: 14px; }
 select,
 input,
-textarea { font-size: 14px; color: #333; border-radius: 0; -webkit-border-radius: 0; font-family: "Microsoft YaHei"; }
+textarea { font-size: 14px; color: #3B2A1E; border-radius: 0; -webkit-border-radius: 0; font-family: "Microsoft YaHei"; }
 img { border: none; max-width: 100%; vertical-align: middle; }
-a { color: #333; text-decoration: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
-a:hover { color: #0068b7; text-decoration: none; }
-a:focus { color: #333; outline: none; -moz-outline: none; }
-a:active { color: #333; }
+a { color: #3B2A1E; text-decoration: none; -webkit-tap-highlight-color: rgba(0,0,0,0); }
+a:hover { color: #8B5A2B; text-decoration: none; }
+a:focus { color: #3B2A1E; outline: none; -moz-outline: none; }
+a:active { color: #3B2A1E; }
 
 pre {
     white-space: pre-wrap;
@@ -89,7 +89,7 @@ pre {
 .breadcrumb {
     margin: 15px 0 10px 0;
     line-height: 40px;
-    color: #666;
+    color: #7A6B5D;
     font-size: 0.9rem;
 }
 
@@ -102,7 +102,7 @@ pre {
 
 .crumbs a,
 .breadcrumb a {
-    color: #666;
+    color: #7A6B5D;
     text-decoration: none;
 }
 
@@ -110,7 +110,7 @@ pre {
 .breadcrumb a:hover,
 .crumbs span,
 .breadcrumb span {
-    color: #0068b7;
+    color: #8B5A2B;
 }
 
 /* layout helpers */
