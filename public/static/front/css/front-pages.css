@@ -889,6 +889,335 @@ display:inline-block; *display:inline; zoom:1; }
     }
 }
 
+.doctor-filter {
+    background: #fff;
+    border: 1px solid #ededed;
+    border-radius: 3px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.doctor-filter .filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #ededed;
+}
+
+.doctor-filter .filter-label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333;
+}
+
+.doctor-filter .btn-clear-filter {
+    background: #f5f9fd;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 6px 15px;
+    cursor: pointer;
+    color: #666;
+    font-size: 14px;
+    transition: all 0.3s;
+    line-height: 28px;
+}
+
+.doctor-filter .btn-clear-filter:hover {
+    background: #e5eef7;
+    border-color: #0068b7;
+    color: #0068b7;
+}
+
+.doctor-filter .filter-section {
+    margin-bottom: 25px;
+}
+
+.doctor-filter .filter-section:last-child {
+    margin-bottom: 0;
+}
+
+.doctor-filter .filter-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #0068b7;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.doctor-filter .dept-tabs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.doctor-filter .dept-tab {
+    padding: 8px 20px;
+    border: 1px solid #ededed;
+    background: #fff;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #666;
+    transition: all 0.3s;
+    line-height: 28px;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
+    user-select: none;
+}
+
+.doctor-filter .dept-tab.active {
+    background: #0068b7;
+    color: #fff;
+    border-color: #0068b7;
+}
+
+.doctor-filter .dept-tab:hover {
+    border-color: #0068b7;
+    color: #0068b7;
+}
+
+.doctor-filter .dept-tab.active:hover {
+    background: #005baa;
+    color: #fff;
+}
+
+.doctor-filter .dept-grid,
+.doctor-filter .title-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin: 0 -1%;
+}
+
+.doctor-filter .dept-item,
+.doctor-filter .title-item {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 8px 12px;
+    border: 1px solid #ededed;
+    border-radius: 3px;
+    background: #f5f9fd;
+    transition: all 0.3s;
+    font-size: 14px;
+    margin: 0 1%;
+    box-sizing: border-box;
+}
+
+.doctor-filter .dept-item:hover,
+.doctor-filter .title-item:hover {
+    border-color: #0068b7;
+    background: #e5eef7;
+    color: #0068b7;
+}
+
+.doctor-filter .dept-item input[type="checkbox"],
+.doctor-filter .title-item input[type="checkbox"] {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+}
+
+.doctor-filter .dept-item input[type="checkbox"]:checked + span,
+.doctor-filter .title-item input[type="checkbox"]:checked + span {
+    color: #0068b7;
+    font-weight: bold;
+}
+
+/* 使用 JavaScript 动态添加 checked 类，而不是使用 :has() 选择器（兼容性更好） */
+.doctor-filter .dept-item.checked,
+.doctor-filter .title-item.checked {
+    border-color: #0068b7;
+    background: #e5eef7;
+    color: #0068b7;
+}
+
+.doctor-filter .search-section {
+    border-top: 1px solid #ededed;
+    padding-top: 20px;
+}
+
+.doctor-filter .search-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.doctor-filter .search-box {
+    flex: 1;
+    display: flex;
+    gap: 10px;
+}
+
+.doctor-filter .search-input {
+    flex: 1;
+    padding: 10px 15px;
+    border: 1px solid #ededed;
+    border-radius: 3px;
+    font-size: 14px;
+    outline: none;
+    line-height: 28px;
+}
+
+.doctor-filter .search-input:focus {
+    border-color: #0068b7;
+}
+
+.doctor-filter .btn-search {
+    padding: 10px 20px;
+    background: #0068b7;
+    color: #fff;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s;
+    line-height: 28px;
+}
+
+.doctor-filter .btn-search:hover {
+    background: #005baa;
+}
+
+@media (max-width: 1024px) {
+    .doctor-filter .dept-grid,
+    .doctor-filter .title-grid {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .doctor-filter .dept-grid,
+    .doctor-filter .title-grid {
+        grid-template-columns: repeat(3, 1fr);
+        margin: 0 -2px;
+    }
+
+    .doctor-filter .dept-item,
+    .doctor-filter .title-item {
+        margin: 0 2px;
+        padding: 6px 8px;
+        font-size: 13px;
+    }
+
+    .doctor-filter .search-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .doctor-filter .search-box {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .doctor-filter .dept-grid,
+    .doctor-filter .title-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.Doctor_list li { float: left; width:49%; margin-right: 2%; border: 1px solid #ededed; border-radius: 3px; padding-bottom: 40px; margin-bottom: 2%; position: relative; }
+.Doctor_list li:nth-child(2n){ margin-right: 0;}
+.Doctor_list li .pic { width: 35%; border-radius: 4px; overflow: hidden; }
+.Doctor_list li .pic img { display: block; width: 100%; }
+.Doctor_list li .txt { width: 65%; padding: 0 5%; }
+.Doctor_list li .txt > * { margin: 0; font-weight: normal; }
+.Doctor_list li .txt h3 { font-size: 18px; margin-bottom: 5px; }
+.Doctor_list li .txt h3 a { color: #000; }
+.Doctor_list li .txt span { font-size: 15px; color: #0068b7; margin: 5px 0 5px 5px; padding-left: 22px; background: url(../images/honor.png) no-repeat left center; }
+.Doctor_list li .txt aside { margin-bottom: 5px; font-size: 14px; color: #333; }
+
+.Doctor_list li .txt p { line-height: 22px; height: 66px; font-size: 12px; margin: 0; }
+.Doctor_list li .txt p a { color: #0068b7; }
+.Doctor_list .btnDiv { position: absolute; left: 0; bottom: 0; width: 100%; border-top: 1px solid #ededed; }
+.Doctor_list .btnDiv input { cursor: pointer; color: #666; height: 40px; margin-left: 10px; padding-left: 28px; background: url(../images/icon_yuyue.png) no-repeat left center; border: none; }
+.Doctor_list .btnDiv a.more { display: inline-block; float: right; color: #666; height: 40px; line-height: 40px; padding-right: 28px; background: url(../images/more.png) no-repeat right center; margin-right: 10px; }
+.Doctor_list .btnDiv a.more:hover, .Doctor_list .btnDiv input:hover { color: #0068b7; }
+@media (max-width: 480px) {
+    .Doctor_list li{
+        width: 100%;
+        box-sizing: border-box;
+        margin-right: 0;
+    }
+}
+
+.content-card {
+    background: #fff;
+    border-radius: 0.8rem;
+    padding: 1.5rem;
+    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
+    border: 1px solid #edf1f7;
+    margin-bottom: 8px;
+}
+
+.content-card-head {
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #e8eef7;
+    margin-bottom: 1rem;
+}
+
+.content-title {
+    margin: 0;
+    font-size: 2rem;
+    color: #0f172a;
+}
+
+.content-card .img-ban {
+    margin: 0 0 1.2rem;
+    text-align: center;
+}
+
+.content-card .img-ban img {
+    max-width: 100%;
+    height: auto;
+    display: inline-block;
+    border-radius: 0.6rem;
+    box-shadow: 0 10px 24px rgba(15,23,42,0.12);
+}
+
+.content-card .detail .title {
+    font-size: 1.4rem;
+    margin: 0 0 0.8rem;
+    border: 0;
+}
+
+.content-card .edit-info {
+    line-height: 1.8;
+    border: 0;
+}
+
+.content-card .edit-info img {
+    max-width: 100%;
+    height: auto;
+}
+
+.content-card .publictxt,
+.content-card .publictxt .detail,
+.content-card .publictxt .img-ban {
+    border: 0;
+    box-shadow: none;
+}
+
+.content-card .publictxt .auto {
+    border: 0;
+    box-shadow: none;
+}
+
+.publictxt .auto { border: 1px solid #ededed; border-radius: 3px; overflow: hidden; }
+.publictxt .auto .img-ban { text-align: center; }
+.publictxt .detail { margin: 0 auto; max-width: 800px; }
+.publictxt .edit-info { line-height: 2; font-size: 15px; padding-bottom: 4%; margin-bottom: 4%; margin-top: 5%; }
+.publictxt .title { margin: 5% 0 20px 0; padding-bottom: 20px; border-bottom: 1px solid #ededed; font-size: 24px; color: #0068b7; font-weight: normal; line-height: 1em; }
+@media (max-width: 768px) {
+    .publictxt .detail { padding: 0 5px; }
+}
+
 .k_list .title { padding: 0 0 15px 0; font-size: 20px; font-weight: bold; line-height: 30px; color: #0068b7; }
 .k_list dd { margin-bottom: 25px; border: 1px solid #ededed; border-radius: 3px; padding: 20px; }
 .k_list dd ul { margin: 0 -1%; }

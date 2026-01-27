@@ -1,4 +1,12 @@
+{var $disable_legacy_css = true}
 {extends 'layout.latte'}
+
+{block head}
+    <link rel="stylesheet" href="{asset('static/front/css/front-core.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-layout.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-widgets.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-pages.css')}" />
+{/block}
 
 {block content}
 <!-- banner Start -->
@@ -56,80 +64,4 @@
     
 </div>
 
-<style>
-.content-wrap:after {
-    content: '';
-    display: table;
-    clear: both;
-}
-.content-wrap {
-    position: relative;
-    z-index: 1;
-}
-.content-card {
-    background: #fff;
-    border-radius: 0.8rem;
-    padding: 1.5rem;
-    box-shadow: 0 15px 35px rgba(15,23,42,0.08);
-    border: 1px solid #edf1f7;
-    margin-bottom: 8px;
-}
-.content-card-head {
-    padding-bottom: 0.8rem;
-    border-bottom: 1px solid #e8eef7;
-    margin-bottom: 1rem;
-}
-.content-title {
-    margin: 0;
-    font-size: 2rem;
-    color: #0f172a;
-}
-.content-card .img-ban {
-    margin: 0 0 1.2rem;
-    text-align: center;
-}
-.content-card .img-ban img {
-    max-width: 100%;
-    height: auto;
-    display: inline-block;
-    border-radius: 0.6rem;
-    box-shadow: 0 10px 24px rgba(15,23,42,0.12);
-}
-.content-card .detail .title {
-    font-size: 1.4rem;
-    margin: 0 0 0.8rem;
-    border: 0;
-}
-.content-card .edit-info {
-    line-height: 1.8;
-    border: 0;
-}
-.content-card .edit-info img {
-    max-width: 100%;
-    height: auto;
-}
-.content-card .publictxt,
-.content-card .publictxt .detail,
-.content-card .publictxt .img-ban {
-    border: 0;
-    box-shadow: none;
-}
-.content-card .publictxt .auto {
-    border: 0;
-    box-shadow: none;
-}
-.crumbs {
-    font-size: 0.9rem;
-}
-.crumbs em {
-    color: #64748b;
-}
-.crumbs a {
-    color: #2563eb;
-    text-decoration: none;
-}
-.crumbs a:hover {
-    text-decoration: underline;
-}
-</style>
 {/block}
