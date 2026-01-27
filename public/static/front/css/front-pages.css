@@ -539,6 +539,65 @@ display:inline-block; *display:inline; zoom:1; }
 }
 
 /* doctor detail page */
+.k_list .title { padding: 0 0 15px 0; font-size: 20px; font-weight: bold; line-height: 30px; color: #0068b7; }
+.k_list dd { margin-bottom: 25px; border: 1px solid #ededed; border-radius: 3px; padding: 20px; }
+.k_list dd ul { margin: 0 -1%; }
+.k_list dd li { float: left; width: 23%; margin: 0 1%; margin-bottom: 10px; }
+.k_list dd li a { position: relative; background: #e5eef7; border-radius: 4px; line-height: 50px; padding: 0 20px; font-size: 15px; color: #333; transition: background 0.2s; }
+.k_list dd li a::after { position: absolute; content: ''; width: 7px; height: 7px; border-top: 1px solid #adc9de; border-right: 1px solid #adc9de; right: 20px; top: 50%; margin-top: -3px; transform: rotate(45deg); transition: 0.3s; }
+.k_list dd li a:hover { background: #0068b7; color: #fff; }
+.k_list dd li a:hover::after { border-color: #fff; }
+@media (max-width: 768px) {
+    .k_list dd ul {
+        margin: 0 -5px;
+    }
+    .k_list dd li{
+        box-sizing: border-box;
+        padding: 0 5px;
+        width: 50%;
+        margin: 0;
+        margin-bottom: 10px;
+    }
+}
+@media (max-width: 480px) {
+    .k_list dd ul {
+        margin: 0;
+    }
+    .k_list dd li{
+        width: 100%;
+        padding: 0;
+    }
+}
+
+.article-card .title {
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid #e8eef7;
+    margin-bottom: 1rem;
+}
+
+.article-card .title h1 {
+    margin: 0;
+    font-size: 2rem;
+    color: #0f172a;
+}
+
+.article-card .title aside {
+    font-size: 0.85rem;
+    color: #6b7280;
+    margin-top: 0.4rem;
+    padding-left: 0.6rem;
+    border-left: 3px solid #38bdf8;
+}
+
+.article-card .edit-info {
+    line-height: 1.8;
+}
+
+.article-card .edit-info img {
+    max-width: 100%;
+    height: auto;
+}
+
 .Artinfo {
     margin: 0 0 40px;
     color: #333;

@@ -362,7 +362,24 @@ class LogService
     {
         // 确保Session已启?
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            $savePath = ini_get('session.save_path');
+            $path = $savePath;
+            if (is_string($savePath) && strpos($savePath, ';') !== false) {
+                $parts = explode(';', $savePath);
+                $path = $parts[0] ?? '';
+            }
+            if (empty($path)) {
+                $path = sys_get_temp_dir();
+            }
+            if (!empty($path) && !is_dir($path)) {
+                @mkdir($path, 0777, true);
+            }
+            if (!empty($path) && is_dir($path) && is_writable($path)) {
+                session_save_path($path);
+            } else {
+                session_save_path(sys_get_temp_dir());
+            }
+            @session_start();
         }
 
         return [
@@ -741,7 +758,6 @@ class LogService
         }
     }
 }
-
 
 
 
