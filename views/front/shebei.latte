@@ -1,13 +1,6 @@
 {var $disable_legacy_css = true}
 {extends 'layout.latte'}
 
-{block head}
-    <link rel="stylesheet" href="{asset('static/front/css/front-core.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-layout.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-widgets.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-pages.css')}" />
-{/block}
-
 {block content}
 <div class="Banner_dy">
     {var $bannerUrl = isset($category) ? category_banner($category['id'], asset('/uploads/images/nullbanner.jpg')) : asset('/uploads/images/nullbanner.jpg')}

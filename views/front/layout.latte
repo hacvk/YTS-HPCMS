@@ -21,14 +21,11 @@
     {/if}
 
     <!-- Styles -->
-    {default $disable_legacy_css = false}
-    {if !$disable_legacy_css}
-    <link href="{asset('static/front/css/index.css')}" rel="stylesheet" type="text/css"/>
-    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/responsive.css')}" />
-    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/jquery.mcustomscrollbar.css')}" />
-    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/jquery.slick.css')}">
-    <link rel="stylesheet" type="text/css" href="{asset('static/front/css/style.css')}" />
-    {/if}
+    <link rel="stylesheet" href="{asset('static/css/fontawesome/all.min.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-core.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-layout.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-widgets.css')}" />
+    <link rel="stylesheet" href="{asset('static/front/css/front-pages.css')}" />
 
     <!-- Scripts -->
     <script nonce="{$csp_nonce}" type="text/javascript" src="{asset('static/front/js/jquery-3.3.1.min.js')}"></script>

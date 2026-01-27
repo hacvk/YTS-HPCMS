@@ -7,10 +7,6 @@
 {block head}
     <meta name="keywords" content="{ifset $category}{$category['keywords'] ?? ''}{/ifset}" />
     <meta name="description" content="{ifset $category}{$category['description'] ?? ''}{/ifset}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-core.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-layout.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-widgets.css')}" />
-    <link rel="stylesheet" href="{asset('static/front/css/front-pages.css')}" />
 {/block}
 
 {block content}
