@@ -125,7 +125,7 @@ class ArticleController extends AdminBaseController
             error_log('渲染模板 admin/article/edit...');
             $this->render('admin/article/edit', [
                 'title' => '添加文章',
-                'action' => '/admin/article/save',
+                'action' => $this->getAdminPath() . '/article/save',
                 'article' => [],
                 'article_json' => 'null',
                 'categories' => $categories,
@@ -212,7 +212,7 @@ class ArticleController extends AdminBaseController
                     
             $this->render('admin/article/edit', [
                 'title' => '编辑文章',
-                'action' => '/admin/article/save',
+                'action' => $this->getAdminPath() . '/article/save',
                 'article' => $article,
                 'article_json' => $articleJson,
                 'categories' => $categories,

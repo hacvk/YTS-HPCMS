@@ -338,13 +338,17 @@ class FileService
             ];
         }
 
-        // 第五步：检查文件内容是否包含 PHP 代码 (新增)
+        // 第五步：检查文件内容是否包含危险代码（图片只检查 PHP 起始标记，避免误伤二进制）
         $contentSample = self::readFileSample((string)$uploadedFile['tmp_name']);
-        if ($contentSample !== '' && preg_match('/<\?php|<\?=|script|eval\(|base64_decode/i', $contentSample)) {
-            return [
-                'valid' => false,
-                'message' => '文件内容包含危险代码'
-            ];
+        if ($contentSample !== '') {
+            $isImage = str_starts_with($mimeType, 'image/');
+            $pattern = $isImage ? '/<\?(php|=)/i' : '/<\?php|<\?=|script|eval\(|base64_decode/i';
+            if (preg_match($pattern, $contentSample)) {
+                return [
+                    'valid' => false,
+                    'message' => '文件内容包含危险代码'
+                ];
+            }
         }
 
         // 第六步：验证文件头是否为有效图片 (新增)

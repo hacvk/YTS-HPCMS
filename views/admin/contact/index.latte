@@ -20,6 +20,7 @@
             <form id="contactForm" action="{$admin_path}/contact/save" method="post">
                 <!-- CSRF Token -->
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{$csrf_token}">
+                <input type="hidden" id="admin_path_value" value="{$admin_path}">
                 
                 <div class="setting-group mb-4">
                     <h5 class="mb-3 border-bottom pb-2">
@@ -66,7 +67,7 @@
                                 placeholder="请输入{$field['label']}"
                             >
                             <div class="input-group-append">
-                                <button type="button" class="btn btn-outline-secondary" onclick="selectImage('contact_{$fieldKey|noescape}')">
+                                <button type="button" class="btn btn-outline-secondary js-select-image" data-input-id="contact_{$fieldKey|noescape}">
                                     <i class="fas fa-image"></i> 选择图片
                                 </button>
                             </div>
@@ -113,6 +114,13 @@
 </div>
 
 <script nonce="{$csp_nonce}">
+// 规范化后台路径（防止配置中意外包含引号）
+const adminPath = (function () {
+    var el = document.getElementById('admin_path_value');
+    var raw = el ? el.value : '/admin';
+    return raw.replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+})();
+
 // 图片选择函数
 function selectImage(inputId) {
     const input = document.createElement('input');
@@ -156,11 +164,24 @@ function selectImage(inputId) {
         targetInput.disabled = true;
         
         // 上传文件
-        fetch('{$admin_path}/upload/do', {
+        fetch(adminPath + '/upload/do', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            if (contentType.indexOf('application/json') === -1) {
+                throw new Error('响应不是JSON，可能已登录失效');
+            }
+            return response.json();
+        })
         .then(data => {
             targetInput.disabled = false;
             if (data.errno === 0 && data.data && data.data.length > 0) {
@@ -170,7 +191,9 @@ function selectImage(inputId) {
                 const previewId = 'preview_' + inputId.replace('contact_', '');
                 const preview = document.getElementById(previewId);
                 if (preview) {
-                    preview.innerHTML = '<img src="' + data.data[0] + '" width="200" class="img-thumbnail">';
+                    var timestamp = new Date().getTime();
+                    var imageUrl = data.data[0] + '?t=' + timestamp;
+                    preview.innerHTML = '<img src="' + imageUrl + '" width="200" class="img-thumbnail">';
                 }
             } else {
                 // 上传失败
@@ -208,11 +231,21 @@ document.getElementById('contactForm')?.addEventListener('submit', function(e) {
     fetch(form.action, {
         method: 'POST',
         body: new FormData(form),
+        credentials: 'same-origin',
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('响应不是JSON，可能已登录失效');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.code === 0) {
             // 保存成功，显示提示并跳转
@@ -236,6 +269,21 @@ document.getElementById('contactForm')?.addEventListener('submit', function(e) {
         button.disabled = false;
         button.innerHTML = originalText;
     });
+});
+
+// 事件委托（避免 CSP 阻止内联事件）
+document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target) {
+        return;
+    }
+    var selectBtn = target.closest ? target.closest('.js-select-image') : null;
+    if (selectBtn) {
+        var inputId = selectBtn.getAttribute('data-input-id');
+        if (inputId) {
+            selectImage(inputId);
+        }
+    }
 });
 </script>
 

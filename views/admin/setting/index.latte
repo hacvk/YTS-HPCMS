@@ -20,6 +20,7 @@
             <form id="settingForm" action="{$admin_path}/setting/save" method="post">
                 <!-- CSRF Token -->
                 <input type="hidden" name="csrf_token" id="csrf_token" value="{$csrf_token}">
+                <input type="hidden" id="admin_path_value" value="{$admin_path}">
                 
                 {foreach $setting_groups as $groupKey => $group}
                 <div class="setting-group mb-4">
@@ -56,7 +57,7 @@
                                 placeholder="请输入图片URL"
                             >
                             <div class="input-group-append">
-                                <button type="button" class="btn btn-outline-secondary" onclick="selectImage('setting_{$fieldKey|noescape}')">
+                                <button type="button" class="btn btn-outline-secondary js-select-image" data-input-id="setting_{$fieldKey|noescape}">
                                     <i class="fas fa-image"></i> 选择图片
                                 </button>
                             </div>
@@ -65,7 +66,7 @@
                             {if isset($settings[$fieldKey]) && $settings[$fieldKey]}
                                 <img src="{$settings[$fieldKey]}" width="200" class="img-thumbnail" style="margin-bottom: 10px;">
                                 <div class="mt-1">
-                                    <button type="button" class="btn btn-sm btn-danger" onclick="console.log('按钮被点击'); deleteImage('setting_{$fieldKey|noescape}', 'preview_{$fieldKey|noescape}', '{$fieldKey|noescape}')">
+                                    <button type="button" class="btn btn-sm btn-danger js-delete-image" data-input-id="setting_{$fieldKey|noescape}" data-preview-id="preview_{$fieldKey|noescape}" data-field-name="{$fieldKey|noescape}">
                                         <i class="fas fa-trash"></i> 删除图片
                                     </button>
                                 </div>
@@ -137,6 +138,13 @@ window.onerror = function(message, source, lineno, colno, error) {
 // 页面加载完成检查
 console.log('页面JavaScript开始加载');
 
+// 规范化后台路径（防止配置中意外包含引号）
+const adminPath = (function () {
+    var el = document.getElementById('admin_path_value');
+    var raw = el ? el.value : '/admin';
+    return raw.replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+})();
+
 // 删除图片函数
 function deleteImage(inputId, previewId, fieldName) {
     if (!confirm('确定要删除这张图片吗？')) {
@@ -155,11 +163,22 @@ function deleteImage(inputId, previewId, fieldName) {
         formData.append('field_name', fieldName);
         formData.append('csrf_token', csrfToken);
         
-        fetch('{$admin_path}/setting/delete-image', {
+        fetch(adminPath + '/setting/delete-image', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
         .then(response => {
+            const contentType = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            if (contentType.indexOf('application/json') === -1) {
+                throw new Error('响应不是JSON，可能已登录失效');
+            }
             return response.json();
         })
         .then(data => {
@@ -256,11 +275,24 @@ function selectImage(inputId) {
         targetInput.disabled = true;
         
         // 上传文件
-        fetch('{$admin_path}/upload/do', {
+        fetch(adminPath + '/upload/do', {
             method: 'POST',
-            body: formData
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
-        .then(response => response.json())
+        .then(response => {
+            const contentType = response.headers.get('content-type') || '';
+            if (!response.ok) {
+                throw new Error('HTTP ' + response.status);
+            }
+            if (contentType.indexOf('application/json') === -1) {
+                throw new Error('响应不是JSON，可能已登录失效');
+            }
+            return response.json();
+        })
         .then(data => {
             targetInput.disabled = false;
             if (data.errno === 0 && data.data && data.data.length > 0) {
@@ -278,7 +310,7 @@ function selectImage(inputId) {
                     // 重新构建预览内容，包括图片和删除按钮
                     preview.innerHTML = '<img src="' + imageUrl + '" width="200" class="img-thumbnail" style="margin-bottom: 10px;">' +
                                       '<div class="mt-1">' +
-                                      '<button type="button" class="btn btn-sm btn-danger" onclick="deleteImage(\'setting_' + fieldKey + '\', \'preview_' + fieldKey + '\', \'' + fieldKey + '\')">' +
+                                      '<button type="button" class="btn btn-sm btn-danger js-delete-image" data-input-id="setting_' + fieldKey + '" data-preview-id="preview_' + fieldKey + '" data-field-name="' + fieldKey + '">' +
                                       '<i class="fas fa-trash"></i> 删除图片</button>' +
                                       '</div>';
                 }
@@ -301,6 +333,33 @@ function selectImage(inputId) {
     input.click();
     document.body.removeChild(input);
 }
+
+// 事件委托（避免 CSP 阻止内联事件）
+document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target) {
+        return;
+    }
+
+    var selectBtn = target.closest ? target.closest('.js-select-image') : null;
+    if (selectBtn) {
+        var inputId = selectBtn.getAttribute('data-input-id');
+        if (inputId) {
+            selectImage(inputId);
+        }
+        return;
+    }
+
+    var deleteBtn = target.closest ? target.closest('.js-delete-image') : null;
+    if (deleteBtn) {
+        var inputId = deleteBtn.getAttribute('data-input-id');
+        var previewId = deleteBtn.getAttribute('data-preview-id');
+        var fieldName = deleteBtn.getAttribute('data-field-name');
+        if (inputId && previewId && fieldName) {
+            deleteImage(inputId, previewId, fieldName);
+        }
+    }
+});
 
 // 表单提交处理
 document.getElementById('settingForm')?.addEventListener('submit', function(e) {

@@ -8,6 +8,7 @@
     <form method="post" action="{$admin_path}/banner/save" id="bannerForm">
         <input type="hidden" name="csrf_token" value="{$csrf_token}">
         <input type="hidden" name="id" value="{$banner['id'] ?? 0}">
+        <input type="hidden" id="admin_path_value" value="{$admin_path}">
 
         <div class="form-group">
             <label>类型</label>
@@ -28,7 +29,7 @@
             <div class="input-group">
                 <input class="form-control" id="pic" name="pic" value="{$banner['image_path'] ?? ''}" required>
                 <div class="input-group-append">
-                    <button type="button" class="btn btn-outline-secondary" onclick="selectImage()"><i class="fas fa-image"></i> 选择图片</button>
+                    <button type="button" class="btn btn-outline-secondary js-select-image" data-input-id="pic"><i class="fas fa-image"></i> 选择图片</button>
                 </div>
             </div>
             <img src="{$banner['image_path'] ?? ''}" id="preview" class="mt-2" style="height:80px;{if !isset($banner['image_path']) || !$banner['image_path']}display:none;{/if}">
@@ -55,6 +56,13 @@
 </div>
 
 <script nonce="{$csp_nonce}" n:syntax="off">
+// 规范化后台路径（防止配置中意外包含引号）
+const adminPath = (function () {
+  var el = document.getElementById('admin_path_value');
+  var raw = el ? el.value : '/admin';
+  return raw.replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+})();
+
 // 表单提交处理
 document.getElementById('bannerForm').addEventListener('submit', function(e) {
   e.preventDefault();
@@ -67,11 +75,24 @@ document.getElementById('bannerForm').addEventListener('submit', function(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> 保存中...';
   
-  fetch('{$admin_path}/banner/save', {
+  fetch(adminPath + '/banner/save', {
     method: 'POST',
-    body: formData
+    body: formData,
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest'
+    }
   })
-  .then(r => r.json())
+  .then(r => {
+    const contentType = r.headers.get('content-type') || '';
+    if (!r.ok) {
+      throw new Error('HTTP ' + r.status);
+    }
+    if (contentType.indexOf('application/json') === -1) {
+      throw new Error('响应不是JSON，可能已登录失效');
+    }
+    return r.json();
+  })
   .then(d => {
     if (d.code === 0) {
       alert(d.message || '保存成功');
@@ -125,8 +146,24 @@ function selectImage() {
     fd.append('csrf_token', csrfToken);
 
     // 使用正确的上传路径
-    fetch('{$admin_path}/upload/do', { method: 'POST', body: fd })
-      .then(r => r.json())
+    fetch(adminPath + '/upload/do', {
+      method: 'POST',
+      body: fd,
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+      .then(r => {
+        const contentType = r.headers.get('content-type') || '';
+        if (!r.ok) {
+          throw new Error('HTTP ' + r.status);
+        }
+        if (contentType.indexOf('application/json') === -1) {
+          throw new Error('响应不是JSON，可能已登录失效');
+        }
+        return r.json();
+      })
       .then(d => {
         if (d.errno === 0 && d.data && d.data.length) {
           document.getElementById('pic').value = d.data[0];
@@ -144,5 +181,17 @@ function selectImage() {
   };
   input.click();
 }
+
+// 事件委托（避免 CSP 阻止内联事件）
+document.addEventListener('click', function (event) {
+  var target = event.target;
+  if (!target) {
+    return;
+  }
+  var selectBtn = target.closest ? target.closest('.js-select-image') : null;
+  if (selectBtn) {
+    selectImage();
+  }
+});
 </script>
 {/block}

@@ -9,6 +9,7 @@
             <form id="categoryForm" action="{$admin_path}/category/save" method="POST">
                 <input type="hidden" name="csrf_token" value="{$csrf_token}">
                 <input type="hidden" name="id" value="{$category['id'] ?? 0}">
+                <input type="hidden" id="admin_path_value" value="{$admin_path}">
                 
                 <div class="row">
                     <div class="col-md-8">
@@ -140,8 +141,8 @@
                             <div class="form-text">建议尺寸：宽屏横幅图。上传后会自动保存到 /public/uploads/images</div>
                             <div class="mt-2 d-flex gap-2">
                                 <input type="file" id="bannerFile" accept="image/*" class="form-control">
-                                <button type="button" class="btn btn-outline-primary" onclick="uploadCategoryBanner()">上传</button>
-                                <button type="button" class="btn btn-outline-danger" onclick="deleteCategoryBanner()" {if empty($category['banner'] ?? '')}style="display:none;"{/if}>删除</button>
+                                <button type="button" class="btn btn-outline-primary js-upload-category-banner">上传</button>
+                                <button type="button" class="btn btn-outline-danger js-delete-category-banner" {if empty($category['banner'] ?? '')}style="display:none;"{/if}>删除</button>
                             </div>
                             <div class="mt-2">
                                 <img id="bannerPreview" src="{$category['banner'] ?? ''}" style="max-width:100%;max-height:140px;{if empty($category['banner'] ?? '')}display:none;{/if}">
@@ -257,11 +258,18 @@ document.getElementById('slug')?.addEventListener('blur', function(e) {
     }
 });
 
+// 规范化后台路径（防止配置中意外包含引号）
+const adminPath = (function () {
+    var el = document.getElementById('admin_path_value');
+    var raw = el ? el.value : '/admin';
+    return raw.replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+})();
+
 async function uploadCategoryBanner() {
     const fileInput = document.getElementById('bannerFile');
     const urlInput = document.getElementById('banner');
     const preview = document.getElementById('bannerPreview');
-    const deleteBtn = document.querySelector('button[onclick="deleteCategoryBanner()"]');
+    const deleteBtn = document.querySelector('.js-delete-category-banner');
 
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
         alert('请选择要上传的图片');
@@ -270,14 +278,22 @@ async function uploadCategoryBanner() {
 
     const f = new FormData();
     f.append('file', fileInput.files[0]);
-    f.append('csrf_token', {$csrf_token});
+    f.append('csrf_token', document.querySelector('input[name="csrf_token"]')?.value || '');
 
     try {
-        const r = await fetch('{$admin_path}/upload/categoryBanner', {
+        const r = await fetch(adminPath + '/upload/categoryBanner', {
             method: 'POST',
             body: f,
+            credentials: 'same-origin',
             headers: {'X-Requested-With': 'XMLHttpRequest'}
         });
+        const contentType = r.headers.get('content-type') || '';
+        if (!r.ok) {
+            throw new Error('HTTP ' + r.status);
+        }
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('响应不是JSON，可能已登录失效');
+        }
         const d = await r.json();
         if (d.code !== 0) {
             alert(d.message || '上传失败');
@@ -306,18 +322,25 @@ async function deleteCategoryBanner() {
     
     const urlInput = document.getElementById('banner');
     const preview = document.getElementById('bannerPreview');
-    const deleteBtn = document.querySelector('button[onclick="deleteCategoryBanner()"]');
+    const deleteBtn = document.querySelector('.js-delete-category-banner');
     
     try {
-        const response = await fetch('{$admin_path}/upload/deleteCoverImage', {
+        const response = await fetch(adminPath + '/upload/deleteCoverImage', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'X-Requested-With': 'XMLHttpRequest'
             },
-            body: 'csrf_token=' + encodeURIComponent({$csrf_token}) + '&image_url=' + encodeURIComponent(urlInput.value)
+            credentials: 'same-origin',
+            body: 'csrf_token=' + encodeURIComponent(document.querySelector('input[name="csrf_token"]')?.value || '') + '&image_url=' + encodeURIComponent(urlInput.value)
         });
-        
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('响应不是JSON，可能已登录失效');
+        }
         const data = await response.json();
         
         if (data.code === 0) {
@@ -355,11 +378,21 @@ document.getElementById('categoryForm')?.addEventListener('submit', function(e) 
     fetch(form.action, {
         method: 'POST',
         body: new FormData(form),
+        credentials: 'same-origin',
         headers: {
             'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        const contentType = response.headers.get('content-type') || '';
+        if (!response.ok) {
+            throw new Error('HTTP ' + response.status);
+        }
+        if (contentType.indexOf('application/json') === -1) {
+            throw new Error('响应不是JSON，可能已登录失效');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.code === 0) {
             // 保存成功，跳转到栏目列表
@@ -379,6 +412,21 @@ document.getElementById('categoryForm')?.addEventListener('submit', function(e) 
         button.disabled = false;
         button.innerHTML = originalText;
     });
+});
+
+// 事件委托（避免 CSP 阻止内联事件）
+document.addEventListener('click', function (event) {
+    var target = event.target;
+    if (!target) {
+        return;
+    }
+    if (target.closest && target.closest('.js-upload-category-banner')) {
+        uploadCategoryBanner();
+        return;
+    }
+    if (target.closest && target.closest('.js-delete-category-banner')) {
+        deleteCategoryBanner();
+    }
 });
 </script>
 {/block}

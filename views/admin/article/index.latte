@@ -7,9 +7,9 @@
     <!-- 页面顶部操作栏 -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
-        {var $addUrl = '{$admin_path}/article/add'}
+        {var $addUrl = $admin_path . '/article/add'}
         {if isset($cid) && $cid > 0}
-            {var $addUrl = '{$admin_path}/article/add?cid=' . $cid}
+            {var $addUrl = $admin_path . '/article/add?cid=' . $cid}
         {/if}
         <a href="{$addUrl}" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
             <i class="fas fa-plus fa-sm text-white-50"></i> 添加文章
