@@ -116,9 +116,18 @@ class PermissionService
         $add('内容管理', 'admin:category:delete', '栏目管理（删除）');
         $add('内容管理', 'admin:article:save', '文章管理（新增/编辑）');
         $add('内容管理', 'admin:article:delete', '文章管理（删除）');
+        $add('内容管理', 'admin:page:view', '单页管理（查看）');
         $add('内容管理', 'admin:page:save', '单页管理（新增/编辑）');
         $add('内容管理', 'admin:page:delete', '单页管理（删除）');
         $add('内容管理', 'admin:upload:crop', '图片裁剪（上传裁剪）');
+
+        // 资源管理权限（附件/Banner/友链等）
+        $add('资源管理', 'admin:attachment:delete', '附件管理（删除）');
+        $add('资源管理', 'admin:attachment:update', '附件管理（更新）');
+        $add('资源管理', 'admin:banner:save', 'Banner管理（新增/编辑）');
+        $add('资源管理', 'admin:banner:delete', 'Banner管理（删除）');
+        $add('资源管理', 'admin:friendlink:save', '友情链接管理（新增/编辑）');
+        $add('资源管理', 'admin:friendlink:delete', '友情链接管理（删除）');
         
         // 系统日志权限
         $add('系统', 'admin:system:logs:view', '系统日志（查看）');

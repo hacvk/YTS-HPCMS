@@ -135,6 +135,17 @@ class SettingValidationService
                 case 'admin_path':
                     // 这些字段需要去除首尾空白
                     $cleanValue = trim($cleanValue);
+                    if ($cleanKey === 'admin_path') {
+                        // 兼容误填入的引号，避免生成 "/adf666" 这种路径
+                        $cleanValue = trim($cleanValue, "\"' \t\n\r\0\x0B");
+                        $cleanValue = str_replace(['"', "'"], '', $cleanValue);
+                        // 规范化多余斜杠
+                        $cleanValue = preg_replace('#/{2,}#', '/', $cleanValue) ?? $cleanValue;
+                        // 仅保留第一个合法段
+                        if (preg_match('#/[_a-zA-Z0-9-]+#', $cleanValue, $match)) {
+                            $cleanValue = $match[0];
+                        }
+                    }
                     break;
             }
             

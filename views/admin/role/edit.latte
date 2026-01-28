@@ -70,14 +70,23 @@
     </form>
 </div>
 
-<script nonce="{$csp_nonce}">
+<script nonce="{$csp_nonce}" n:syntax="off">
 document.getElementById('roleForm').addEventListener('submit', function(e) {
     e.preventDefault();
 
     const form = e.target;
     const data = new URLSearchParams(new FormData(form));
 
-    fetch('{$admin_path}/role/save', {
+    var metaPath = document.querySelector('meta[name="admin-path"]');
+    var rawPath = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+    var adminPath = String(rawPath || '/admin')
+        .replace(/["']/g, '')
+        .replace(/\s+/g, '')
+        .replace(/\/{2,}/g, '/');
+    var match = adminPath.match(/^\/[_a-zA-Z0-9-]+/);
+    adminPath = match ? match[0] : '/admin';
+
+    fetch(adminPath + '/role/save', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -86,7 +95,7 @@ document.getElementById('roleForm').addEventListener('submit', function(e) {
         body: data
     }).then(r => r.json()).then(res => {
         if (res.code === 0) {
-            location.href = res.url || '{$admin_path}/role';
+            location.href = res.url || (adminPath + '/role');
         } else {
             alert(res.message || '保存失败');
         }

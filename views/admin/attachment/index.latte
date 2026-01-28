@@ -8,7 +8,7 @@
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">{$title}</h1>
         <div>
-            <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm" onclick="batchDelete()" id="batchDeleteBtn" style="display: none;">
+            <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm" id="batchDeleteBtn" style="display: none;">
                 <i class="bi bi-trash"></i> 批量删除
             </button>
         </div>
@@ -112,7 +112,7 @@
                     <thead>
                         <tr>
                             <th width="40">
-                                <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                <input type="checkbox" id="selectAll">
                             </th>
                             <th>ID</th>
                             <th>预览</th>
@@ -134,7 +134,7 @@
                             <td>{$file['id']}</td>
                             <td>
                                 {if isset($file['mime_type']) && strpos($file['mime_type'], 'image/') === 0}
-                                <img src="/{$file['path']}" width="60" height="60" class="img-thumbnail" style="object-fit: cover; cursor: pointer;" onclick="previewImage(this.src)">
+                                <img src="/{$file['path']}" width="60" height="60" class="img-thumbnail attachment-preview" data-src="/{$file['path']}" style="object-fit: cover; cursor: pointer;">
                                 {else}
                                 <div class="text-center" style="width: 60px; height: 60px; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
                                     <i class="bi bi-file-earmark" style="font-size: 24px; color: #999;"></i>
@@ -189,7 +189,7 @@
                                 <a href="/{$file['path']}" target="_blank" class="btn btn-info btn-sm" title="查看">
                                     <i class="bi bi-eye"></i>
                                 </a>
-                                <button type="button" class="btn btn-danger btn-sm" onclick="deleteAttachment({$file['id']})" title="删除">
+                                <button type="button" class="btn btn-danger btn-sm btn-delete-attachment" data-id="{$file['id']}" title="删除">
                                     <i class="bi bi-trash"></i>
                                 </button>
                             </td>
@@ -264,6 +264,13 @@
 
 <!-- 脚本 -->
 <script nonce="{$csp_nonce}">
+function getAdminPath() {
+    var metaPath = document.querySelector('meta[name="admin-path"]');
+    var raw = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+    return (raw || '/admin').replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+}
+var adminPath = getAdminPath();
+
 // 全选/取消全选
 function toggleSelectAll() {
     var selectAll = document.getElementById('selectAll');
@@ -288,12 +295,43 @@ function updateBatchDeleteButton() {
 // 监听单个复选框变化
 document.addEventListener('DOMContentLoaded', function() {
     var checkboxes = document.querySelectorAll('.file-checkbox');
+    var selectAll = document.getElementById('selectAll');
+    var batchDeleteBtn = document.getElementById('batchDeleteBtn');
+
+    if (selectAll) {
+        selectAll.addEventListener('change', toggleSelectAll);
+    }
+
+    if (batchDeleteBtn) {
+        batchDeleteBtn.addEventListener('click', batchDelete);
+    }
+
     checkboxes.forEach(function(checkbox) {
         checkbox.addEventListener('change', function() {
             updateBatchDeleteButton();
             // 更新全选状态
             var allChecked = document.querySelectorAll('.file-checkbox:checked').length === checkboxes.length;
-            document.getElementById('selectAll').checked = allChecked && checkboxes.length > 0;
+            if (selectAll) {
+                selectAll.checked = allChecked && checkboxes.length > 0;
+            }
+        });
+    });
+
+    // 绑定删除按钮
+    document.querySelectorAll('.btn-delete-attachment').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var id = this.getAttribute('data-id');
+            if (id) {
+                deleteAttachment(id);
+            }
+        });
+    });
+
+    // 绑定图片预览
+    document.querySelectorAll('.attachment-preview').forEach(function(img) {
+        img.addEventListener('click', function() {
+            var src = this.getAttribute('data-src') || this.src;
+            previewImage(src);
         });
     });
 });
@@ -310,22 +348,23 @@ function deleteAttachment(id) {
     if (confirm('确定要删除这个附件吗？删除后无法恢复！')) {
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         
-        fetch('{$admin_path}/attachment/delete', {
+        fetch(adminPath + '/attachment/delete', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest',
             },
-            body: 'id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken)
+            body: 'id=' + encodeURIComponent(id) + '&csrf_token=' + encodeURIComponent(csrfToken),
+            credentials: 'same-origin'
         })
         .then(function(response) {
-            // 检查响应是否为 JSON
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
-                return response.json();
-            } else {
-                // 如果不是 JSON，返回错误信息
-                throw new Error('服务器返回错误，请稍后再试');
-            }
+            return response.text().then(function(text) {
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    throw new Error('服务器返回非JSON(' + response.status + ')');
+                }
+            });
         })
         .then(function(data) {
             if (data.code === 0) {
@@ -357,19 +396,23 @@ function batchDelete() {
     var ids = Array.from(checkedBoxes).map(function(cb) { return cb.value; }).join(',');
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    fetch('{$admin_path}/attachment/batchDelete', {
+    fetch(adminPath + '/attachment/batchDelete', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest',
         },
-        body: 'ids=' + encodeURIComponent(ids) + '&csrf_token=' + encodeURIComponent(csrfToken)
+        body: 'ids=' + encodeURIComponent(ids) + '&csrf_token=' + encodeURIComponent(csrfToken),
+        credentials: 'same-origin'
     })
     .then(function(response) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            return response.json();
-        }
-        throw new Error('服务器返回错误，请稍后再试');
+        return response.text().then(function(text) {
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                throw new Error('服务器返回非JSON(' + response.status + ')');
+            }
+        });
     })
     .then(function(data) {
         if (data.code === 0) {

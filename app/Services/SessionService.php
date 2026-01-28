@@ -35,6 +35,8 @@ class SessionService
             $savePath = self::resolveSessionSavePath();
 
             // 设置 Session 配置
+            ini_set('session.use_only_cookies', '1');
+            ini_set('session.use_trans_sid', '0');
             ini_set('session.cookie_httponly', self::$config['cookie_httponly'] ? '1' : '0');
             ini_set('session.cookie_secure', $cookieSecure ? '1' : '0');
             ini_set('session.use_strict_mode', self::$config['use_strict_mode'] ? '1' : '0');
@@ -42,12 +44,21 @@ class SessionService
             ini_set('session.cookie_lifetime', (string)self::$config['cookie_lifetime']);
             ini_set('session.gc_maxlifetime', (string)self::$config['gc_maxlifetime']);
             if ($savePath !== '') {
+                // 确保目录存在且可写，避免 session_start 失败
+                if (!is_dir($savePath)) {
+                    @mkdir($savePath, 0700, true);
+                }
+                if (!is_dir($savePath) || !is_writable($savePath)) {
+                    $savePath = sys_get_temp_dir();
+                }
                 ini_set('session.save_path', $savePath);
             }
 
             // 使用更安全的 Session ID 生成方式
             if (function_exists('random_bytes')) {
                 ini_set('session.entropy_length', '64');
+                ini_set('session.sid_length', '64');
+                ini_set('session.sid_bits_per_character', '6');
             }
 
             session_start();

@@ -701,6 +701,15 @@ abstract class AdminBaseController extends BaseController
             $settings = $settingModel->getAll();
             $customPath = $settings['admin_path'] ?? null;
 
+            if (is_string($customPath) && $customPath !== '') {
+                $customPath = trim($customPath, "\"' \t\n\r\0\x0B");
+                $customPath = str_replace(['"', "'"], '', $customPath);
+                $customPath = preg_replace('#/{2,}#', '/', $customPath) ?? $customPath;
+                if (preg_match('#/[_a-zA-Z0-9-]+#', $customPath, $match)) {
+                    $customPath = $match[0];
+                }
+            }
+
             if ($customPath && preg_match('/^\/[\_a-zA-Z0-9-]+$/', $customPath)) {
                 $adminPath = $customPath;
             }

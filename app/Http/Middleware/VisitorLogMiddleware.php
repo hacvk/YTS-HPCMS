@@ -47,7 +47,13 @@ class VisitorLogMiddleware
             $endTime = microtime(true);
             $duration = ($endTime - $startTime) * 1000;
             $memoryUsed = (memory_get_usage() - $startMemory) / 1024;
-            $statusCode = http_response_code();
+            $statusCode = 200;
+            if (is_object($response) && method_exists($response, 'getStatusCode')) {
+                /** @var int $statusCode */
+                $statusCode = (int)$response->getStatusCode();
+            } else {
+                $statusCode = (int)http_response_code();
+            }
 
             // 异步记录访客日志（不阻塞主流程）
             $this->logVisitorAsync(
