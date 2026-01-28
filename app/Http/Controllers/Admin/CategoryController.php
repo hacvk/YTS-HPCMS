@@ -306,7 +306,8 @@ class CategoryController extends AdminBaseController
             $message = $id > 0 ? "修改栏目: {$name}" : "添加栏目: {$name}";
             LogService::record($this->getAdminId(), $this->getAdminUsername(), $action, $message);
 
-            $this->successJson('保存成功', $categoryId, '/admin/category');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('保存成功', $categoryId, $adminPath . '/category');
         } catch (\Exception $e) {
             $this->errorJson('保存失败：' . $e->getMessage());
         }
@@ -348,7 +349,8 @@ class CategoryController extends AdminBaseController
             // 记录日志
             LogService::record($this->getAdminId(), $this->getAdminUsername(), 'delete', "删除栏目: {$category['name']}");
 
-            $this->successJson('删除成功', null, '/admin/category');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('删除成功', null, $adminPath . '/category');
         } catch (\Exception $e) {
             $this->errorJson('删除失败：' . $e->getMessage());
         }

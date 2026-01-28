@@ -149,7 +149,8 @@ class RoleController extends AdminBaseController
         $permissionService = $this->permissionService;
         $permissionService->syncRolePermissions($id, $permKeys);
 
-        $this->successJson('保存成功', null, '/admin/role');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('保存成功', null, $adminPath . '/role');
     }
 
     public function delete(): void
@@ -175,7 +176,8 @@ class RoleController extends AdminBaseController
         $db = $this->db;
         $db->delete('sys_role', ['id' => $id]);
 
-        $this->successJson('删除成功', null, '/admin/role');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('删除成功', null, $adminPath . '/role');
     }
 
 }

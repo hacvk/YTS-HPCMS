@@ -102,7 +102,8 @@ class BannerController extends AdminBaseController
         }
         $this->bannerModel->save($data);
         LogService::record($this->getAdminId(),$this->getAdminUsername(),'update','保存Banner','id:'.$data['id']);
-        $this->successJson('保存成功',null,'/admin/banner');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('保存成功', null, $adminPath . '/banner');
     }
 
     /**

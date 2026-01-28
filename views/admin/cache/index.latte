@@ -323,6 +323,14 @@
 </style>
 
 <script nonce="{$csp_nonce}">
+// 规范化后台路径，全局复用
+function getAdminPath() {
+    var metaPath = document.querySelector('meta[name="admin-path"]');
+    var rawPath = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+    return (rawPath || '/admin').replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+}
+var adminPath = getAdminPath();
+
 document.addEventListener('DOMContentLoaded', function () {
     const bind = function (id, handler) {
         const el = document.getElementById(id);
@@ -347,7 +355,7 @@ function clearLatteCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('{$admin_path}/cache/clear-latte', {
+    fetch(adminPath + '/cache/clear-latte', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -367,7 +375,7 @@ function clearLatteCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '{$admin_path}/cache';
+            window.location.href = adminPath + '/cache';
         } else {
             alert(data.message);
         }
@@ -387,7 +395,7 @@ function clearSearchCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('{$admin_path}/cache/clear-search', {
+    fetch(adminPath + '/cache/clear-search', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -407,7 +415,7 @@ function clearSearchCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '{$admin_path}/cache';
+            window.location.href = adminPath + '/cache';
         } else {
             alert(data.message);
         }
@@ -427,7 +435,7 @@ function clearAppCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('{$admin_path}/cache/clear-app', {
+    fetch(adminPath + '/cache/clear-app', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -444,7 +452,7 @@ function clearAppCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '{$admin_path}/cache';
+            window.location.href = adminPath + '/cache';
         } else {
             alert(data.message);
         }
@@ -464,7 +472,7 @@ function clearAllCache() {
     // 获取 CSRF Token
     var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-    fetch('{$admin_path}/cache/clear-all', {
+    fetch(adminPath + '/cache/clear-all', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded',
@@ -484,7 +492,7 @@ function clearAllCache() {
     .then(function(data) {
         if (data.code === 0) {
             alert(data.message);
-            window.location.href = '{$admin_path}/cache';
+            window.location.href = adminPath + '/cache';
         } else {
             alert(data.message);
         }

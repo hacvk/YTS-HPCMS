@@ -77,3 +77,4 @@ doc/
 
 # 上传文件（运行时目录）
 public/uploads/
+certs/*

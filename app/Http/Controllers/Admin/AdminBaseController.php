@@ -692,7 +692,7 @@ abstract class AdminBaseController extends BaseController
         return $url;
     }
 
-    private function getAdminPath(): string
+    protected function getAdminPath(): string
     {
         $adminPath = \App\Core\App::getConfig('system.admin_path') ?? '/admin';
         try {

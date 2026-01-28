@@ -62,8 +62,9 @@
 
         // 配置图片上传
         editor.config.uploadImgServer = adminBase + '/upload/upload';
-        editor.config.uploadImgMaxSize = 2 * 1024 * 1024; // 2M
-        editor.config.uploadImgMaxLength = 10; // 一次最多上传10张图片
+        // 避免触发 nginx 413，前端限制到 1MB
+        editor.config.uploadImgMaxSize = 1 * 1024 * 1024; // 1M
+        editor.config.uploadImgMaxLength = 5; // 一次最多上传5张图片
         editor.config.uploadImgTimeout = 30000; // 30秒超时
         editor.config.uploadFileName = 'file';
         editor.config.uploadImgHeaders = {
@@ -72,6 +73,16 @@
         editor.config.uploadImgParams = {
             csrf_token: csrfToken,
             module: 'article'
+        };
+        editor.config.uploadImgHooks = {
+            fail: function (xhr, editor, resData) {
+                alert((resData && resData.message) ? resData.message : '上传失败，请检查图片大小（≤1MB）');
+            },
+            error: function (xhr, editor) {
+                if (xhr && xhr.status === 413) {
+                    alert('图片过大，服务器拒绝上传（413）。请压缩到 1MB 内后重试。');
+                }
+            }
         };
 
         // 如果编辑时已有内容，设置初始内容

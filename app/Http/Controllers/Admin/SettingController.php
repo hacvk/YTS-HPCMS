@@ -177,7 +177,8 @@ class SettingController extends AdminBaseController
                 "更新基本设置"
             );
             
-            $this->successJson('保存成功', null, '/admin/setting');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('保存成功', null, $adminPath . '/setting');
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
             LogService::record(

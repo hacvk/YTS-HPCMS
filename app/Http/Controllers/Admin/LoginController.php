@@ -242,8 +242,12 @@ class LoginController extends BaseController
     private function checkLoginRateLimit(string $ip, string $username): ?string
     {
         $cache = new CacheService();
-        $blockKey = 'login_block_' . md5($ip);
-        $blockUntil = (int)$cache->get($blockKey, 0);
+        $blockKeyIp = 'login_block_ip_' . md5($ip);
+        $blockKeyUser = 'login_block_user_' . md5(strtolower($username));
+        $blockUntil = max(
+            (int)$cache->get($blockKeyIp, 0),
+            (int)$cache->get($blockKeyUser, 0)
+        );
         if ($blockUntil > time()) {
             return '尝试次数过多，请稍后再试';
         }
@@ -300,8 +304,11 @@ class LoginController extends BaseController
         $cache->set($attemptKey, $attempt, $windowSeconds);
 
         if ($attempt['count'] >= 5) {
-            $blockKey = 'login_block_' . md5($ip);
-            $cache->set($blockKey, time() + 900, 900);
+            $blockKeyIp = 'login_block_ip_' . md5($ip);
+            $blockKeyUser = 'login_block_user_' . md5(strtolower($username));
+            $blockUntil = time() + 900;
+            $cache->set($blockKeyIp, $blockUntil, 900);
+            $cache->set($blockKeyUser, $blockUntil, 900);
         }
     }
 
@@ -316,7 +323,8 @@ class LoginController extends BaseController
     {
         $cache = new CacheService();
         $cache->delete($this->getLoginAttemptKey($ip, $username));
-        $cache->delete('login_block_' . md5($ip));
+        $cache->delete('login_block_ip_' . md5($ip));
+        $cache->delete('login_block_user_' . md5(strtolower($username)));
     }
 
     /**

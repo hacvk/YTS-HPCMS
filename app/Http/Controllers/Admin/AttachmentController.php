@@ -260,7 +260,8 @@ class AttachmentController extends AdminBaseController
                 return;
             }
 
-            $this->successJson("成功删除 {$successCount} 个附件", null, '/admin/attachment');
+            $adminPath = $this->getAdminPath();
+            $this->successJson("成功删除 {$successCount} 个附件", null, $adminPath . '/attachment');
 
         } catch (\Exception $e) {
             error_log('批量删除附件失败: ' . $e->getMessage());

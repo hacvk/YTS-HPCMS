@@ -372,7 +372,8 @@ class VisitorController extends AdminBaseController
             $result = AnomalyDetectionService::handleAlert($alertId, $status);
 
             if ($result) {
-                $this->successJson('告警处理成功', null, '/admin/visitor/alerts');
+                $adminPath = $this->getAdminPath();
+                $this->successJson('告警处理成功', null, $adminPath . '/visitor/alerts');
             } else {
                 $this->errorJson('告警处理失败');
             }

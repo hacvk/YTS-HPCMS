@@ -105,7 +105,8 @@ class LogController extends AdminBaseController
                 "清理 {$days} 天前的日志，共删除{$deletedCount} 条"
             );
             
-            $this->successJson("成功清理 {$deletedCount} 条过期日志", null, '/admin/log');
+            $adminPath = $this->getAdminPath();
+            $this->successJson("成功清理 {$deletedCount} 条过期日志", null, $adminPath . '/log');
         } catch (\Exception $e) {
             error_log('清理日志失败: ' . $e->getMessage());
             $this->errorJson('清理失败: ' . $e->getMessage());

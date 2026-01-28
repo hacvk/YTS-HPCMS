@@ -103,7 +103,7 @@ class PageController extends AdminBaseController
             
             $this->render('admin/page/edit', [
                 'title' => '添加单页',
-                'action' => '/admin/page/save',
+                'action' => $this->getAdminPath() . '/page/save',
                 'page' => [],
                 'page_json' => 'null',
                 'categories' => $pageCategories,
@@ -168,7 +168,7 @@ class PageController extends AdminBaseController
                 $page = $contentService->getByCategoryId($categoryId);
             } catch (\App\Core\Exception\RecordNotFoundException $e) {
                 // 如果没有内容，跳转到添加页面
-                $this->redirect('/admin/page/add?category_id=' . $categoryId);
+                $this->redirect($this->getAdminPath() . '/page/add?category_id=' . $categoryId);
                 return;
             }
 
@@ -187,7 +187,7 @@ class PageController extends AdminBaseController
 
             $this->render('admin/page/edit', [
                 'title' => '编辑单页',
-                'action' => '/admin/page/save',
+                'action' => $this->getAdminPath() . '/page/save',
                 'page' => $page,
                 'page_json' => $pageJson,
                 'categories' => $pageCategories,
@@ -284,7 +284,8 @@ class PageController extends AdminBaseController
             $message = $id > 0 ? "编辑单页: {$title} (ID: {$resultId})" : "新建单页: {$title} (ID: {$resultId})";
             LogService::record($this->getAdminId(), $this->getAdminUsername(), $action, "单页ID: {$resultId}", $message);
 
-            $this->successJson('保存成功', null, '/admin/page');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('保存成功', null, $adminPath . '/page');
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
             LogService::record($this->getAdminId(), $this->getAdminUsername(), 'error', "单页保存异常: {$title}", "保存单页异常: {$errorMsg}");
@@ -356,7 +357,8 @@ class PageController extends AdminBaseController
                 "删除单页: {$pageTitle} (ID: {$id})"
             );
 
-            $this->successJson('删除成功', null, '/admin/page');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('删除成功', null, $adminPath . '/page');
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
             LogService::record(

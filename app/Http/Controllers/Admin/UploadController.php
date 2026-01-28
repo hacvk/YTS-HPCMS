@@ -269,7 +269,8 @@ class UploadController extends AdminBaseController
                 return;
             }
 
-            $this->successJson('删除成功', null, '/admin/upload');
+            $adminPath = $this->getAdminPath();
+        $this->successJson('删除成功', null, $adminPath . '/upload');
         } catch (\Exception $e) {
             error_log('删除文件失败: ' . $e->getMessage());
             $this->errorJson('删除失败: ' . $e->getMessage());

@@ -304,7 +304,8 @@ class ArticleController extends AdminBaseController
             }
 
             // 如果保存的数据中包含 category_id，跳转时带上 cid 参数
-            $redirectUrl = '/admin/article';
+            $adminPath = $this->getAdminPath();
+            $redirectUrl = $adminPath . '/article';
             if (isset($data['category_id']) && $data['category_id'] > 0) {
                 $redirectUrl .= '?cid=' . (int)$data['category_id'];
             }
@@ -384,7 +385,8 @@ class ArticleController extends AdminBaseController
                 "删除文章: {$articleTitle} (ID: {$id})"
             );
             
-            $this->successJson('删除成功', null, '/admin/article');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('删除成功', null, $adminPath . '/article');
         } catch (\Exception $e) {
             // 记录异常日志
             $errorMsg = $e->getMessage();

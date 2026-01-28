@@ -100,7 +100,8 @@ class ContactController extends AdminBaseController
                 "更新联系方式设置"
             );
             
-            $this->successJson('保存成功', null, '/admin/contact');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('保存成功', null, $adminPath . '/contact');
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();
             LogService::record(

@@ -3,6 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="admin-path" content="{$admin_path}">
+    <script nonce="{$csp_nonce}">
+        // 供后续脚本读取后台入口
+        window.ADMIN_PATH = {$admin_path|json_encode};
+    </script>
     <title>{$title|noescape}</title>
     <style>
         * {
@@ -164,7 +169,7 @@
                         style="flex:1;"
                     >
                     <img 
-                        src="{$admin_path}/login/captcha" 
+                        src="" 
                         alt="验证码" 
                         id="captchaImg" 
                         style="cursor:pointer;height:40px;border-radius:6px;"
@@ -174,18 +179,30 @@
 
             <button type="submit" class="btn-submit">登 录</button>
             <script nonce="{$csp_nonce}">
-                // 点击验证码图片刷新
-                document.getElementById('captchaImg').addEventListener('click', function () {
-                    this.src = '{$admin_path}/login/captcha?rand=' + Date.now();
-                });
+                function normalizeAdminPath() {
+                    var metaPath = document.querySelector('meta[name="admin-path"]');
+                    var raw = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+                    return (raw || '/admin').replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+                }
+                var adminPath = normalizeAdminPath();
+                var captchaImg = document.getElementById('captchaImg');
+                var formEl = document.querySelector('form');
+
+                function refreshCaptcha() {
+                    captchaImg.src = adminPath + '/login/captcha?rand=' + Date.now();
+                }
+
+                // 初始加载
+                refreshCaptcha();
+                // 点击刷新
+                captchaImg.addEventListener('click', refreshCaptcha);
                 
                 // 登录失败时自动刷新验证码
-                document.querySelector('form').addEventListener('submit', function (e) {
+                formEl.addEventListener('submit', function (e) {
                     // 阻止默认提交，使用 AJAX
                     e.preventDefault();
                     
                     const formData = new FormData(this);
-                    const captchaImg = document.getElementById('captchaImg');
                     const submitBtn = document.querySelector('.btn-submit');
                     
                     // 禁用提交按钮，防止重复提交
@@ -197,7 +214,6 @@
                         body: formData
                     })
                     .then(response => {
-                        // 检查响应状态
                         if (!response.ok) {
                             throw new Error('网络错误: ' + response.status);
                         }
@@ -205,24 +221,20 @@
                     })
                     .then(data => {
                         if (data.code !== 0) {
-                            // 登录失败，刷新验证码
-                            captchaImg.src = '{$admin_path}/login/captcha?rand=' + Date.now();
-                            // 清空验证码输入框
+                            refreshCaptcha();
                             document.getElementById('captcha').value = '';
-                            // 显示错误提示
                             alert(data.message);
                         } else {
-                            // 登录成功，跳转
                             if (data.url) {
                                 window.location.href = data.url;
                             } else {
-                                window.location.href = '{$admin_path}/dashboard';
+                                window.location.href = adminPath + '/dashboard';
                             }
                         }
                     })
                     .catch(error => {
                         console.error('登录失败:', error);
-                        captchaImg.src = '{$admin_path}/login/captcha?rand=' + Date.now();
+                        refreshCaptcha();
                         document.getElementById('captcha').value = '';
                         alert('登录失败：' + error.message);
                     })

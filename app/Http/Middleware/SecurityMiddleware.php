@@ -28,6 +28,15 @@ class SecurityMiddleware
         }
         $_SERVER['CSP_NONCE'] = $nonce;
 
+        // 可选强制跳转 HTTPS（设置环境变量 FORCE_HTTPS=true 生效）
+        $forceHttps = filter_var(getenv('FORCE_HTTPS') ?: 'false', FILTER_VALIDATE_BOOLEAN);
+        if ($forceHttps && $request !== null && !$request->isSecure()) {
+            $httpsUrl = $request->getSchemeAndHttpHost();
+            $httpsUrl = preg_replace('#^http:#i', 'https:', $httpsUrl ?? '');
+            $httpsUrl .= $request->getRequestUri();
+            return new Response('', 301, ['Location' => $httpsUrl]);
+        }
+
         // 检查是否为调试脚本
         $scriptName = basename($_SERVER['SCRIPT_NAME'] ?? '');
         $debugScripts = [
@@ -77,6 +86,15 @@ class SecurityMiddleware
 
         // 权限策略
         header('Permissions-Policy: geolocation=(), microphone=(), camera=(), clipboard-read=(), clipboard-write=()');
+
+        // HSTS（仅在 HTTPS/代理 HTTPS 场景下开启，避免 HTTP 环境误触）
+        $isHttps = (
+            (!empty($_SERVER['HTTPS']) && strtolower((string)$_SERVER['HTTPS']) !== 'off') ||
+            (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower((string)$_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https')
+        );
+        if ($isHttps) {
+            header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+        }
 
         // CSP (根据环境调整)
         if (App::isDebug()) {

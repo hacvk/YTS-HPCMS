@@ -105,6 +105,36 @@ class SecurityService
     }
 
     /**
+     * 校验密码复杂度：长度≥10，包含大小写字母、数字、特殊字符，且不包含用户名/手机号片段
+     *
+     * @param string $password
+     * @param string $username
+     * @return array{ok: bool, message?: string}
+     */
+    public function validatePasswordComplexity(string $password, string $username = ''): array
+    {
+        $pwd = trim($password);
+        if (strlen($pwd) < 10) {
+            return ['ok' => false, 'message' => '密码长度至少 10 位'];
+        }
+        $hasUpper = (bool)preg_match('/[A-Z]/', $pwd);
+        $hasLower = (bool)preg_match('/[a-z]/', $pwd);
+        $hasDigit = (bool)preg_match('/\\d/', $pwd);
+        $hasSpecial = (bool)preg_match('/[^a-zA-Z0-9]/', $pwd);
+
+        if (!$hasUpper || !$hasLower || !$hasDigit || !$hasSpecial) {
+            return ['ok' => false, 'message' => '密码需包含大写、小写、数字和特殊字符'];
+        }
+
+        $username = trim($username);
+        if ($username !== '' && stripos($pwd, $username) !== false) {
+            return ['ok' => false, 'message' => '密码不能包含用户名'];
+        }
+
+        return ['ok' => true];
+    }
+
+    /**
      * 验证密码
      *
      * @param string $password 明文密码

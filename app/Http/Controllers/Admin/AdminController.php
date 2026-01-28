@@ -140,6 +140,15 @@ class AdminController extends AdminBaseController
 
         $db = Database::get();
 
+        // 密码复杂度校验（当提供新密码时）
+        if ($password !== '') {
+            $check = $this->securityService->validatePasswordComplexity($password, $username);
+            if (!$check['ok']) {
+                $this->errorJson($check['message'] ?? '密码复杂度不足');
+                return;
+            }
+        }
+
         if ($id > 0) {
             $exists = $db->get('sys_admin', ['id'], ['id' => $id]);
             if (!$exists) {
@@ -203,7 +212,8 @@ class AdminController extends AdminBaseController
             "管理员 {$username}"
         );
 
-        $this->successJson('保存成功', null, '/admin/admin');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('保存成功', null, $adminPath . '/admin');
     }
 
     public function delete(): void
@@ -243,7 +253,8 @@ class AdminController extends AdminBaseController
             "管理员 " . ($admin['username'] ?? '')
         );
 
-        $this->successJson('删除成功', null, '/admin/admin');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('删除成功', null, $adminPath . '/admin');
     }
 
     /**

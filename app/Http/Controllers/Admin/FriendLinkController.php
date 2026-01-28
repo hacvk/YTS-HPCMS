@@ -93,7 +93,8 @@ class FriendLinkController extends AdminBaseController
             'id:' . $id
         );
 
-        $this->successJson('保存成功', null, '/admin/friendlink');
+        $adminPath = $this->getAdminPath();
+        $this->successJson('保存成功', null, $adminPath . '/friendlink');
     }
 
     public function delete(): void

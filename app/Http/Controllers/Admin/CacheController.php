@@ -119,8 +119,9 @@ class CacheController extends AdminBaseController
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache/latte';
 
             if (!is_dir($cacheDir)) {
-                $this->successJson('Latte缓存目录不存在或已清空', null, '/admin/cache');
-            }
+            $adminPath = $this->getAdminPath();
+            $this->successJson('Latte缓存目录不存在或已清空', null, $adminPath . '/cache');
+        }
 
             // 清空目录
             $this->clearDirectory($cacheDir);
@@ -133,7 +134,8 @@ class CacheController extends AdminBaseController
                 '清空 Latte 模板缓存'
             );
 
-            $this->successJson('Latte 缓存清空成功', null, '/admin/cache');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('Latte 缓存清空成功', null, $adminPath . '/cache');
         } catch (\Exception $e) {
             $this->errorJson('清空缓存失败: ' . $e->getMessage());
         }
@@ -160,8 +162,9 @@ class CacheController extends AdminBaseController
 
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache';
 
+            $adminPath = $this->getAdminPath();
             if (!is_dir($cacheDir)) {
-                $this->successJson('缓存目录不存在或已清空', null, '/admin/cache');
+                $this->successJson('缓存目录不存在或已清空', null, $adminPath . '/cache');
             }
 
             // 清空所有缓存子目录
@@ -204,7 +207,7 @@ class CacheController extends AdminBaseController
                 error_log('清理搜索缓存时出错: ' . $e->getMessage());
             }
 
-            $this->successJson('所有缓存清空成功', null, '/admin/cache');
+            $this->successJson('所有缓存清空成功', null, $adminPath . '/cache');
         } catch (\Exception $e) {
             $this->errorJson('清空缓存失败: ' . $e->getMessage());
         }
@@ -290,7 +293,8 @@ class CacheController extends AdminBaseController
                 sprintf('清空搜索缓存 - 缓存项: %d, 日志: %d, 拦截记录: %d', $cacheResult, $logResult, $blockResult)
             );
 
-            $this->successJson(sprintf('搜索缓存清空成功 - 缓存项: %d, 日志: %d, 拦截记录: %d', $cacheResult, $logResult, $blockResult), null, '/admin/cache');
+            $adminPath = $this->getAdminPath();
+            $this->successJson(sprintf('搜索缓存清空成功 - 缓存项: %d, 日志: %d, 拦截记录: %d', $cacheResult, $logResult, $blockResult), null, $adminPath . '/cache');
         } catch (\Exception $e) {
             $this->errorJson('清空搜索缓存失败: ' . $e->getMessage());
         }
@@ -327,7 +331,8 @@ class CacheController extends AdminBaseController
                 '清空应用缓存'
             );
 
-            $this->successJson('应用缓存清空成功', null, '/admin/cache');
+            $adminPath = $this->getAdminPath();
+            $this->successJson('应用缓存清空成功', null, $adminPath . '/cache');
         } catch (\Exception $e) {
             $this->errorJson('清空应用缓存失败: ' . $e->getMessage());
         }

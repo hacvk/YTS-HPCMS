@@ -81,7 +81,9 @@ class FileController extends AdminBaseController
             
             // 从URL中获取ID参数
             $uri = $_SERVER['REQUEST_URI'] ?? '';
-            preg_match('/\/admin\/file\/delete\/(\d+)/', $uri, $matches);
+            $adminPath = $this->getAdminPath();
+            $pattern = '#'.preg_quote($adminPath, '#').'/file/delete/(\\d+)#';
+            preg_match($pattern, $uri, $matches);
             $id = $matches[1] ?? 0;
 
             if ((int)$id <= 0) {
@@ -101,7 +103,7 @@ class FileController extends AdminBaseController
                     return;
                 }
                 
-                $this->successJson('删除成功', null, '/admin/file');
+                $this->successJson('删除成功', null, $adminPath . '/file');
             } catch (PathTraversalException $e) {
                 // 路径遍历攻击，记录日志并返回错误
                 error_log('[FileController] 路径遍历攻击检测 ' . $e->getMessage());

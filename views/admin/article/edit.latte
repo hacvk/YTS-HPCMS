@@ -808,6 +808,14 @@
         }
     });
 
+    // 规范化后台路径（兼容自定义入口）
+    function getAdminPath() {
+        var metaPath = document.querySelector('meta[name=\"admin-path\"]');
+        var raw = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+        return (raw || '/admin').replace(/^\"+|\"+$/g, '').replace(/\/+$/, '');
+    }
+    const adminPath = getAdminPath();
+
     // 监听栏目选择变化
     document.getElementById('category_id')?.addEventListener('change', function(e) {
         const categoryId = e.target.value;
@@ -815,7 +823,7 @@
 
         if (categoryId && categoryId > 0) {
             // 调用API获取栏目裁剪设置
-            fetch('{$admin_path}/category/getAllowCropByCategory?category_id=' + categoryId)
+            fetch(adminPath + '/category/getAllowCropByCategory?category_id=' + categoryId)
                 .then(response => response.json())
                 .then(data => {
                     if (data.code === 0) {
