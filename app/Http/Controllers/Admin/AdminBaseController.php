@@ -553,6 +553,12 @@ abstract class AdminBaseController extends BaseController
     
         $csrfToken = $this->post('csrf_token', '');
         $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '';
+        if (is_string($csrfToken)) {
+            $csrfToken = trim($csrfToken, "\"' \t\n\r\0\x0B");
+        }
+        if (is_string($headerToken)) {
+            $headerToken = trim($headerToken, "\"' \t\n\r\0\x0B");
+        }
         $isValid = $csrfToken !== '' && Security::checkCsrfToken($csrfToken);
         if (!$isValid && $headerToken !== '') {
             $isValid = Security::checkCsrfToken($headerToken);
