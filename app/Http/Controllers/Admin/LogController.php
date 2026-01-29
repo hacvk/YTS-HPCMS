@@ -19,6 +19,7 @@ class LogController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:log:view');
         try {
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
@@ -85,6 +86,7 @@ class LogController extends AdminBaseController
      */
     public function clean(): void
     {
+        $this->requirePerm('admin:log:clear');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {

@@ -41,6 +41,7 @@ class BannerController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:banner:view');
         $page  = (int)$this->get('page', 1);
         $limit = 20;
         $type = $this->get('type', 'banner'); // 获取类型过滤参数，默认为 'banner'
@@ -62,6 +63,7 @@ class BannerController extends AdminBaseController
      */
     public function edit(): void
     {
+        $this->requirePerm('admin:banner:view');
         $id = (int)$this->get('id', 0);
         $banner = $id ? $this->bannerModel->getById($id) : null;
         
@@ -83,6 +85,7 @@ class BannerController extends AdminBaseController
      */
     public function save(): void
     {
+        $this->requirePerm('admin:banner:save');
         // 验证POST请求和CSRF
         if (!$this->validatePostAndCsrf()) {
             return;
@@ -111,6 +114,7 @@ class BannerController extends AdminBaseController
      */
     public function delete(): void
     {
+        $this->requirePerm('admin:banner:delete');
         // 验证POST请求和CSRF
         if (!$this->validatePostAndCsrf()) {
             return;

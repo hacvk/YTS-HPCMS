@@ -33,9 +33,9 @@
                     <a href="{$result['url']}" class="text-decoration-none">{$result['title']}</a>
                 </h4>
                 <div class="search-result-meta">
-                    <span class="publish-date">发布日期：{$result['published_at']|noescape}</span>
+                    <span class="publish-date">发布日期：{$result['published_at']}</span>
                     <span class="view-count">浏览量：{$result['views']} 次</span>
-                    <span class="result-type badge">{($result['type'] ?? '文章')|noescape}</span>
+                    <span class="result-type badge">{($result['type'] ?? '文章')}</span>
                 </div>
                 <div class="search-result-summary">
                     {$result['summary']|noescape}

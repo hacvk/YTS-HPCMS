@@ -26,6 +26,7 @@ class ContactController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:contact:view');
         try {
             // 获取所有设置
             $settings = $this->setting->getAll();
@@ -62,6 +63,7 @@ class ContactController extends AdminBaseController
      */
     public function save(): void
     {
+        $this->requirePerm('admin:contact:save');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {

@@ -2,7 +2,19 @@
 {block title}{$title}{/block}
 {block content}
 <script nonce="{$csp_nonce}">
-  var friendLinkCsrfToken = {$csrf_token};
+  var friendLinkCsrfToken = {$csrf_token|json_encode};
+  if (!friendLinkCsrfToken) {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    friendLinkCsrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+  }
+  var metaPath = document.querySelector('meta[name="admin-path"]');
+  var rawPath = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+  var adminPath = String(rawPath || '/admin')
+    .replace(/["']/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\/+/g, '/');
+  var match = adminPath.match(/^\/[_a-zA-Z0-9-]+/);
+  adminPath = match ? match[0] : '/admin';
 </script>
 
 <div class="container-fluid">
@@ -44,7 +56,7 @@
                         <a class="btn btn-sm btn-info" href="{$admin_path}/friendlink/edit?id={$l['id']}">编辑</a>
                     {/if}
                     {if $can_delete}
-                        <button class="btn btn-sm btn-danger" onclick="delFriendLink({$l['id']})">删除</button>
+                        <button class="btn btn-sm btn-danger js-friendlink-delete" data-id="{$l['id']}">删除</button>
                     {/if}
                 </td>
             </tr>
@@ -60,7 +72,14 @@ function delFriendLink(id){
   const f = new FormData();
   f.append('id', id);
   f.append('csrf_token', friendLinkCsrfToken);
-  fetch('{$admin_path}/friendlink/delete', { method: 'POST', body: f })
+  fetch(adminPath + '/friendlink/delete', {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-Token': friendLinkCsrfToken || ''
+      },
+      body: f
+    })
     .then(r => r.json())
     .then(d => {
       alert(d.message);
@@ -71,5 +90,14 @@ function delFriendLink(id){
       alert('删除失败，请重试');
     });
 }
+
+document.querySelectorAll('.js-friendlink-delete').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var id = this.getAttribute('data-id');
+    if (id) {
+      delFriendLink(id);
+    }
+  });
+});
 </script>
 {/block}

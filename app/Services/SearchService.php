@@ -323,14 +323,17 @@ class SearchService
             $text = mb_substr($text, 0, $maxLength) . '...';
         }
 
-        $escapedKeyword = preg_quote($keyword, '/');
-        $text = preg_replace(
+        // 先转义文本，防止 XSS，再做高亮
+        $safeText = htmlspecialchars($text, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $safeKeyword = htmlspecialchars($keyword, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $escapedKeyword = preg_quote($safeKeyword, '/');
+        $highlighted = preg_replace(
             "/($escapedKeyword)/i",
             '<mark class="search-highlight">$1</mark>',
-            $text
+            $safeText
         );
 
-        return $text;
+        return $highlighted ?? $safeText;
     }
 
     public function getHotKeywords(int $days = 7, int $limit = 10): array

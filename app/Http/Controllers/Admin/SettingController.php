@@ -26,6 +26,7 @@ class SettingController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:setting:view');
         try {
             // 获取所有设置
             $settings = $this->setting->getAll();
@@ -84,6 +85,7 @@ class SettingController extends AdminBaseController
      */
     public function save(): void
     {
+        $this->requirePerm('admin:setting:save');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {
@@ -200,6 +202,7 @@ class SettingController extends AdminBaseController
      */
     public function deleteImage(): void
     {
+        $this->requirePerm('admin:setting:save');
         try {
             error_log('deleteImage方法开始执行');
             error_log(date('Y-m-d H:i:s') . ' - deleteImage方法开始执行');

@@ -25,6 +25,7 @@ class CacheController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:cache:view');
         try {
             // 获取缓存目录信息
             $cacheDir = dirname(__DIR__, 4) . '/storage/cache';
@@ -104,6 +105,7 @@ class CacheController extends AdminBaseController
      */
     public function clearLatte(): void
     {
+        $this->requirePerm('admin:cache:clear');
         // 只接受POST请求
         if (!$this->isPost()) {
             $this->errorJson('请求方法错误');
@@ -148,6 +150,7 @@ class CacheController extends AdminBaseController
      */
     public function clearAll(): void
     {
+        $this->requirePerm('admin:cache:clear');
         // 只接受POST 请求
         if (!$this->isPost()) {
             $this->errorJson('请求方法错误');
@@ -261,6 +264,7 @@ class CacheController extends AdminBaseController
      */
     public function clearSearch(): void
     {
+        $this->requirePerm('admin:cache:clear');
         // 只接受POST请求
         if (!$this->isPost()) {
             $this->errorJson('请求方法错误');
@@ -307,6 +311,7 @@ class CacheController extends AdminBaseController
      */
     public function clearApp(): void
     {
+        $this->requirePerm('admin:cache:clear');
         if (!$this->isPost()) {
             $this->errorJson('请求方法错误');
         }

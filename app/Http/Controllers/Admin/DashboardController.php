@@ -28,6 +28,7 @@ class DashboardController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:dashboard:view');
         try {
             $db = $this->db;
 

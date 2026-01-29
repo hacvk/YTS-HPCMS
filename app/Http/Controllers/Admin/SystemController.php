@@ -19,6 +19,7 @@ class SystemController extends AdminBaseController
      */
     public function about(): void
     {
+        $this->requirePerm('admin:system:view');
         $runtime = '-';
         if (isset($_SERVER['REQUEST_TIME_FLOAT']) && is_numeric($_SERVER['REQUEST_TIME_FLOAT'])) {
             $seconds = (int) max(0, microtime(true) - (float) $_SERVER['REQUEST_TIME_FLOAT']);
@@ -94,6 +95,7 @@ class SystemController extends AdminBaseController
      */
     public function logs(): void
     {
+        $this->requirePerm('admin:system:logs:view');
         try {
             $type = $this->get('type', 'operation');
             // 验证 type 参数，防止非法值
@@ -292,6 +294,7 @@ class SystemController extends AdminBaseController
      */
     public function cleanLogs(): void
     {
+        $this->requirePerm('admin:system:logs:clear');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {

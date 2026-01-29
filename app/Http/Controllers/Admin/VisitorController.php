@@ -25,6 +25,7 @@ class VisitorController extends AdminBaseController
      */
     public function logs(): void
     {
+        $this->requirePerm('admin:visitor:logs:view');
         try {
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
@@ -95,6 +96,7 @@ class VisitorController extends AdminBaseController
      */
     public function stats(): void
     {
+        $this->requirePerm('admin:visitor:stats:view');
         try {
             $date = $this->get('date', date('Y-m-d'));
             $startDate = $this->get('start_date', date('Y-m-d', strtotime('-7 days')));
@@ -221,6 +223,7 @@ class VisitorController extends AdminBaseController
      */
     public function alerts(): void
     {
+        $this->requirePerm('admin:visitor:alerts:view');
         try {
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
@@ -354,6 +357,7 @@ class VisitorController extends AdminBaseController
      */
     public function handleAlert(): void
     {
+        $this->requirePerm('admin:visitor:alerts:handle');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {
@@ -390,6 +394,7 @@ class VisitorController extends AdminBaseController
      */
     public function anomalyReport(): void
     {
+        $this->requirePerm('admin:visitor:anomaly:view');
         try {
             $date = $this->get('date', date('Y-m-d', strtotime('-1 day')));
             $export = $this->get('export', '');

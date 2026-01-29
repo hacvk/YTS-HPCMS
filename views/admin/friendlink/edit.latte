@@ -37,25 +37,53 @@
             </div>
         </div>
 
-        <button type="button" class="btn btn-primary" onclick="saveFriendLink()">保存</button>
+        <button type="button" class="btn btn-primary" id="friendLinkSaveBtn">保存</button>
         <a class="btn btn-secondary" href="{$admin_path}/friendlink">返回</a>
     </form>
 </div>
 
-<script nonce="{$csp_nonce}">
+<script nonce="{$csp_nonce}" n:syntax="off">
 function saveFriendLink(){
   const form = document.getElementById('friendLinkForm');
   const f = new FormData(form);
-  fetch('{$admin_path}/friendlink/save', { method: 'POST', body: f })
+  var csrfToken = f.get('csrf_token') || '';
+  if (!csrfToken) {
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    csrfToken = csrfMeta ? (csrfMeta.getAttribute('content') || '') : '';
+    if (csrfToken) {
+      f.set('csrf_token', csrfToken);
+    }
+  }
+  var metaPath = document.querySelector('meta[name="admin-path"]');
+  var rawPath = metaPath ? metaPath.getAttribute('content') : (window.ADMIN_PATH || '/admin');
+  var adminPath = String(rawPath || '/admin')
+    .replace(/["']/g, '')
+    .replace(/\s+/g, '')
+    .replace(/\/{2,}/g, '/');
+  var match = adminPath.match(/^\/[_a-zA-Z0-9-]+/);
+  adminPath = match ? match[0] : '/admin';
+
+  fetch(adminPath + '/friendlink/save', {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRF-Token': csrfToken || ''
+      },
+      body: f
+    })
     .then(r => r.json())
     .then(d => {
       alert(d.message);
-      if(d.code === 0) location.href = (d.url || '{$admin_path}/friendlink');
+      if(d.code === 0) location.href = (d.url || (adminPath + '/friendlink'));
     })
     .catch(err => {
       console.error('保存错误:', err);
       alert('保存失败，请重试');
     });
 }
+
+document.getElementById('friendLinkSaveBtn').addEventListener('click', function () {
+  saveFriendLink();
+});
 </script>
 {/block}

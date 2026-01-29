@@ -22,6 +22,7 @@ class FileController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:file:view');
         try {
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
@@ -73,6 +74,7 @@ class FileController extends AdminBaseController
      */
     public function delete(): void
     {
+        $this->requirePerm('admin:file:delete');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {
@@ -125,6 +127,7 @@ class FileController extends AdminBaseController
      */
     public function update(): void
     {
+        $this->requirePerm('admin:file:update');
         try {
             // 验证POST请求和CSRF
             if (!$this->validatePostAndCsrf()) {

@@ -106,12 +106,16 @@ class PermissionService
         }
 
         // 关键操作权限（手工补充）
+        $add('控制台', 'admin:dashboard:view', '控制台（查看）');
         $add('系统设置', 'admin:role:save', '角色管理（新增/编辑）');
         $add('系统设置', 'admin:role:delete', '角色管理（删除）');
         $add('系统设置', 'admin:admin:save', '管理员管理（新增/编辑）');
         $add('系统设置', 'admin:admin:delete', '管理员管理（删除）');
+        $add('系统设置', 'admin:setting:save', '基本设置（保存）');
         $add('系统设置', 'admin:contact:save', '联系方式（新增/编辑）');
         $add('系统设置', 'admin:contact:delete', '联系方式（删除）');
+        $add('系统设置', 'admin:cache:clear', '缓存管理（清理）');
+        $add('系统设置', 'admin:log:clear', '操作日志（清理）');
         $add('内容管理', 'admin:category:save', '栏目管理（新增/编辑）');
         $add('内容管理', 'admin:category:delete', '栏目管理（删除）');
         $add('内容管理', 'admin:article:save', '文章管理（新增/编辑）');
@@ -128,9 +132,18 @@ class PermissionService
         $add('资源管理', 'admin:banner:delete', 'Banner管理（删除）');
         $add('资源管理', 'admin:friendlink:save', '友情链接管理（新增/编辑）');
         $add('资源管理', 'admin:friendlink:delete', '友情链接管理（删除）');
+        $add('资源管理', 'admin:file:view', '文件管理（查看）');
+        $add('资源管理', 'admin:file:delete', '文件管理（删除）');
+        $add('资源管理', 'admin:file:update', '文件管理（更新）');
         
         // 系统日志权限
         $add('系统', 'admin:system:logs:view', '系统日志（查看）');
+        $add('系统', 'admin:system:logs:clear', '系统日志（清理）');
+        $add('系统', 'admin:visitor:logs:view', '访客日志（查看）');
+        $add('系统', 'admin:visitor:stats:view', '访客统计（查看）');
+        $add('系统', 'admin:visitor:alerts:view', '风险告警（查看）');
+        $add('系统', 'admin:visitor:alerts:handle', '风险告警（处理）');
+        $add('系统', 'admin:visitor:anomaly:view', '异常报告（查看）');
 
         $all = array_values(array_unique($all));
         sort($all);

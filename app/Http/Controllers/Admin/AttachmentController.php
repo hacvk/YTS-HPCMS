@@ -28,6 +28,7 @@ class AttachmentController extends AdminBaseController
      */
     public function index(): void
     {
+        $this->requirePerm('admin:attachment:view');
         try {
             $page = (int)($this->get('page', 1));
             $limit = (int)($this->get('limit', 20));
