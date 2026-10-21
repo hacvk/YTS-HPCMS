@@ -1,3 +1,7 @@
+# 敏感配置与压缩包不入库
+.env
+*.rar
+
 # 忽略所有 .sql 后缀的文件
 *.sql
 *.sh
@@ -71,4 +75,7 @@ doc/
 
 # 可选：避免忽略名称中 test 是正常业务的文件（如果有例外，比如 TestService.php 不想忽略，加 ! 排除）
 # !app/Service/TestService.php
+
+# 模板文件需入库（需放在 *.example* 规则之后）
+!.env.example
 
